@@ -4,8 +4,8 @@ import { wardApi } from '../services/api';
 import { LayoutGrid, Smartphone, Zap, UserCheck } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'board' | 'staff';
-  onSelectTab: (tab: 'board' | 'staff') => void;
+  currentTab: 'board' | 'staff' | 'doctor';
+  onSelectTab: (tab: 'board' | 'staff' | 'doctor') => void;
   isConnected: boolean;
   onPeakTriggered?: () => void;
 }
@@ -63,6 +63,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <Smartphone size={16} />
           {STRINGS.nav.staffView}
+        </button>
+        <button
+          className={`nav-btn ${currentTab === 'doctor' ? 'active' : ''}`}
+          onClick={() => onSelectTab('doctor')}
+          id="nav-tab-doctor"
+        >
+          <UserCheck size={16} />
+          Doctor Console
         </button>
       </nav>
 

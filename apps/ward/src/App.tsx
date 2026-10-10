@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { StationBoard } from './pages/StationBoard';
 import { StaffView } from './pages/StaffView';
+import { DoctorView } from './pages/DoctorView';
 import { wardApi } from './services/api';
 import './styles/index.css';
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<'board' | 'staff'>(() => {
-    return window.location.pathname.includes('/staff') ? 'staff' : 'board';
+  const [currentTab, setCurrentTab] = useState<'board' | 'staff' | 'doctor'>(() => {
+    if (window.location.pathname.includes('/doctor')) return 'doctor';
+    if (window.location.pathname.includes('/staff')) return 'staff';
+    return 'board';
   });
 
   const [beds, setBeds] = useState<any[]>([]);
@@ -19,15 +22,21 @@ export const App: React.FC = () => {
   // Sync route on popstate or tab change
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentTab(window.location.pathname.includes('/staff') ? 'staff' : 'board');
+      if (window.location.pathname.includes('/doctor')) {
+        setCurrentTab('doctor');
+      } else if (window.location.pathname.includes('/staff')) {
+        setCurrentTab('staff');
+      } else {
+        setCurrentTab('board');
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleSelectTab = (tab: 'board' | 'staff') => {
+  const handleSelectTab = (tab: 'board' | 'staff' | 'doctor') => {
     setCurrentTab(tab);
-    window.history.pushState({}, '', tab === 'board' ? '/board' : '/staff');
+    window.history.pushState({}, '', `/${tab}`);
   };
 
   const loadInitialSnapshot = async () => {
@@ -87,6 +96,14 @@ export const App: React.FC = () => {
         onPeakTriggered={loadInitialSnapshot}
       />
 
+      {/* Track 2 Degraded Network Tolerance Banner */}
+      {!isConnected && (
+        <div style={{ background: '#f59e0b', color: '#1e293b', padding: '0.4rem 1.5rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>⚠️ Degraded Network Mode: Attending Ward Local Offline Cache Active. Actions are queued.</span>
+          <span>Reconnecting to WebSocket...</span>
+        </div>
+      )}
+
       <main style={{ flex: 1 }}>
         {currentTab === 'board' ? (
           <StationBoard
@@ -98,7 +115,7 @@ export const App: React.FC = () => {
               handleSelectTab('staff');
             }}
           />
-        ) : (
+        ) : currentTab === 'staff' ? (
           <StaffView
             beds={beds}
             calls={calls}
@@ -106,6 +123,12 @@ export const App: React.FC = () => {
             onRefresh={loadInitialSnapshot}
             targetFastEntryBed={targetFastEntryBed}
             onClearFastEntryTarget={() => setTargetFastEntryBed(null)}
+          />
+        ) : (
+          <DoctorView
+            beds={beds}
+            alerts={alerts}
+            onRefresh={loadInitialSnapshot}
           />
         )}
       </main>

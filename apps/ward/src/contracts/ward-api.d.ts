@@ -43,6 +43,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Log in with a staff id and PIN/password (synthetic staff from the seed) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        staffId: components["schemas"]["Id"];
+                        secret: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Logged in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            token: string;
+                            expiresAt: components["schemas"]["Timestamp"];
+                            staff: components["schemas"]["Staff"];
+                        };
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description Too many attempts */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/wards/{ward}/snapshot": {
         parameters: {
             query?: never;
@@ -382,6 +437,56 @@ export interface paths {
                         "application/json": components["schemas"]["Alert"];
                     };
                 };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wards/{ward}/alerts/{alertId}/instructions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remote on-call doctor adds a short instruction to an alert (telemedicine)
+         * @description Audited. Shown to the nurse on the alert. Works asynchronously (the doctor's app queues it while offline).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    ward: components["parameters"]["ward"];
+                    alertId: components["parameters"]["alertId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        text: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated alert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Alert"];
+                    };
+                };
+                403: components["responses"]["Forbidden"];
                 404: components["responses"]["NotFound"];
             };
         };
@@ -948,6 +1053,208 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/wards/{ward}/audit/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verify the audit log hash chain (non-repudiation) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    ward: components["parameters"]["ward"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Verification result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            valid: boolean;
+                            entries: number;
+                            firstBrokenAuditId?: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/fhir/r4/Patient/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * FHIR R4 Patient (pseudonymised), read-only
+         * @description See contracts/fhir-mapping.md. Access is audited.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["Id"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description FHIR Patient resource */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/fhir+json": components["schemas"]["FhirResource"];
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/fhir/r4/Encounter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** FHIR R4 Encounters (admissions) as a searchset Bundle */
+        get: {
+            parameters: {
+                query?: {
+                    patient?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Bundle */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/fhir+json": components["schemas"]["FhirBundle"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/fhir/r4/Observation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** FHIR R4 vital-sign Observations (LOINC-coded) and NEWS2 scores as a searchset Bundle */
+        get: {
+            parameters: {
+                query?: {
+                    encounter?: string;
+                    /** @description LOINC code, e.g. 8867-4 */
+                    code?: string;
+                    /** @description FHIR date search, e.g. ge2026-10-10 */
+                    date?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Bundle */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/fhir+json": components["schemas"]["FhirBundle"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/fhir/r4/MedicationAdministration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** FHIR R4 MedicationAdministrations (nurse-recorded only) as a searchset Bundle */
+        get: {
+            parameters: {
+                query?: {
+                    encounter?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Bundle */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/fhir+json": components["schemas"]["FhirBundle"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/wards/{ward}/audit": {
         parameters: {
             query?: never;
@@ -1002,6 +1309,16 @@ export interface components {
             error: string;
             detail?: string;
         };
+        /**
+         * @description Measurable confidence of an algorithmic output (HackCure section 6, invariant 12). Engines are
+         *     deterministic, so this measures how trustworthy the INPUTS are (completeness, freshness, solver
+         *     status), not a probability about the patient.
+         */
+        Confidence: {
+            value: number;
+            /** @description Human-readable, e.g. '6 of 7 parameters fresh; consciousness missing' */
+            basis: string;
+        };
         Accepted: {
             eventId: string;
         };
@@ -1025,6 +1342,11 @@ export interface components {
             room: string;
             admission?: components["schemas"]["Admission"] | null;
             news2?: components["schemas"]["News2Result"] | null;
+            /**
+             * @description unavailable = the inference layer could not be reached; the board shows 'score unavailable', never a guessed value
+             * @enum {unknown}
+             */
+            news2Status: "ok" | "unavailable" | "not_admitted";
             /** @description Latest reading per parameter. A parameter never received is absent. */
             vitals: {
                 [key: string]: components["schemas"]["ParamReading"];
@@ -1080,6 +1402,7 @@ export interface components {
             label: string;
             /** @enum {unknown} */
             spo2Scale?: 1 | 2;
+            confidence: components["schemas"]["Confidence"];
             computedAt: components["schemas"]["Timestamp"];
         };
         DeviceState: {
@@ -1094,7 +1417,7 @@ export interface components {
             /** @description Synthetic */
             displayName: string;
             /** @enum {unknown} */
-            role: "nurse" | "charge_nurse" | "care_assistant" | "doctor" | "biomed_tech";
+            role: "nurse" | "charge_nurse" | "care_assistant" | "doctor";
             skills?: string[];
             onShift: boolean;
             /** @description False when called away or on break */
@@ -1125,7 +1448,7 @@ export interface components {
             alertId: components["schemas"]["Id"];
             bed?: components["schemas"]["Id"];
             /** @enum {unknown} */
-            type: "news2_rise" | "news2_high" | "stale_data" | "device_offline" | "call_escalated" | "dose_overdue" | "assignment_suggested";
+            type: "news2_rise" | "news2_high" | "news2_single_param_3" | "stale_data" | "device_offline" | "call_escalated" | "dose_overdue" | "assignment_suggested";
             /**
              * @description Escalation ladder: low = silent badge, medium = normal notification, critical = persistent alarm until acknowledged
              * @enum {unknown}
@@ -1135,11 +1458,30 @@ export interface components {
             /** @description Template sentences built from the rule trace (no clinical authority) */
             explanation: string[];
             acknowledgedBy?: components["schemas"]["Id"];
+            confidence: components["schemas"]["Confidence"];
+            /** @description Roles reached so far (e.g. nurse, charge_nurse, doctor) */
+            escalatedTo?: ("nurse" | "care_assistant" | "charge_nurse" | "doctor")[];
+            /** @description Remote on-call doctor notes (telemedicine) */
+            instructions?: {
+                text: string;
+                by: components["schemas"]["Id"];
+                at: components["schemas"]["Timestamp"];
+            }[];
+        };
+        /** @description Live triage latency (Track 2 "zero latency" priority). Budget under 1000 ms. */
+        Metrics: {
+            /** @description Rolling window length */
+            windowS: number;
+            triageLatencyMs: {
+                p50: number;
+                p95: number;
+                n: number;
+            };
         };
         StreamMessage: {
             /** @enum {unknown} */
-            type: "snapshot" | "bed" | "call" | "alert" | "staff" | "assignment_suggestion" | "clock";
-            /** @description WardSnapshot for snapshot, Bed for bed, Call for call, Alert for alert, Staff for staff, AssignmentSuggestion for assignment_suggestion, {simTs, speed, running} for clock */
+            type: "snapshot" | "bed" | "call" | "alert" | "staff" | "assignment_suggestion" | "clock" | "metrics";
+            /** @description WardSnapshot for snapshot, Bed for bed, Call for call, Alert for alert, Staff for staff, AssignmentSuggestion for assignment_suggestion, {simTs, speed, running} for clock, Metrics for metrics */
             data: Record<string, never>;
         };
         ManualObservation: {
@@ -1175,6 +1517,7 @@ export interface components {
                 toStaffId: components["schemas"]["Id"];
             }[];
             reasons: string[];
+            confidence: components["schemas"]["Confidence"];
             loadBefore?: {
                 [key: string]: number;
             };
@@ -1330,6 +1673,23 @@ export interface components {
             action: string;
             target: string;
             detail?: Record<string, never>;
+            /** @description Hash of the previous entry (hash chain) */
+            prevHash: string;
+            /** @description SHA-256 over prevHash + this entry's canonical content */
+            hash: string;
+        };
+        /** @description A FHIR R4 resource (see contracts/fhir-mapping.md) */
+        FhirResource: {
+            resourceType: string;
+        };
+        FhirBundle: {
+            /** @constant */
+            resourceType: "Bundle";
+            /** @constant */
+            type: "searchset";
+            entry: {
+                resource: components["schemas"]["FhirResource"];
+            }[];
         };
     };
     responses: {
@@ -1353,6 +1713,15 @@ export interface components {
         };
         /** @description Invalid state transition or missing precondition (e.g. no consent) */
         Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Missing, invalid or expired credentials */
+        Unauthorized: {
             headers: {
                 [name: string]: unknown;
             };

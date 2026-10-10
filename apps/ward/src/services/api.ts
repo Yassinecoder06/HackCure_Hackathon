@@ -246,6 +246,22 @@ class WardApiService {
     return res.json();
   }
 
+  public async getDoctorOrders(ward = 'W1') {
+    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/doctor/orders`, {
+      headers: this.getHeaders()
+    });
+    return res.json();
+  }
+
+  public async createDoctorOrder(bed: string, orderText: string, ward = 'W1') {
+    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/doctor/orders`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ bed, orderText })
+    });
+    return res.json();
+  }
+
   public async triggerPeakDemo() {
     const res = await fetch(`http://${window.location.hostname}:8000/api/v1/demo/trigger-peak`, {
       method: 'POST',

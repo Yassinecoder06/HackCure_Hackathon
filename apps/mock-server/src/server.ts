@@ -22,6 +22,11 @@ interface News2Component {
   status: 'fresh' | 'stale' | 'missing' | 'invalid';
 }
 
+interface Confidence {
+  value: number;
+  basis: string;
+}
+
 interface News2Result {
   total: number;
   complete: boolean;
@@ -32,6 +37,7 @@ interface News2Result {
   missing: string[];
   stale: string[];
   label: string;
+  confidence: Confidence;
   spo2Scale: 1 | 2;
   computedAt: string;
 }
@@ -78,6 +84,7 @@ interface AlertState {
   priority: 'low' | 'medium' | 'critical';
   createdAt: string;
   explanation: string[];
+  confidence: Confidence;
   acknowledgedBy?: string;
 }
 
@@ -101,6 +108,7 @@ interface AssignmentSuggestion {
   reasons: string[];
   loadBefore: Record<string, number>;
   loadAfter: Record<string, number>;
+  confidence: Confidence;
   decidedBy?: string;
   decidedAt?: string;
   decisionReason?: string;
@@ -229,6 +237,12 @@ function computeNEWS2(vitals: Record<string, ParamReading>): News2Result {
     label = `Partial (${total}): ${issues.join(', ')}`;
   }
 
+  const freshCount = components.filter(c => c.status === 'fresh').length;
+  const confidenceValue = Number((freshCount / 7).toFixed(2));
+  const basis = complete
+    ? 'All 7 clinical parameters fresh from bedside telemetry'
+    : `${freshCount} of 7 parameters fresh; ${[...missing.map(m => `${m} missing`), ...stale.map(s => `${s} stale`)].join(', ')}`;
+
   return {
     total,
     complete,
@@ -239,6 +253,10 @@ function computeNEWS2(vitals: Record<string, ParamReading>): News2Result {
     missing,
     stale,
     label,
+    confidence: {
+      value: confidenceValue,
+      basis
+    },
     spo2Scale: 1,
     computedAt: new Date().toISOString()
   };
@@ -477,7 +495,11 @@ let alerts: AlertState[] = [
       'Respiratory rate rose to 23 breaths/min',
       'Pulse elevated at 104 bpm',
       'Requires urgent ward-based nurse review'
-    ]
+    ],
+    confidence: {
+      value: 0.94,
+      basis: 'Deterministic rule engine: 6 of 7 telemetry parameters fresh'
+    }
   },
   {
     alertId: 'alt_02',
@@ -488,7 +510,11 @@ let alerts: AlertState[] = [
     explanation: [
       'Systolic blood pressure 88 mmHg scored 3 points',
       'Single parameter threshold: urgent clinical assessment needed'
-    ]
+    ],
+    confidence: {
+      value: 1.0,
+      basis: 'All vital signs fresh from bedside monitor'
+    }
   }
 ];
 
@@ -508,7 +534,29 @@ let suggestions: AssignmentSuggestion[] = [
       'Maintains senior respiratory specialty coverage for high acuity beds'
     ],
     loadBefore: { N1: 7, N2: 9, N3: 7 },
-    loadAfter: { N1: 8, N2: 5, N3: 8 }
+    loadAfter: { N1: 8, N2: 5, N3: 8 },
+    confidence: {
+      value: 0.92,
+      basis: 'Google OR-Tools CP-SAT optimal mathematical solution with 0 constraint violations'
+    }
+  }
+];
+
+interface DoctorOrder {
+  orderId: string;
+  bed: string;
+  orderText: string;
+  createdAt: string;
+  doctorName: string;
+}
+
+let doctorOrders: DoctorOrder[] = [
+  {
+    orderId: 'ord_01',
+    bed: 'B06',
+    orderText: 'Start O2 via nasal cannula at 2L/min. Repeat arterial blood gas in 30 mins.',
+    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    doctorName: 'Dr. F (On-Call Senior)'
   }
 ];
 
@@ -707,7 +755,11 @@ wardApp.post('/api/v1/wards/:ward/beds/:bed/observations', (req: Request, res: R
         explanation: [
           `NEWS2 score critically elevated at ${targetBed.news2.total}`,
           targetBed.news2.response
-        ]
+        ],
+        confidence: {
+          value: targetBed.news2.confidence.value,
+          basis: targetBed.news2.confidence.basis
+        }
       };
       alerts.unshift(alert);
       broadcastWardMessage('alert', alert);
@@ -1018,7 +1070,11 @@ wardApp.post('/api/v1/demo/trigger-peak', (_req: Request, res: Response) => {
         'Heart rate 118 bpm (2 points)',
         'Consciousness altered to Voice response (3 points)',
         'Immediate medical response team requested'
-      ]
+      ],
+      confidence: {
+        value: 1.0,
+        basis: 'Continuous bedside telemetry monitor stream with 100% parameter validity'
+      }
     };
     alerts.unshift(criticalAlert);
 
@@ -1036,6 +1092,37 @@ wardApp.post('/api/v1/demo/trigger-peak', (_req: Request, res: Response) => {
   }
 
   res.json({ status: 'ok', message: 'Night-Shift Peak Scenario triggered on B06' });
+});
+
+// Doctor Orders Endpoints (New Architecture /doctor route)
+wardApp.get('/api/v1/wards/:ward/doctor/orders', (_req: Request, res: Response) => {
+  res.json(doctorOrders);
+});
+
+wardApp.post('/api/v1/wards/:ward/doctor/orders', (req: Request, res: Response) => {
+  const { bed, orderText } = req.body;
+  const newOrder: DoctorOrder = {
+    orderId: `ord_${Date.now()}`,
+    bed,
+    orderText,
+    createdAt: new Date().toISOString(),
+    doctorName: (req.headers['x-staff-id'] as string) || 'Dr. F'
+  };
+  doctorOrders.unshift(newOrder);
+
+  // Broadcast to all staff connected
+  broadcastWardMessage('doctor_order', newOrder);
+
+  auditLog.unshift({
+    auditId: `aud_${Date.now()}`,
+    ts: newOrder.createdAt,
+    actor: newOrder.doctorName,
+    action: 'doctor.order_created',
+    target: bed,
+    detail: { orderText }
+  });
+
+  res.status(201).json(newOrder);
 });
 
 // Setup HTTP & WebSocket server for Ward on Port 8000
