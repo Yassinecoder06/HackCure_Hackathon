@@ -68,17 +68,33 @@ class AudioManager:
         """Immediate short audio cue on button press."""
         self.play("beep")
 
-    def play_chime(self) -> None:
+    def play_chime(self, wait: bool = False) -> None:
         """Comforting confirmation chime when staff acknowledges the call."""
-        self.play("chime")
+        self.play("chime", wait=wait)
 
-    def play_buzzer(self) -> None:
+    def play_buzzer(self, wait: bool = False) -> None:
         """Fast buzz alarm for not_sent / network outage."""
-        self.play("buzzer")
+        self.play("buzzer", wait=wait)
 
-    def play_emergency_bell(self) -> None:
+    def play_emergency_bell(self, wait: bool = False) -> None:
         """Pre-recorded voice prompt telling patient to use the emergency bell."""
-        self.play("emergency_bell")
+        self.play("emergency_bell", wait=wait)
+
+    def play_ack_reassurance(self) -> None:
+        """Requirement C: Reassuring double-chime + spoken 'Votre appel a été pris en compte, un soignant arrive.'"""
+        def _seq() -> None:
+            self.play("chime", wait=True)
+            self.play("ack_reassurance", wait=False)
+
+        threading.Thread(target=_seq, daemon=True, name="audio-ack").start()
+
+    def play_outage_alert(self) -> None:
+        """Requirement A: Fail-safe buzzer + voice prompt 'Veuillez utiliser la sonnette d'urgence.'"""
+        def _seq() -> None:
+            self.play("buzzer", wait=True)
+            self.play("emergency_bell", wait=False)
+
+        threading.Thread(target=_seq, daemon=True, name="audio-outage").start()
 
     def stop(self) -> None:
         with self._lock:

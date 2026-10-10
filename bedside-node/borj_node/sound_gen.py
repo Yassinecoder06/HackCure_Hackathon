@@ -103,12 +103,40 @@ def generate_voice_fr_wav(path: Path) -> None:
     _write_wav(path, samples, rate)
 
 
+def generate_voice_ack_fr_wav(path: Path) -> None:
+    espeak = shutil.which("espeak-ng") or shutil.which("espeak")
+    phrase = "Votre appel a été pris en compte, un soignant arrive."
+    if espeak:
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            subprocess.run(
+                [espeak, "-v", "fr", "-s", "130", phrase, "-w", str(path)],
+                check=True,
+                capture_output=True,
+            )
+            return
+        except Exception:
+            pass
+
+    # Fallback chime + harmonic sequence
+    rate = 44100
+    samples = []
+    for freq, dur in [(523.25, 0.2), (659.25, 0.2), (783.99, 0.35)]:
+        n = int(rate * dur)
+        for i in range(n):
+            t = i / rate
+            env = math.exp(-3.5 * t / dur)
+            samples.append(0.35 * env * math.sin(2 * math.pi * freq * t))
+    _write_wav(path, samples, rate)
+
+
 def ensure_default_sounds() -> dict[str, Path]:
     SOUNDS_DIR.mkdir(parents=True, exist_ok=True)
     beep = SOUNDS_DIR / "beep.wav"
     chime = SOUNDS_DIR / "chime.wav"
     buzzer = SOUNDS_DIR / "buzzer.wav"
     voice_fr = SOUNDS_DIR / "emergency_fr.wav"
+    ack_fr = SOUNDS_DIR / "ack_fr.wav"
 
     if not beep.exists():
         generate_beep_wav(beep)
@@ -118,12 +146,15 @@ def ensure_default_sounds() -> dict[str, Path]:
         generate_buzzer_wav(buzzer)
     if not voice_fr.exists():
         generate_voice_fr_wav(voice_fr)
+    if not ack_fr.exists():
+        generate_voice_ack_fr_wav(ack_fr)
 
     return {
         "beep": beep,
         "chime": chime,
         "buzzer": buzzer,
         "emergency_bell": voice_fr,
+        "ack_reassurance": ack_fr,
     }
 
 
