@@ -98,7 +98,13 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   - **Outbound only:** each event stores the exact payload in `outbound`. `python -m borj_server.family_publisher`
     (compose service `family-publisher`, profile `family`, ward + DMZ networks, **no ports**) forwards only those,
     in order, retrying until family-gateway accepts.
-- Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
+- **Frame integrity (invariant 13, `integrity.py`):** every MQTT message is checked before ingest. A signature
+  that is present must verify with the key named by `keyId` (`BORJ_DEVICE_KEYS`), and a bedside node's key
+  (`node-B04`) only signs for its own bed. In `require` mode, unsigned measurements (`vitals`, `device-status`,
+  `binding`, `call`) are refused too. Each rejection is logged and written to the audit chain (actor `mqtt`,
+  action `integrity.rejected`), so it never reaches the event log or the twin. Compose runs `verify` until
+  role A's signers load their keys, then switches to `require`.
+- Still to come: SMS fallback (stub logs only).
 
 ## Run
 

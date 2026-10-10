@@ -10,6 +10,7 @@ import base64
 import logging
 from contextlib import asynccontextmanager
 
+import borj_contracts as bc
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -27,6 +28,7 @@ from .crypto import DataCipher
 from .family import FamilyConfig, FamilyService
 from .inference_client import InferenceClient
 from .ingest import Ingestor
+from .integrity import IntegrityGate
 from .live import news2_by_bed, news2_total
 from .meds import MedsConfig
 from .mqtt import MqttListener
@@ -71,7 +73,9 @@ def create_app(
             app.state.inference = InferenceClient.from_url(settings.inference_url, settings.inference_timeout_s)
         else:
             app.state.inference = None
-        listener = MqttListener(ingestor, settings.mqtt_host, settings.mqtt_port) if settings.mqtt_enabled else None
+        app.state.integrity = IntegrityGate(bc.parse_keys(settings.device_keys), settings.integrity_mode)
+        listener = (MqttListener(ingestor, settings.mqtt_host, settings.mqtt_port, gate=app.state.integrity)
+                    if settings.mqtt_enabled else None)
 
         app.state.call_config = CallConfig.load(settings.calls_config_path)
         app.state.meds_config = MedsConfig.load(settings.meds_config_path)

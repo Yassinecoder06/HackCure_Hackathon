@@ -303,6 +303,51 @@ def test_12_explainable_and_advisory():
         assert 0 <= alert["confidence"]["value"] <= 1
 
 
-@pytest.mark.skip(reason="P1, A+B: messages with a bad or missing HMAC are rejected in demo mode")
 def test_13_frame_integrity():
-    pass
+    """Bad, unknown-key, wrong-bed and (in require mode) unsigned frames never reach the log; each is audited."""
+    import json
+
+    import borj_contracts as bc
+    from borj_server.clock import Clock
+    from borj_server.crypto import DataCipher
+    from borj_server.ingest import Ingestor
+    from borj_server.integrity import IntegrityGate
+    from borj_server.store import EventStore
+    from borj_server.twin.layout import WardLayout
+
+    keys = {"sim-k1": b"S" * 32, "node-B04": b"4" * 32, "node-B01": b"1" * 32}  # synthetic test keys
+    store = EventStore("sqlite://", DataCipher({"k1": b"K" * 32}, "k1"))
+    ingestor = Ingestor(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"), store, Clock("wall"))
+    gate = IntegrityGate(keys, "require")
+
+    def example(name, event_id):
+        payload = json.loads((ROOT / "contracts" / "examples" / f"{name}.json").read_text(encoding="utf-8"))
+        return {**payload, "eventId": event_id}
+
+    def send(payload):
+        return gate.handle_raw(ingestor, bc.topic("vitals", "W1", bed="B04"), json.dumps(payload).encode())
+
+    binding = bc.sign(example("binding", "01K80000000000000000000BND"), keys["node-B04"], "node-B04")
+    assert gate.handle_raw(ingestor, bc.topic("binding", "W1", bed="B04"),
+                           json.dumps(binding).encode()).status == "accepted"
+    good = bc.sign(example("vitals.device", "01K80000000000000000000G00"), keys["sim-k1"], "sim-k1")
+    tampered = {**good, "eventId": "01K80000000000000000000T00", "params": {**good["params"], "pulse": 60}}
+    forged = bc.sign(example("vitals.device", "01K80000000000000000000F00"), b"X" * 32, "gw-k9")
+    other_bed = bc.sign(example("vitals.device", "01K80000000000000000000W00"), keys["node-B01"], "node-B01")
+    unsigned = example("vitals.device", "01K80000000000000000000Z00")
+
+    assert send(good).status == "accepted"
+    assert [send(p).detail for p in (tampered, forged, other_bed, unsigned)] == [
+        "bad_signature", "unknown_key", "key_not_for_this_bed", "unsigned"]
+    stored = {e.payload["eventId"] for e in store.events()}
+    assert good["eventId"] in stored and not stored & {"01K80000000000000000000T00", "01K80000000000000000000F00",
+                                                        "01K80000000000000000000W00", "01K80000000000000000000Z00"}
+    assert ingestor.twin.beds["B04"].vitals["pulse"].value == good["params"]["pulse"]
+    rejected = [a for a in store.audit_entries() if a["action"] == "integrity.rejected"]
+    assert len(rejected) == 4 and {a["actor"] for a in rejected} == {"mqtt"}
+    assert store.verify_audit_chain()["valid"]
+
+    clock = {"schemaVersion": 1, "ward": "W1", "simTs": "2026-10-10T22:00:00Z", "speed": 1, "scenario": "t",
+             "running": True}
+    assert gate.handle_raw(ingestor, "borj/W1/sim/clock", json.dumps(clock).encode()).status != "integrity"
+    assert IntegrityGate(keys, "verify").check(bc.topic("vitals", "W1", bed="B04"), unsigned) is None

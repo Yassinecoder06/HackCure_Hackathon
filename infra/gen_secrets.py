@@ -9,7 +9,8 @@ Holds (ADR 0010):
 - BORJ_TOKEN_KEY           signing key for login tokens
 - BORJ_STAFF_PINS          a random 6-digit demo PIN per synthetic staff member in seed/ward-W1.yaml
 - FAMILY_PUBLISHER_TOKEN   bearer token the family publisher presents to family-gateway ingest
-Later phases add per-device HMAC keys here.
+- BORJ_DEVICE_KEYS         HMAC-SHA256 key ring for frame integrity (invariant 13): one key for the
+                           simulator (sim-k1), one for the gateway (gw-k1), one per bedside node (node-B01...)
 """
 
 from __future__ import annotations
@@ -31,6 +32,17 @@ def staff_ids() -> list[str]:
     return re.findall(r"-\s*\{\s*id:\s*([A-Za-z0-9_-]+),\s*name:", SEED.read_text(encoding="utf-8"))
 
 
+def bed_ids() -> list[str]:
+    beds = SEED.read_text(encoding="utf-8").split("beds:", 1)[1]
+    return re.findall(r"^\s+(B[0-9]+):", beds, flags=re.MULTILINE)
+
+
+def device_keys() -> str:
+    """'keyId:<base64 32-byte key>,...'. Key ids match what role A's signers use (sim-k1, gw-k1, node-{bed})."""
+    ids = ["sim-k1", "gw-k1", *(f"node-{bed}" for bed in bed_ids())]
+    return ",".join(f"{kid}:{base64.b64encode(secrets.token_bytes(32)).decode('ascii')}" for kid in ids)
+
+
 def fresh_values() -> dict[str, str]:
     pins = ",".join(f"{sid}:{secrets.randbelow(10**6):06d}" for sid in staff_ids())
     return {
@@ -40,6 +52,7 @@ def fresh_values() -> dict[str, str]:
         "BORJ_TOKEN_KEY": base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
         "BORJ_STAFF_PINS": pins,
         "FAMILY_PUBLISHER_TOKEN": secrets.token_urlsafe(32),
+        "BORJ_DEVICE_KEYS": device_keys(),
     }
 
 

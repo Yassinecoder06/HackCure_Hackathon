@@ -162,3 +162,16 @@ def verify(payload: dict[str, Any], keys: dict[str, bytes]) -> bool:
         return False
     expected = sign(payload, key, integrity["keyId"])["integrity"]["sig"]
     return hmac.compare_digest(expected, str(integrity.get("sig", "")))
+
+
+def parse_keys(raw: str) -> dict[str, bytes]:
+    """Device key ring from BORJ_DEVICE_KEYS: 'keyId:<base64 key>,...' -> {keyId: key bytes}.
+
+    Shared by every signer (simulator, gateway, bedside node: each uses only its own entry) and by
+    the server, which verifies. infra/gen_secrets.py writes it."""
+    keys = {}
+    for pair in filter(None, (p.strip() for p in raw.split(","))):
+        key_id, _, b64 = pair.partition(":")
+        if key_id and b64:
+            keys[key_id] = base64.b64decode(b64)
+    return keys

@@ -64,6 +64,10 @@ services:
       # Login (ADR 0010): token signing key and demo PINs for the synthetic staff.
       BORJ_TOKEN_KEY: ${BORJ_TOKEN_KEY:?missing - run python infra/gen_secrets.py}
       BORJ_STAFF_PINS: ${BORJ_STAFF_PINS:?missing - run python infra/gen_secrets.py}
+      # Frame integrity (invariant 13): per-device HMAC keys. "verify" rejects bad signatures; switch to
+      # "require" (also rejects unsigned measurements) once the simulator, gateway and nodes sign.
+      BORJ_DEVICE_KEYS: ${BORJ_DEVICE_KEYS:?missing - run python infra/gen_secrets.py}
+      BORJ_INTEGRITY_MODE: ${BORJ_INTEGRITY_MODE:-verify}
     ports:
       - "8000:8000"
     depends_on:

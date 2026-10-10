@@ -24,11 +24,14 @@ API = "http://localhost:8000"
 HEADERS: dict[str, str] = {}
 
 
+def env() -> dict[str, str]:
+    """Demo secrets live in the git-ignored infra/.env written by infra/gen_secrets.py."""
+    return dict(line.split("=", 1) for line in (ROOT / "infra" / ".env").read_text(encoding="utf-8").splitlines()
+                if line and not line.startswith("#"))
+
+
 def login_as_charge_nurse() -> None:
-    """Demo PINs live in the git-ignored infra/.env written by infra/gen_secrets.py."""
-    env = dict(line.split("=", 1) for line in (ROOT / "infra" / ".env").read_text(encoding="utf-8").splitlines()
-               if line and not line.startswith("#"))
-    pins = dict(pair.split(":", 1) for pair in env["BORJ_STAFF_PINS"].split(","))
+    pins = dict(pair.split(":", 1) for pair in env()["BORJ_STAFF_PINS"].split(","))
     body = json.dumps({"staffId": "CN1", "secret": pins["CN1"]}).encode()
     req = urllib.request.Request(API + "/api/v1/auth/login", data=body, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=5) as resp:
@@ -70,8 +73,16 @@ def main() -> None:
     clock = {"schemaVersion": 1, "ward": "W1", "simTs": "2026-10-10T22:10:00Z", "speed": 1,
              "scenario": "smoke", "running": True}
     client.publish("borj/W1/sim/clock", json.dumps(clock), qos=1, retain=True).wait_for_publish(5)
-    for name in ("binding", "vitals.device", "vitals.manual", "device-status"):
-        payload = json.loads((ROOT / "contracts" / "examples" / f"{name}.json").read_text(encoding="utf-8"))
+    # Signed like the simulator does (invariant 13). A tampered copy (pulse changed after signing) goes first:
+    # the server must reject it, so B04 ends up with the genuine pulse and the rejection is audited.
+    key = bc.parse_keys(env()["BORJ_DEVICE_KEYS"])["sim-k1"]
+    tampered = bc.sign(json.loads((ROOT / "contracts" / "examples" / "vitals.device.json").read_text(encoding="utf-8")),
+                       key, "sim-k1")
+    tampered["params"]["pulse"] = 60
+    tampered["eventId"] = "01K80000000000000000TAMPER"
+    for name in ("binding", "vitals.tampered", "vitals.device", "vitals.manual", "device-status"):
+        payload = tampered if name == "vitals.tampered" else bc.sign(
+            json.loads((ROOT / "contracts" / "examples" / f"{name}.json").read_text(encoding="utf-8")), key, "sim-k1")
         topic = bc.topic(name.split(".")[0], payload["ward"], bed=payload["bed"])
         client.publish(topic, json.dumps(payload), qos=1).wait_for_publish(5)
     client.loop_stop()
@@ -104,10 +115,15 @@ def main() -> None:
     if post_json(f"/api/v1/wards/W1/calls/{call['callId']}/ack")["state"] != "acknowledged":
         raise SystemExit("call ack failed")
 
+    if b04["vitals"]["pulse"]["value"] == 60:
+        raise SystemExit("a tampered message was ingested")
+    audit = get_json("/api/v1/wards/W1/audit?limit=1000")
+    if not any(a["action"] == "integrity.rejected" for a in audit):
+        raise SystemExit("tampered message was not rejected and audited")
     if not get_json("/api/v1/wards/W1/audit/verify")["valid"]:
         raise SystemExit("audit chain does not verify")
     print("OK: login -> MQTT -> twin -> inference -> API (NEWS2 8, high, complete); call routed and acked; "
-          "audit chain valid")
+          "tampered frame rejected; audit chain valid")
     print(json.dumps(b04, indent=2))
 
 
