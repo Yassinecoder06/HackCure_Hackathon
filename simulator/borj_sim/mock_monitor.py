@@ -114,13 +114,14 @@ class MockMedicalMonitor:
             "ts": now_utc,
             "ward": self.ward,
             "bed": self.bed,
-            "source": f"mon-{self.bed}",
-            "sourceType": "device",
+            "source": f"app-N1",
+            "sourceType": "staff_app",
             "action": "admit",
             "admissionId": f"ADM-{self.bed}",
             "patientRef": f"Patient {self.bed}",
             "acuity": 2,
-            "method": "auto_sensor_discovery",
+            "method": "wristband_scan",
+            "staffId": "N1",
         }
         bc.validate_message(topic, payload)
         self._client.publish(topic, json.dumps(payload), qos=1)
