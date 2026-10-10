@@ -9,16 +9,16 @@ interface LoginModalProps {
 }
 
 const PRESET_STAFF = [
-  { id: 'CN1', name: 'Charge Nurse A', role: 'charge_nurse', pin: '123456', badge: 'Charge Nurse', color: '#38bdf8' },
-  { id: 'N1', name: 'Nurse B', role: 'nurse', pin: '123456', badge: 'Nurse (IV)', color: '#34d399' },
-  { id: 'N2', name: 'Nurse C', role: 'nurse', pin: '123456', badge: 'Nurse (Resp/IV)', color: '#34d399' },
-  { id: 'CA1', name: 'Care Assistant E', role: 'care_assistant', pin: '123456', badge: 'Care Assistant', color: '#fbbf24' },
-  { id: 'DOC1', name: 'Dr. Karim Toumi', role: 'doctor', pin: '123456', badge: 'On-Call Doctor', color: '#a78bfa' }
+  { id: 'N1', name: 'Nurse B', role: 'nurse', pin: '185541', badge: 'Nurse (IV)', color: '#34d399' },
+  { id: 'CN1', name: 'Charge Nurse A', role: 'charge_nurse', pin: '687463', badge: 'Charge Nurse', color: '#38bdf8' },
+  { id: 'N2', name: 'Nurse C', role: 'nurse', pin: '009612', badge: 'Nurse (Resp/IV)', color: '#34d399' },
+  { id: 'CA1', name: 'Care Assistant E', role: 'care_assistant', pin: '227072', badge: 'Care Assistant', color: '#fbbf24' },
+  { id: 'DR1', name: 'Doctor F', role: 'doctor', pin: '783818', badge: 'On-Call Doctor', color: '#a78bfa' }
 ];
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [staffId, setStaffId] = useState<string>('CN1');
-  const [pin, setPin] = useState<string>('123456');
+  const [staffId, setStaffId] = useState<string>('N1');
+  const [pin, setPin] = useState<string>('185541');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 

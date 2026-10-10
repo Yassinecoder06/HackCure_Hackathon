@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 import borj_contracts as bc
 import httpx
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .alerts import FirstSeen
@@ -123,6 +124,14 @@ def create_app(
             store.close()
 
     app = FastAPI(title="Borj ward server", version="0.1.0", lifespan=lifespan)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.exception_handler(HTTPException)
     async def contract_errors(_request: Request, exc: HTTPException) -> JSONResponse:

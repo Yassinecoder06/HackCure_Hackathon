@@ -129,14 +129,51 @@ class WardApiService {
     };
   }
 
-  public connectWebSocket() {
+  public async ensureSession(): Promise<AuthSession> {
+    if (this.session && this.session.token) {
+      try {
+        const exp = new Date(this.session.expiresAt).getTime();
+        if (exp > Date.now() + 30000) {
+          return this.session;
+        }
+      } catch {
+        // proceed to relogin
+      }
+    }
+    const pinMap: Record<string, string> = {
+      N1: '185541',
+      CN1: '687463',
+      N2: '009612',
+      CA1: '227072',
+      DR1: '783818',
+    };
+    const sid = this.currentStaffId in pinMap ? this.currentStaffId : 'N1';
+    const pin = pinMap[sid] || '185541';
+    return await this.login(sid, pin);
+  }
+
+  public async connectWebSocket() {
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    try {
+      await this.ensureSession();
+    } catch (e) {
+      console.warn('Auto-session setup failed, will prompt user login', e);
+      this.emit('auth_expired', true);
+      this.scheduleReconnect();
       return;
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.hostname}:8000/api/v1/wards/W1/stream`;
-    const token = this.session?.token || 'borj_demo_fallback_token';
+    const token = this.session?.token;
+    if (!token) {
+      this.emit('auth_expired', true);
+      this.scheduleReconnect();
+      return;
+    }
 
     try {
       // Contract: Offer subprotocols ["bearer", "<login token>"]
@@ -171,6 +208,10 @@ class WardApiService {
         this.emit('connection', { connected: false });
         if (event.code === 4401) {
           console.warn('WebSocket closed with 4401 (Authentication required/invalid)');
+          this.session = null;
+          try {
+            localStorage.removeItem('borj_ward_auth');
+          } catch {}
           this.emit('auth_expired', true);
         }
         this.scheduleReconnect();
@@ -201,6 +242,9 @@ class WardApiService {
 
   // REST API Methods
   public async getSnapshot(ward = 'W1'): Promise<WardSnapshot> {
+    try {
+      await this.ensureSession();
+    } catch {}
     const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/snapshot`, {
       headers: this.getHeaders()
     });
