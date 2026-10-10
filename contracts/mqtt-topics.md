@@ -16,6 +16,7 @@ Broker: Mosquitto. **The demo uses TLS 1.3 on 8883 with per-device credentials a
 | `borj/{ward}/{bed}/binding` | `binding.schema.json` | server (from staff app REST), simulator | server, gateway | 1 | no |
 | `borj/{ward}/staff/{staffId}/ack` | `ack.schema.json` | server (from staff app REST), simulator (background staff) | server | 1 | no |
 | `borj/{ward}/staff/{staffId}/presence` | `staff-presence.schema.json` | server (from staff app REST), simulator | server | 1 | no |
+| `borj/{ward}/assignment` | `assignment.schema.json` | **server only**, when a charge nurse approves a suggestion | server (event log), apps via WebSocket | 1 | no |
 | `borj/{ward}/sim/clock` | `clock.schema.json` | simulator (**demo only**) | server, gateway | 0 | yes |
 
 `staff` and `sim` are reserved and can never be bed ids. `{ward}`, `{bed}` and `{staffId}` in the topic **must equal** the `ward`, `bed` and `staffId` fields in the payload. Consumers reject mismatches.

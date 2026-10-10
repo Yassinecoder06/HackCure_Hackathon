@@ -66,7 +66,7 @@ Read first:
 
 ## P3: decisions and telemedicine
 
-- [ ] **Assignment** (inference, OR-Tools CP-SAT):
+- [x] **Assignment** (inference, OR-Tools CP-SAT):
   - Inputs: acuity + NEWS2 workload, skills, proximity, continuity, locked assignments, breaks.
   - Output: a suggestion with reasons, workload before and after, and a confidence (solver status, data freshness).
   - **Never auto-applied**: only a charge nurse's decision changes assignments (invariant 1). Write a test for this.

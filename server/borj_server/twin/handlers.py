@@ -67,6 +67,7 @@ def apply_binding(twin: WardTwin, payload: dict[str, Any]) -> str:
         )
     else:
         bed.admission = None
+        twin.assignments.pop(bed.bed, None)  # an empty bed needs no nurse
     return "applied"
 
 
@@ -170,6 +171,14 @@ def apply_call_state(twin: WardTwin, payload: dict[str, Any]) -> str:
     return "applied"
 
 
+def apply_assignment(twin: WardTwin, payload: dict[str, Any]) -> str:
+    """An approved suggestion: the only way assignments change (safety invariant 1)."""
+    for change in payload["changes"]:
+        if change["bed"] in twin.beds and change["toStaffId"] in twin.staff:
+            twin.assignments[change["bed"]] = change["toStaffId"]
+    return "applied"
+
+
 def apply_ack(twin: WardTwin, payload: dict[str, Any]) -> str:
     """Acks on alerts are recorded here. Acks on calls are turned into call/state by the call engine."""
     if payload["target"] != "alert" or payload["action"] != "acknowledge":
@@ -186,6 +195,7 @@ HANDLERS: dict[str, Callable[[WardTwin, dict[str, Any]], str]] = {
     "call": apply_call,
     "call-state": apply_call_state,
     "ack": apply_ack,
+    "assignment": apply_assignment,
     # med: stored now, handled by the medication engine (P3).
 }
 

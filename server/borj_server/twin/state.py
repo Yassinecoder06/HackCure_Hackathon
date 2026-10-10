@@ -100,4 +100,6 @@ class WardTwin:
             s.staff_id: StaffMember(s.staff_id, s.name, s.role, s.skills) for s in layout.staff
         }
         self.calls: dict[str, Call] = {}
+        # bed -> nurse. Changes ONLY through approved `assignment` events (safety invariant 1).
+        self.assignments: dict[str, str] = {}
         self.alert_acks: dict[str, AlertAck] = {}

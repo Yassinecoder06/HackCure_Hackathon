@@ -52,7 +52,7 @@ def login(body: LoginIn, request: Request) -> dict:
     store.audit(body.staffId, "auth.login", body.staffId)
     ingestor = request.app.state.ingestor
     with ingestor.lock:
-        staff = staff_view(ingestor.twin.staff[body.staffId])
+        staff = staff_view(ingestor.twin.staff[body.staffId], ingestor.twin.assignments)
     return {"token": token, "expiresAt": format_ts(expires), "staff": staff}
 
 
@@ -118,6 +118,43 @@ def ack_alert(ward: str, alertId: str, request: Request, who: Staff) -> dict:  #
     _staff_ack(request, who, "alert", alertId, "acknowledge")
     _, alerts = build_beds(request.app, None)
     return next(a for a in alerts if a["alertId"] == alertId)
+
+
+class DecisionIn(BaseModel):
+    decision: str = Field(pattern="^(approve|reject)$")
+    reason: str | None = Field(default=None, max_length=200)
+
+
+def _suggestion_call(fn, *args):
+    from ..assignment import SuggestionError
+
+    try:
+        return fn(*args)
+    except SuggestionError as exc:
+        raise HTTPException(exc.status, {"error": exc.error, "detail": exc.detail}) from exc
+
+
+@router.get("/api/v1/wards/{ward}/assignments/suggestions")
+def list_suggestions(ward: str, request: Request, who: Staff, status: str | None = None) -> list:
+    _check_ward(request, ward)
+    return request.app.state.assignment.list(status)
+
+
+@router.post("/api/v1/wards/{ward}/assignments/suggestions", status_code=201)
+def create_suggestion(ward: str, request: Request, who: Staff) -> dict:
+    """Ask the optimiser now. Never applies anything: the result is a pending suggestion."""
+    _check_ward(request, ward)
+    return _suggestion_call(request.app.state.assignment.suggest, f"requested by {who.staff_id}")
+
+
+@router.post("/api/v1/wards/{ward}/assignments/suggestions/{suggestionId}/decision")
+def decide_suggestion(ward: str, suggestionId: str, body: DecisionIn, request: Request,  # noqa: N803
+                      who: Staff) -> dict:
+    """The only path that changes assignments: a charge nurse's decision (safety invariant 1)."""
+    _check_ward(request, ward)
+    require_role(who, "charge_nurse")
+    return _suggestion_call(request.app.state.assignment.decide, suggestionId, body.decision, who.staff_id,
+                            body.reason)
 
 
 @router.websocket("/api/v1/wards/{ward}/stream")
