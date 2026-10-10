@@ -144,9 +144,13 @@ class EventStore:
                 ciphertext=sealed.ciphertext,
             )
             .on_conflict_do_nothing(index_elements=["event_id"])
+            # RETURNING tells us reliably whether a row was inserted: `rowcount` is not dependable
+            # for INSERT on every driver (it is not on psycopg / PostgreSQL), and a wrong answer here
+            # would make every new event look like a duplicate.
+            .returning(events.c.seq)
         )
         with self._lock, self.engine.begin() as conn:
-            return conn.execute(stmt).rowcount == 1
+            return conn.execute(stmt).first() is not None
 
     def events(self) -> Iterator[StoredEvent]:
         """All events in event-time order (ties broken by arrival order), for replay."""
