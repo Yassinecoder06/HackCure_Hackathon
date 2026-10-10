@@ -79,6 +79,13 @@ Read first:
 - [ ] **FHIR R4 export (read-only)** following [`fhir-mapping.md`](../../contracts/fhir-mapping.md): `Patient`, `Encounter`, `Observation` (LOINC), `MedicationAdministration`. Access is audited.
 - [ ] **Explainer:** template sentences from the rule traces.
 
+## Could (after P4): local LLM layer ([ADR 0013](../decisions/0013-local-llm-grounded.md))
+
+- [ ] Intent router + fact builder (numbered facts from the twin and event log) + local model (Ollama) + verifier (every number, bed id, time and citation must match a fact; otherwise fall back to templates).
+- [ ] Handover summary per bed, and Q&A for a fixed set of intents; labelled and audited; abstains when facts are missing.
+- [ ] Evaluation set in CI reporting the verifier's rejection rate.
+- [ ] Later: document RAG over approved protocols, with quoted citations.
+
 ## P4: family privacy filter + outbound publisher
 
 - [ ] Consent records. Revocation is immediate, and discharge or transfer revokes everything (invariant 4).
