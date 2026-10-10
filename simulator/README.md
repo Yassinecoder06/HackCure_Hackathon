@@ -1,10 +1,51 @@
 # simulator/ (owner: A)
 
-Synthetic ward and scenario replayer. **Not implemented yet.** See [`docs/roles/A-edge.md`](../docs/roles/A-edge.md) for the spec and the first task.
+Synthetic ward telemetry generator and scenario simulator.
 
-- `scenarios/*.yaml`: scenario specs (written). `normal-night`, `deterioration`, `night-shift-peak` (the demo storyline).
-- Reads the ward layout, device profiles and roster from [`seed/ward-W1.yaml`](../seed/ward-W1.yaml).
-- Emits contract messages (validated with `borj_contracts`) and, from P1, raw device streams for the gateway.
-- Seeded and reproducible, with controllable speed (`sim/clock` topic).
+Implements **Role A, P0** specification in [`docs/roles/A-edge.md`](../docs/roles/A-edge.md).
 
-Scenario event types used by the specs: `deteriorate`, `set_manual`, `call` (`no_ack`, `repeat_of_previous`), `call_rate`, `admit`, `staff_leaves`, `device_offline`, `node_outage_call`.
+---
+
+## 1. Capabilities
+
+- Package `borj_sim` (`python -m borj_sim`).
+- Reads the ward layout, device profiles and staff roster from `seed/ward-W1.yaml`.
+- Reads scenario definitions from `simulator/scenarios/`:
+  - `normal-night.yaml`: Baseline quiet night shift.
+  - `deterioration.yaml`: B06 fever, tachycardia, falling SpO2/BP, and confusion.
+  - `night-shift-peak.yaml`: The full demo storyline (Section 2, HackCure demo script).
+- Generates 100% contract-compliant events (`borj_contracts.validate_message()`):
+  - `borj/{ward}/{bed}/binding`: Admissions and device attachments.
+  - `borj/{ward}/{bed}/vitals`: Device measurements matching each bed's specific device profile (missing parameters are truly absent, never 0 or null).
+  - `borj/{ward}/{bed}/device/status`: Periodic heartbeat and status alerts.
+  - `borj/{ward}/{bed}/call`: Scripted and background Poisson calls with assist / comfort split.
+  - `borj/{ward}/staff/{staffId}/ack`: Background nurse call acknowledgments and resolutions.
+  - `borj/{ward}/staff/{staffId}/presence`: Shift start/end, breaks, and called away.
+  - `borj/{ward}/sim/clock`: Synchronized simulation clock.
+- **Seeded & Reproducible**: Fixed seeds produce identical ULIDs and message streams.
+- **Controllable Time**: `--speed N` multiplier (e.g. 10x, 60x, or 0 for batch instant execution).
+
+---
+
+## 2. Usage
+
+### Quick dry-run (prints JSON lines to stdout)
+```bash
+python -m borj_sim --scenario simulator/scenarios/deterioration.yaml --dry-run
+```
+
+### Run against local MQTT broker
+```bash
+python -m borj_sim --scenario simulator/scenarios/night-shift-peak.yaml --broker localhost:1883 --speed 10
+```
+
+### Run in Docker Compose
+The simulator is configured as a service in `infra/docker-compose.yml`:
+```bash
+docker compose -f infra/docker-compose.yml up simulator
+```
+
+### Running Tests
+```bash
+pytest simulator/tests/
+```
