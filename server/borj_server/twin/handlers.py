@@ -12,7 +12,20 @@ from collections.abc import Callable
 from typing import Any
 
 from ..timeutil import parse_ts
-from .state import Administration, Admission, AlertAck, Bed, Call, Device, Prescription, Reading, WardTwin
+from .state import (
+    Administration,
+    Admission,
+    AlertAck,
+    Bed,
+    Call,
+    Consent,
+    Device,
+    FamilyUpdate,
+    Invite,
+    Prescription,
+    Reading,
+    WardTwin,
+)
 
 log = logging.getLogger(__name__)
 
@@ -208,6 +221,41 @@ def apply_med(twin: WardTwin, payload: dict[str, Any]) -> str:
     return "applied"
 
 
+def apply_family(twin: WardTwin, payload: dict[str, Any]) -> str:
+    """Consent, invites, drafts and decisions. Outbound payloads are forwarded by the publisher, not here."""
+    ts = parse_ts(payload["ts"])
+    kind = payload["type"]
+    if "linkId" in payload:
+        twin.family_links.setdefault(payload["admissionId"], payload["linkId"])
+    if kind == "consent_granted":
+        twin.consents[payload["consentId"]] = Consent(
+            payload["consentId"], payload["admissionId"], payload["linkId"], payload["relativeLabel"],
+            tuple(payload["allowedKinds"]), payload["givenBy"], payload["staffId"], ts)
+    elif kind in ("consent_revoked", "link_revoked"):
+        for consent in twin.consents.values():
+            if consent.link_id == payload["linkId"] and consent.active and (
+                    kind == "link_revoked" or consent.consent_id == payload["consentId"]):
+                consent.active, consent.revoked_at = False, ts
+        for invite in twin.invites.values():
+            if invite.link_id == payload["linkId"] and (
+                    kind == "link_revoked" or invite.consent_id == payload.get("consentId")):
+                invite.revoked = True
+    elif kind == "invite_created":
+        twin.invites[payload["inviteId"]] = Invite(
+            payload["inviteId"], payload["consentId"], payload["linkId"],
+            parse_ts(payload["outbound"]["payload"]["expiresAt"]))
+    elif kind == "update_drafted":
+        twin.family_updates[payload["updateId"]] = FamilyUpdate(
+            payload["updateId"], payload["admissionId"], payload["kind"], payload.get("text"), payload["staffId"], ts)
+    elif kind in ("update_approved", "update_rejected"):
+        update = twin.family_updates.get(payload["updateId"])
+        if update is None:
+            return "ignored:unknown_update"
+        update.status = "published" if kind == "update_approved" else "rejected"
+        update.decided_by, update.decided_at = payload["staffId"], ts
+    return "applied"
+
+
 def apply_ack(twin: WardTwin, payload: dict[str, Any]) -> str:
     """Acks on alerts are recorded here. Acks on calls are turned into call/state by the call engine."""
     if payload["target"] != "alert":
@@ -233,6 +281,7 @@ HANDLERS: dict[str, Callable[[WardTwin, dict[str, Any]], str]] = {
     "ack": apply_ack,
     "assignment": apply_assignment,
     "prescription": apply_prescription,
+    "family-event": apply_family,
     "med": apply_med,
 }
 

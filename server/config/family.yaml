@@ -1,0 +1,47 @@
+# Family Care Link (whitepaper 7, safety invariants 2-4). Synthetic values for the demo.
+# SAFETY INVARIANT 8: parameters, not code. Each block says who must validate it.
+
+invites:
+  validated_by: "TO BE CONFIRMED BY THE WARD and the data-protection officer"
+  valid_days: 14                         # hard upper bound; discharge or transfer revokes earlier
+  public_url: "https://family.borj.local"  # family-gateway address encoded in the QR code
+  code_digits: 6
+
+privacy_filter:
+  validated_by: "TO BE CONFIRMED BY THE DATA-PROTECTION OFFICER and a clinician"
+  # Nurse-written text is refused if it mentions clinical data. Families never receive vital signs,
+  # scores, drug names or doses (safety invariant 2). The patient's own prescribed drug names are
+  # always added to this list at check time. Matching is case-insensitive on whole words.
+  blocked_terms:
+    - news2
+    - news
+    - score
+    - spo2
+    - saturation
+    - oxygen
+    - oxygène
+    - pulse
+    - pouls
+    - heart rate
+    - fréquence cardiaque
+    - blood pressure
+    - tension
+    - pression artérielle
+    - temperature
+    - température
+    - fever
+    - fièvre
+    - respiratory
+    - respiratoire
+    - mg
+    - ml
+    - dose
+    - dosage
+    - mmhg
+    - bpm
+    - "°c"
+  # Numbers with clinical units, e.g. "93%", "38.5", "120/80", are refused as well.
+  blocked_patterns:
+    - '\b\d{2,3}\s*%'
+    - '\b\d{2,3}\s*/\s*\d{2,3}\b'
+    - '\b3[4-9][.,]\d\b'

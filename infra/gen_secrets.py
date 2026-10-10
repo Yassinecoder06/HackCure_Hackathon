@@ -8,6 +8,7 @@ Holds (ADR 0010):
 - BORJ_DATA_KEY(_ID)       AES-256-GCM key for patient payloads at rest
 - BORJ_TOKEN_KEY           signing key for login tokens
 - BORJ_STAFF_PINS          a random 6-digit demo PIN per synthetic staff member in seed/ward-W1.yaml
+- FAMILY_PUBLISHER_TOKEN   bearer token the family publisher presents to family-gateway ingest
 Later phases add per-device HMAC keys here.
 """
 
@@ -38,6 +39,7 @@ def fresh_values() -> dict[str, str]:
         "BORJ_DATA_KEY_ID": "k1",
         "BORJ_TOKEN_KEY": base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
         "BORJ_STAFF_PINS": pins,
+        "FAMILY_PUBLISHER_TOKEN": secrets.token_urlsafe(32),
     }
 
 

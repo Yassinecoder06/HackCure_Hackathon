@@ -62,9 +62,65 @@ def test_1_advisory_only():
     assert "prescription" not in sources["server/borj_server/calls.py"]
 
 
-@pytest.mark.skip(reason="P4, B: privacy filter output from a twin full of vitals/scores/drugs passes only allow-list")
+def _family_ward():
+    """A ward full of clinical data: vitals, a prescription, staff, a call; plus a family link."""
+    import json
+
+    import borj_contracts as bc
+    from borj_server.clock import Clock
+    from borj_server.crypto import DataCipher
+    from borj_server.family import FamilyConfig, FamilyService
+    from borj_server.ingest import Ingestor
+    from borj_server.store import EventStore
+    from borj_server.twin.layout import WardLayout
+
+    store = EventStore("sqlite://", DataCipher({"k1": b"K" * 32}, "k1"))
+    ingestor = Ingestor(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"), store, Clock("wall"))
+    family = FamilyService(ingestor, FamilyConfig.load())
+    ingestor.listeners.append(family.on_event)
+    for name in ("binding", "vitals.device", "vitals.manual", "prescription", "call", "staff-presence"):
+        payload = json.loads((ROOT / "contracts" / "examples" / f"{name}.json").read_text(encoding="utf-8"))
+        schema = name.split(".")[0]
+        topic = (bc.topic(schema, "W1", staff_id=payload["staffId"]) if schema == "staff-presence"
+                 else bc.topic(schema, "W1", bed=payload["bed"]))
+        ingestor.handle(topic, payload)
+    return ingestor, family
+
+
 def test_2_family_never_sees_forbidden_fields():
-    pass
+    """Every payload that can leave the ward is allow-list-only and carries no clinical or staff data."""
+    import json
+
+    import borj_contracts as bc
+    from borj_server.family import FamilyError
+    from borj_server.family_publisher import SCHEMA_FOR_TARGET, outbound_items
+
+    ingestor, family = _family_ward()
+    consent = family.record_consent("ADM-0004", "Daughter", ["visiting_info", "meal_served", "nurse_note",
+                                                             "medication_round_completed", "ward_contact"],
+                                    "patient", "N1")
+    family.create_invite("ADM-0004", consent["consentId"], "N1")
+    for kind, text in (("meal_served", None), ("medication_round_completed", None),
+                       ("nurse_note", "A calm night. Visiting hours tomorrow are 13:00 to 15:00.")):
+        family.decide_update(family.draft_update("ADM-0004", kind, text, "N1")["updateId"], "approve", "N1", None)
+    for clinical in ("SpO2 93%", "pulse is 112", "Paracetamol given", "NEWS2 is 8", "BP 104/70"):
+        with pytest.raises(FamilyError):
+            family.draft_update("ADM-0004", "nurse_note", clinical, "N1")
+    family.revoke_consent("ADM-0004", consent["consentId"], "N1")
+
+    items = outbound_items(ingestor.store)
+    assert [i.target for i in items] == ["invites", "updates", "updates", "updates", "revocations"]
+    random_or_time = {"schemaVersion", "updateId", "inviteId", "revocationId", "linkId", "codeHash", "publishedAt",
+                      "approval", "expiresAt", "consentRecordedAt", "effectiveAt"}
+    for item in items:
+        bc.validate(SCHEMA_FOR_TARGET[item.target], item.payload)  # allow-list schemas (additionalProperties false)
+        # Random ids and hashes can contain any characters by chance, so search the human-readable fields,
+        # and check separately that the opaque link id is not derived from patient or bed identifiers.
+        readable = json.dumps({k: v for k, v in item.payload.items() if k not in random_or_time})
+        for forbidden in ("Paracetamol", "params", "pulse", "spo2", "112", "93", "news2", "NEWS2", "N1", "CN1",
+                          "B04", "ADM-0004", "Patient 04", "MON-B04", "call"):
+            assert forbidden not in readable, (item.target, forbidden)
+        assert not any(x in item.payload["linkId"] for x in ("ADM", "B04", "0004"))
 
 
 @pytest.mark.skip(reason="P4, A: family-gateway on dmz network cannot resolve or reach mosquitto/server")
@@ -72,9 +128,31 @@ def test_3_outbound_only():
     pass
 
 
-@pytest.mark.skip(reason="P4, B: no invite/update without consent; revocation immediate; discharge expires invites")
 def test_4_consent_first():
-    pass
+    """No invite or update without an active consent; withdrawal is immediate; discharge revokes the link."""
+    import borj_contracts as bc
+    from borj_server.family import FamilyError
+    from borj_server.family_publisher import outbound_items
+
+    ingestor, family = _family_ward()
+    with pytest.raises(FamilyError):
+        family.create_invite("ADM-0004", "CS-NONE", "N1")
+    with pytest.raises(FamilyError):
+        family.draft_update("ADM-0004", "meal_served", None, "N1")
+
+    consent = family.record_consent("ADM-0004", "Son", ["meal_served"], "patient", "N1")
+    pending = family.draft_update("ADM-0004", "meal_served", None, "N1")
+    family.revoke_consent("ADM-0004", consent["consentId"], "N1")
+    with pytest.raises(FamilyError):
+        family.decide_update(pending["updateId"], "approve", "N1", None)  # withdrawal took effect at once
+
+    family.record_consent("ADM-0004", "Daughter", ["meal_served"], "patient", "N1")
+    ingestor.handle(bc.topic("binding", "W1", bed="B04"), {
+        "schemaVersion": 1, "eventId": "01K80000000000000000DSCHG0", "ts": "2026-10-11T08:00:00Z", "ward": "W1",
+        "bed": "B04", "source": "staff-app", "sourceType": "staff_app", "action": "discharge",
+        "admissionId": "ADM-0004", "method": "wristband_scan"})
+    assert not any(c.active for c in ingestor.twin.consents.values())
+    assert outbound_items(ingestor.store)[-1].payload["reason"] == "discharge"
 
 
 def test_5_missing_or_stale_is_labelled():

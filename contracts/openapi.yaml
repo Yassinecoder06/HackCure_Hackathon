@@ -406,6 +406,20 @@ paths:
         "422": { $ref: "#/components/responses/Invalid" }
 
   /api/v1/wards/{ward}/admissions/{admissionId}/family/consents:
+    get:
+      tags: [family]
+      summary: Consents recorded for this admission (active and revoked)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/admissionId" }
+      responses:
+        "200":
+          description: Consents
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Consent" }
     post:
       tags: [family]
       summary: Record patient (or legal representative) consent for one relative

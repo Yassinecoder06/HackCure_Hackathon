@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from .alerts import FirstSeen
+from .api.family_routes import router as family_router
 from .api.fhir_routes import router as fhir_router
 from .api.routes import router
 from .assignment import AssignmentService
@@ -23,6 +24,7 @@ from .calls import CallConfig, CallEngine
 from .clock import Clock
 from .config import Settings
 from .crypto import DataCipher
+from .family import FamilyConfig, FamilyService
 from .inference_client import InferenceClient
 from .ingest import Ingestor
 from .live import news2_by_bed, news2_total
@@ -85,6 +87,8 @@ def create_app(
             news2_by_bed=lambda: news2_by_bed(app),
             on_suggestion=app.state.hub.on_suggestion,
         )
+        app.state.family = FamilyService(ingestor, FamilyConfig.load(settings.family_config_path))
+        ingestor.listeners.append(app.state.family.on_event)  # discharge/transfer revokes family links
         if settings.auto_suggest:
             ingestor.listeners.append(app.state.assignment.on_event)
 
@@ -122,6 +126,7 @@ def create_app(
 
     app.include_router(router)
     app.include_router(fhir_router)
+    app.include_router(family_router)
     return app
 
 

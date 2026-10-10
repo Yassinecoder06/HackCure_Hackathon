@@ -85,6 +85,19 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   - **Priority:** every admitted bed is ranked (band, escalated or open calls, score, overdue doses) with reasons,
     e.g. "NEWS2 rose from 0 to 8 in the last 60 min." / "Le NEWS2 est passé de 0 à 8 en 60 min."
   - Style rule: say what the data shows, never what the patient has.
+- P4: **Family Care Link, ward side** (`family.py`, `family_publisher.py`, `api/family_routes.py`, rules in
+  [`config/family.yaml`](config/family.yaml)). Nurses only; everything audited; stored as internal `family` events
+  (encrypted log, never MQTT).
+  - **Consent first:** no invite, draft or publication without an active consent covering that kind of update.
+    Withdrawal is immediate, and discharge or transfer revokes the whole link automatically.
+  - **Invites:** QR + 6-digit one-time code. The code appears only in the response; only a salted scrypt hash
+    leaves the ward (`hash_code` / `verify_code`).
+  - **Privacy filter:** an approved update is rebuilt from allow-listed fields only, validated against
+    `family-update.schema.json` (fails closed), and free text mentioning vital signs, scores, doses or the
+    patient's own drug names is refused (422). No staff identity is ever included.
+  - **Outbound only:** each event stores the exact payload in `outbound`. `python -m borj_server.family_publisher`
+    (compose service `family-publisher`, profile `family`, ward + DMZ networks, **no ports**) forwards only those,
+    in order, retrying until family-gateway accepts.
 - Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
 
 ## Run

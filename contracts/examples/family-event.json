@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T2B",
+  "ts": "2026-10-10T18:00:00Z",
+  "ward": "W1",
+  "bed": "B04",
+  "source": "staff-app",
+  "sourceType": "staff_app",
+  "admissionId": "ADM-0004",
+  "type": "consent_granted",
+  "consentId": "CS-0004-1",
+  "linkId": "FL-7Q2M",
+  "relativeLabel": "Daughter",
+  "allowedKinds": ["visiting_info", "meal_served", "nurse_note", "ward_contact"],
+  "givenBy": "patient",
+  "staffId": "N1"
+}
