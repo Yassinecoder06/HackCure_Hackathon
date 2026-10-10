@@ -8,3 +8,5 @@ httpx==0.28.1
 SQLAlchemy==2.1.4
 psycopg[binary]==3.3.6
 cryptography==50.0.2
+argon2-cffi==25.1.0
+PyJWT==2.15.1

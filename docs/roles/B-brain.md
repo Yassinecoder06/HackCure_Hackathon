@@ -44,13 +44,13 @@ Read first:
 - [x] The server gets NEWS2 from inference for each admitted bed (currently computed when the snapshot is served; it moves to "after each vitals update" with the WebSocket). If inference is down, the score shows "unavailable", never a guessed value.
 
 **Security ([ADR 0010](../decisions/0010-security-baseline.md))**
-- [ ] **Login:** staff id + PIN/password (argon2) → short-lived signed token, with roles from the seed. It replaces `X-Staff-Id`.
-- [ ] **Access audit:** every read and write of patient data is logged (who, what, when).
-- [ ] **Hash-chained audit log**, with a verification endpoint or CLI. Write a test that tampering is detected.
+- [x] **Login:** staff id + PIN/password (argon2) → short-lived signed token, with roles from the seed. It replaces `X-Staff-Id`.
+- [x] **Access audit:** every read and write of patient data is logged (who, what, when).
+- [x] **Hash-chained audit log**, with a verification endpoint or CLI. Write a test that tampering is detected.
 - [ ] **HMAC check** on incoming MQTT messages that carry `integrity`. Bad signatures are rejected and logged.
 
 **API**
-- [ ] WebSocket `stream`: an initial snapshot, then `bed`/`call`/`alert`/`clock`/`metrics` messages.
+- [x] WebSocket `stream`: an initial snapshot, then `bed`/`staff`/`clock`/`metrics` messages (`call`/`alert` come with P2).
 - [ ] `POST .../observations`: manual fast entry → a `vitals` event with `sourceType: manual`.
 
 ## P2: calls, escalation, latency

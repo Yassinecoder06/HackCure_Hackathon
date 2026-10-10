@@ -85,7 +85,7 @@ paths:
   /api/v1/wards/{ward}/snapshot:
     get:
       tags: [ward]
-      summary: Full ward state (twin snapshot)
+      summary: Full ward state (twin snapshot). Audited per reader.
       parameters: [{ $ref: "#/components/parameters/ward" }]
       responses:
         "200":
@@ -93,6 +93,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WardSnapshot" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/wards/{ward}/stream:
     get:
@@ -102,8 +104,13 @@ paths:
         Upgrade to WebSocket. The server first sends one `snapshot` message, then incremental
         messages. Every message is a `StreamMessage`. Clients re-request the snapshot after
         a reconnect. Staff alerts arrive here; the staff view plays sound/vibration while open
-        (Web Push is a stretch goal, see ADR 0005).
-      parameters: [{ $ref: "#/components/parameters/ward" }]
+        (Web Push is a stretch goal, see ADR 0005). Authenticate by offering the subprotocols
+        `["bearer", "<login token>"]` (`new WebSocket(url, ["bearer", token])`; browsers cannot set an
+        Authorization header on WebSockets, and a query-string token would leak into access logs). The
+        server accepts with subprotocol `bearer`; a missing or invalid token closes the socket with code
+        4401. Opening a stream is audited.
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
       responses:
         "101":
           description: Switching protocols. Messages follow the StreamMessage schema.

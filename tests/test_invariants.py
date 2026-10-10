@@ -134,9 +134,20 @@ def test_10b_encrypted_in_transit():
     pass
 
 
-@pytest.mark.skip(reason="P1, B: every patient-data access audited; audit hash chain detects tampering")
 def test_11_non_repudiation():
-    pass
+    """Audit entries name their actor, the chain verifies, and any edit is detected."""
+    from borj_server.crypto import DataCipher
+    from borj_server.store import EventStore, audit
+    from sqlalchemy import update
+
+    store = EventStore("sqlite://", DataCipher({"k1": b"K" * 32}, "k1"))
+    store.audit("N1", "snapshot.read", "W1")
+    store.audit("CN1", "assignment.approved", "S-1", {"reason": "N3 called away"})
+    assert store.verify_audit_chain() == {"valid": True, "entries": 2}
+    assert [e["actor"] for e in store.audit_entries()] == ["CN1", "N1"]
+    with store.engine.begin() as conn:
+        conn.execute(update(audit).where(audit.c.seq == 1).values(actor="DR1"))
+    assert store.verify_audit_chain()["valid"] is False
 
 
 @pytest.mark.skip(reason="P1-P3, B: every score/alert/suggestion carries confidence + explanation")

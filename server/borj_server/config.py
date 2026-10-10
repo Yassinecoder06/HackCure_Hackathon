@@ -31,6 +31,13 @@ class Settings:
     inference_url: str | None = "http://localhost:8001"
     # Short: NEWS2 is on the triage path (latency budget < 1 s end to end).
     inference_timeout_s: float = 0.5
+    # Login (ADR 0010). Base64 signing key and "STAFFID:PIN,..." demo PINs, both from infra/.env.
+    token_key_b64: str | None = None
+    staff_pins: str = ""
+    token_ttl_s: int = 4 * 3600
+    # Live stream: how often to send latency metrics, and to re-push all beds so readings age into "stale".
+    stream_metrics_interval_s: float = 5.0
+    stream_refresh_interval_s: float = 30.0
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -44,4 +51,7 @@ class Settings:
             mqtt_port=int(os.environ.get("MQTT_PORT", str(cls.mqtt_port))),
             inference_url=os.environ.get("INFERENCE_URL", cls.inference_url) or None,
             inference_timeout_s=float(os.environ.get("INFERENCE_TIMEOUT_S", str(cls.inference_timeout_s))),
+            token_key_b64=os.environ.get("BORJ_TOKEN_KEY") or None,
+            staff_pins=os.environ.get("BORJ_STAFF_PINS", ""),
+            token_ttl_s=int(os.environ.get("BORJ_TOKEN_TTL_S", str(cls.token_ttl_s))),
         )

@@ -21,6 +21,18 @@ sys.path.insert(0, str(ROOT / "contracts"))
 import borj_contracts as bc  # noqa: E402
 
 API = "http://localhost:8000"
+HEADERS: dict[str, str] = {}
+
+
+def login_as_charge_nurse() -> None:
+    """Demo PINs live in the git-ignored infra/.env written by infra/gen_secrets.py."""
+    env = dict(line.split("=", 1) for line in (ROOT / "infra" / ".env").read_text(encoding="utf-8").splitlines()
+               if line and not line.startswith("#"))
+    pins = dict(pair.split(":", 1) for pair in env["BORJ_STAFF_PINS"].split(","))
+    body = json.dumps({"staffId": "CN1", "secret": pins["CN1"]}).encode()
+    req = urllib.request.Request(API + "/api/v1/auth/login", data=body, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        HEADERS["Authorization"] = "Bearer " + json.load(resp)["token"]
 
 
 def wait_for(fn, what: str, timeout_s: float = 60) -> object:
@@ -37,12 +49,13 @@ def wait_for(fn, what: str, timeout_s: float = 60) -> object:
 
 
 def get_json(path: str) -> dict:
-    with urllib.request.urlopen(API + path, timeout=5) as resp:
+    with urllib.request.urlopen(urllib.request.Request(API + path, headers=HEADERS), timeout=5) as resp:
         return json.load(resp)
 
 
 def main() -> None:
     wait_for(lambda: get_json("/health")["status"] == "ok", "server health")
+    login_as_charge_nurse()
 
     client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id="mqtt-smoke")
     client.connect("localhost", 1883)
@@ -72,7 +85,9 @@ def main() -> None:
     news2 = b04["news2"]
     if b04["news2Status"] != "ok" or (news2["total"], news2["band"], news2["complete"]) != (8, "high", True):
         raise SystemExit(f"unexpected NEWS2: {b04['news2Status']} {news2}")
-    print("OK: events flowed MQTT -> twin -> inference -> API (NEWS2 8, high, complete)")
+    if not get_json("/api/v1/wards/W1/audit/verify")["valid"]:
+        raise SystemExit("audit chain does not verify")
+    print("OK: login -> events flowed MQTT -> twin -> inference -> API (NEWS2 8, high, complete); audit chain valid")
     print(json.dumps(b04, indent=2))
 
 
