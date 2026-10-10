@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T2A",
+  "ts": "2026-10-10T22:19:30Z",
+  "ward": "W1",
+  "source": "staff-app",
+  "sourceType": "staff_app",
+  "staffId": "DR1",
+  "target": "alert",
+  "targetId": "call-3f9a1c2b7d4e5f60",
+  "action": "instruct",
+  "note": "Start oxygen 2 L/min, repeat full observations in 15 min, call me if NEWS2 rises further."
+}

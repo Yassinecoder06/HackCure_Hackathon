@@ -2,16 +2,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://borj.local/schemas/ack.schema.json",
   "title": "Staff acknowledgement",
-  "description": "Topic borj/{ward}/staff/{staffId}/ack. A staff action on a call or alert. This is the AUTHORITATIVE record that a human acted. The REST endpoints produce the same event.",
-  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "description": "Topic borj/{ward}/staff/{staffId}/ack. A staff action on a call or alert. This is the AUTHORITATIVE record that a human acted. The REST endpoints produce the same event. `instruct` is a remote on-call doctor's short instruction on an alert (telemedicine, ADR 0008): it must target an alert and carry the text in `note`.",
+  "allOf": [
+    { "$ref": "common.schema.json#/$defs/envelope" },
+    {
+      "if": { "properties": { "action": { "const": "instruct" } }, "required": ["action"] },
+      "then": { "required": ["note"], "properties": { "target": { "const": "alert" }, "note": { "minLength": 1 } } }
+    }
+  ],
   "required": ["staffId", "target", "targetId", "action"],
   "properties": {
     "sourceType": { "const": "staff_app" },
     "staffId": { "$ref": "common.schema.json#/$defs/id" },
     "target": { "enum": ["call", "alert"] },
     "targetId": { "$ref": "common.schema.json#/$defs/id" },
-    "action": { "enum": ["acknowledge", "resolve", "decline"] },
-    "note": { "type": "string", "maxLength": 200 }
+    "action": { "enum": ["acknowledge", "resolve", "decline", "instruct"] },
+    "note": { "type": "string", "maxLength": 280 }
   },
   "unevaluatedProperties": false
 }

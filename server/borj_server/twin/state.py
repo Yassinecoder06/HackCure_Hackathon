@@ -131,6 +131,8 @@ class WardTwin:
         # bed -> nurse. Changes ONLY through approved `assignment` events (safety invariant 1).
         self.assignments: dict[str, str] = {}
         self.alert_acks: dict[str, AlertAck] = {}
+        # alertId -> remote doctor instructions [(text, staffId, ts)], shown to the nurses on the alert
+        self.alert_instructions: dict[str, list[tuple[str, str, datetime]]] = {}
         self.prescriptions: dict[str, Prescription] = {}
         self.administrations: dict[str, Administration] = {}  # doseId -> nurse record
         self.patient_reported: dict[str, datetime] = {}        # doseId -> "I took my pills" (never closes a dose)

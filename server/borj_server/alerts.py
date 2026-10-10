@@ -54,6 +54,9 @@ def derive_alerts(twin: WardTwin, news2: dict[str, dict[str, Any] | None], now: 
         ack = twin.alert_acks.get(alert_id)
         if ack is not None:
             alert["acknowledgedBy"] = ack.staff_id
+        notes = twin.alert_instructions.get(alert_id)
+        if notes:
+            alert["instructions"] = [{"text": text, "by": by, "at": format_ts(at)} for text, by, at in notes]
         alerts.append(alert)
 
     for bed in twin.beds.values():

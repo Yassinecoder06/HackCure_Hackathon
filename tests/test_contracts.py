@@ -126,6 +126,16 @@ def test_family_update_rejects_forbidden_fields(field):
         bc.validate("family-update", payload)
 
 
+def test_instruction_must_target_an_alert_and_carry_text():
+    payload = load_example("ack.instruction.json")
+    bc.validate("ack", payload)
+    for broken in ({"target": "call"}, {"note": ""}):
+        with pytest.raises(bc.ContractError):
+            bc.validate("ack", {**payload, **broken})
+    with pytest.raises(bc.ContractError):
+        bc.validate("ack", {k: v for k, v in payload.items() if k != "note"})
+
+
 def test_family_update_requires_nurse_approval():
     payload = load_example("family-update.json")
     payload["approval"]["approved"] = False
