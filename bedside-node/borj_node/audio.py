@@ -24,6 +24,13 @@ class AudioManager:
         self.sounds = ensure_default_sounds()
         self._current_proc: subprocess.Popen | None = None
         self._lock = threading.Lock()
+        self.device = None
+        try:
+            cards = Path("/proc/asound/cards").read_text()
+            if "MAX98357A" in cards:
+                self.device = "plughw:CARD=MAX98357A,DEV=0"
+        except Exception:
+            pass
 
     def play(self, sound_name: str, wait: bool = False) -> None:
         if not self.enabled:
@@ -47,8 +54,13 @@ class AudioManager:
                     except Exception:
                         pass
                 try:
+                    cmd = [self._aplay_cmd, "-q"]
+                    if self.device:
+                        cmd.extend(["-D", self.device])
+                    cmd.append(str(sound_path))
+                    log.info("Playing audio %s (via %s)", sound_name, self.device or "default")
                     self._current_proc = subprocess.Popen(
-                        [self._aplay_cmd, "-q", str(sound_path)],
+                        cmd,
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                     )
