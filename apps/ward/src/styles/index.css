@@ -970,3 +970,279 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* =========================================================
+   CLINICAL LIGHT THEME (Hospital Daytime High-Visibility)
+   ========================================================= */
+body.light-mode,
+[data-theme="light"] {
+  --bg-main: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-surface: #f8fafc;
+  --border-subtle: #cbd5e1;
+  --border-focus: #2563eb;
+
+  --text-main: #0f172a;
+  --text-muted: #334155;
+  --text-dim: #64748b;
+
+  --news2-low: #059669;
+  --news2-low-bg: #ecfdf5;
+  --news2-low-border: #a7f3d0;
+
+  --news2-lowmed: #d97706;
+  --news2-lowmed-bg: #fffbeb;
+  --news2-lowmed-border: #fde68a;
+
+  --news2-med: #ea580c;
+  --news2-med-bg: #fff7ed;
+  --news2-med-border: #fed7aa;
+
+  --news2-high: #dc2626;
+  --news2-high-bg: #fef2f2;
+  --news2-high-border: #fecaca;
+
+  --stale-bg: repeating-linear-gradient(
+    45deg,
+    #e2e8f0,
+    #e2e8f0 8px,
+    #cbd5e1 8px,
+    #cbd5e1 16px
+  );
+  --stale-text: #64748b;
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
+
+/* Specific light mode component overrides */
+body.light-mode .navbar {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+body.light-mode .brand-text h1 {
+  color: #0f172a;
+}
+
+body.light-mode .brand-text span {
+  color: #64748b;
+}
+
+body.light-mode .nav-links {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+body.light-mode .nav-btn {
+  color: #475569;
+}
+
+body.light-mode .nav-btn:hover {
+  color: #0f172a;
+  background: #e2e8f0;
+}
+
+body.light-mode .nav-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+body.light-mode .staff-auth-badge {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.light-mode .board-banner {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+body.light-mode .board-banner-info h2 {
+  color: #0f172a;
+}
+
+body.light-mode .floorplan-wrapper {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+body.light-mode .room-box {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+body.light-mode .room-title {
+  color: #475569;
+}
+
+body.light-mode .corridor-spine {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+body.light-mode .station-marker {
+  background: #ffffff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+body.light-mode .bed-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+body.light-mode .bed-card:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+}
+
+body.light-mode .bed-tag {
+  color: #0f172a;
+}
+
+body.light-mode .nurse-tag {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+body.light-mode .patient-label {
+  color: #0f172a;
+}
+
+body.light-mode .sidebar-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+body.light-mode .sidebar-title {
+  color: #0f172a;
+}
+
+body.light-mode .queue-item {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+body.light-mode .modal-card {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+body.light-mode .modal-header h3 {
+  color: #0f172a !important;
+}
+
+body.light-mode .explainer-table {
+  border-color: #e2e8f0;
+}
+
+body.light-mode .explainer-table th {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+body.light-mode .explainer-table td {
+  border-color: #e2e8f0;
+  color: #1e293b;
+}
+
+body.light-mode .staff-tab-bar {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+body.light-mode .staff-tab-btn {
+  color: #475569;
+}
+
+body.light-mode .staff-tab-btn.active {
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+body.light-mode .tab-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+body.light-mode .tab-card-header h3 {
+  color: #0f172a;
+}
+
+body.light-mode .tab-card-header p {
+  color: #64748b;
+}
+
+body.light-mode .alert-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+body.light-mode .call-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+body.light-mode .doctor-console {
+  color: #0f172a;
+}
+
+body.light-mode .doctor-header {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+body.light-mode .doctor-header h2 {
+  color: #0f172a;
+}
+
+body.light-mode .doctor-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+body.light-mode .doctor-card-title {
+  color: #0f172a;
+}
+
+body.light-mode .order-item {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+body.light-mode .order-text {
+  color: #1e293b;
+}
+
+body.light-mode input,
+body.light-mode select,
+body.light-mode textarea {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.light-mode .median-val {
+  color: #0f172a;
+}
+
+body.light-mode .sim-stat-box {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+body.light-mode .dose-item {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}

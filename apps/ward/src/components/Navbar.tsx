@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
-import { LayoutGrid, Smartphone, Zap, UserCheck } from 'lucide-react';
+import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: 'board' | 'staff' | 'doctor';
@@ -9,6 +9,8 @@ interface NavbarProps {
   isConnected: boolean;
   onPeakTriggered?: () => void;
   onOpenLogin: () => void;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -16,7 +18,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectTab,
   isConnected,
   onPeakTriggered,
-  onOpenLogin
+  onOpenLogin,
+  theme,
+  onToggleTheme
 }) => {
   const [triggering, setTriggering] = useState<boolean>(false);
   const session = wardApi.getSession();
@@ -118,6 +122,30 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="status-dot" style={{ backgroundColor: isConnected ? '#10b981' : '#f59e0b' }}></div>
           <span>{isConnected ? 'LIVE' : 'SYNCING'}</span>
         </div>
+
+        {/* Dark / Light Mode Toggle Button */}
+        <button
+          className="theme-toggle-btn"
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'Switch to Clinical Light Mode' : 'Switch to Dark Mode'}
+          id="btn-toggle-theme"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: theme === 'dark' ? 'rgba(30, 41, 59, 0.8)' : '#f8fafc',
+            border: '1px solid ' + (theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : '#cbd5e1'),
+            borderRadius: 8,
+            width: 34,
+            height: 34,
+            color: theme === 'dark' ? '#fbbf24' : '#0284c7',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
+          }}
+        >
+          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
       </div>
     </header>
   );

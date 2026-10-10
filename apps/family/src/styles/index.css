@@ -305,3 +305,61 @@ body {
   text-align: center;
   line-height: 1.4;
 }
+
+/* =========================================================
+   DARK THEME (Low-Light & Night Visiting Mode)
+   ========================================================= */
+body.dark-mode,
+[data-theme="dark"] {
+  --bg-page: #0b1120;
+  --bg-card: #131c31;
+  --border-color: #1e293b;
+
+  --primary-teal: #14b8a6;
+  --primary-teal-dark: #0f766e;
+  --primary-teal-light: rgba(20, 184, 166, 0.15);
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  --emergency-bg: rgba(225, 29, 72, 0.15);
+  --emergency-border: rgba(225, 29, 72, 0.4);
+  --emergency-text: #fb7185;
+}
+
+body.dark-mode .family-app-wrapper {
+  background-color: #0f172a;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .timeline-card {
+  background-color: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .redeem-box {
+  background-color: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+body.dark-mode input {
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .update-body-text {
+  color: #e2e8f0;
+}
+
+body.dark-mode .footer-privacy {
+  background-color: #0b1120;
+  border-color: #1e293b;
+  color: #64748b;
+}
+
+body.dark-mode .kind-badge {
+  background-color: rgba(20, 184, 166, 0.2);
+  color: #2dd4bf;
+}

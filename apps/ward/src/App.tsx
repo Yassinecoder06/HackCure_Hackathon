@@ -21,6 +21,26 @@ export const App: React.FC = () => {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [targetFastEntryBed, setTargetFastEntryBed] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('borj_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'light') {
+      document.body.classList.add('light-mode');
+      document.body.classList.remove('dark-mode');
+    } else {
+      document.body.classList.add('dark-mode');
+      document.body.classList.remove('light-mode');
+    }
+    localStorage.setItem('borj_theme', theme);
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   // Sync route on popstate or tab change
   useEffect(() => {
@@ -105,6 +125,8 @@ export const App: React.FC = () => {
         isConnected={isConnected}
         onPeakTriggered={loadInitialSnapshot}
         onOpenLogin={() => setIsLoginOpen(true)}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Track 2 Degraded Network Tolerance Banner */}
