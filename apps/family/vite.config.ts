@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5174,
+    strictPort: true,
     proxy: {
       '/family': {
         target: 'http://localhost:8100',

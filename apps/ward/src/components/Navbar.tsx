@@ -8,22 +8,19 @@ interface NavbarProps {
   onSelectTab: (tab: 'board' | 'staff' | 'doctor') => void;
   isConnected: boolean;
   onPeakTriggered?: () => void;
+  onOpenLogin: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
   onSelectTab,
   isConnected,
-  onPeakTriggered
+  onPeakTriggered,
+  onOpenLogin
 }) => {
-  const [selectedStaff, setSelectedStaff] = useState<string>('CN1');
   const [triggering, setTriggering] = useState<boolean>(false);
-
-  const handleStaffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    setSelectedStaff(id);
-    wardApi.setStaffId(id);
-  };
+  const session = wardApi.getSession();
+  const staff = session?.staff;
 
   const handleTriggerPeak = async () => {
     try {
@@ -86,17 +83,36 @@ export const Navbar: React.FC<NavbarProps> = ({
           {triggering ? 'Triggering...' : STRINGS.nav.triggerPeakDemo}
         </button>
 
-        <div className="staff-select-box">
-          <UserCheck size={14} color="#94a3b8" />
-          <select value={selectedStaff} onChange={handleStaffChange} id="select-staff-id">
-            <option value="CN1">CN1: Charge Nurse A</option>
-            <option value="N1">N1: Nurse B</option>
-            <option value="N2">N2: Nurse C</option>
-            <option value="N3">N3: Nurse D</option>
-            <option value="CA1">CA1: Care Assistant E</option>
-            <option value="DR1">DR1: Doctor F</option>
-          </select>
-        </div>
+        {/* Staff Identity & Session Badge */}
+        <button
+          className="staff-auth-badge"
+          onClick={onOpenLogin}
+          title="Click to Switch Staff or Re-authenticate"
+          id="btn-switch-staff"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'rgba(30, 41, 59, 0.8)',
+            border: '1px solid rgba(148, 163, 184, 0.25)',
+            borderRadius: 8,
+            padding: '0.35rem 0.65rem',
+            color: '#f8fafc',
+            cursor: 'pointer',
+            fontSize: '0.8rem',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <UserCheck size={15} color="#38bdf8" />
+          <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.8rem' }}>
+              {staff ? `${staff.name} (${staff.id})` : 'Charge Nurse A (CN1)'}
+            </div>
+            <div style={{ fontSize: '0.65rem', color: staff?.role === 'doctor' ? '#c084fc' : '#38bdf8', textTransform: 'capitalize' }}>
+              {staff?.role ? staff.role.replace('_', ' ') : 'Charge Nurse'} · Active Session
+            </div>
+          </div>
+        </button>
 
         <div className="status-pill" title={isConnected ? STRINGS.app.connectionOnline : STRINGS.app.connectionOffline}>
           <div className="status-dot" style={{ backgroundColor: isConnected ? '#10b981' : '#f59e0b' }}></div>

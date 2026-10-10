@@ -6,6 +6,14 @@ interface StationBoardProps {
   beds: any[];
   calls: any[];
   alerts?: any[];
+  triageMetrics?: {
+    windowS: number;
+    triageLatencyMs: {
+      p50: number;
+      p95: number;
+      n: number;
+    };
+  } | null;
   onOpenFastEntry?: (bedId: string) => void;
 }
 
@@ -13,6 +21,7 @@ export const StationBoard: React.FC<StationBoardProps> = ({
   beds,
   calls,
   alerts: _alerts,
+  triageMetrics,
   onOpenFastEntry
 }) => {
   const [selectedBed, setSelectedBed] = useState<any | null>(null);
@@ -138,7 +147,7 @@ export const StationBoard: React.FC<StationBoardProps> = ({
               <span>{STRINGS.app.principle}</span>
             </div>
             <div style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', color: '#38bdf8', padding: '0.35rem 0.75rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>
-              ⚡ Ingestion Latency: &lt; 320ms · Zero-Cloud Ward Network
+              ⚡ Triage Latency: {triageMetrics?.triageLatencyMs ? `p50 ${triageMetrics.triageLatencyMs.p50}ms · p95 ${triageMetrics.triageLatencyMs.p95}ms (n=${triageMetrics.triageLatencyMs.n})` : '< 320ms budget'} · Zero-Cloud Ward Network
             </div>
           </div>
         </div>

@@ -13,30 +13,113 @@ export interface WardSnapshot {
 
 type StreamListener = (type: string, data: any) => void;
 
+export interface AuthSession {
+  token: string;
+  expiresAt: string;
+  staff: {
+    id: string;
+    name: string;
+    role: 'nurse' | 'charge_nurse' | 'care_assistant' | 'doctor';
+    skills?: string[];
+  };
+}
+
 class WardApiService {
   private ws: WebSocket | null = null;
   private listeners: Set<StreamListener> = new Set();
   private currentStaffId: string = 'CN1'; // Charge Nurse default
+  private session: AuthSession | null = null;
   private isConnected: boolean = false;
   private reconnectTimer: number | null = null;
 
+  constructor() {
+    // Restore session from localStorage if present
+    try {
+      const stored = localStorage.getItem('borj_ward_auth');
+      if (stored) {
+        this.session = JSON.parse(stored);
+        if (this.session?.staff?.id) {
+          this.currentStaffId = this.session.staff.id;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to restore auth session from storage', e);
+    }
+  }
+
+  public getSession(): AuthSession | null {
+    return this.session;
+  }
+
   public setStaffId(id: string) {
     this.currentStaffId = id;
+    if (this.session && this.session.staff.id !== id) {
+      this.session.staff.id = id;
+    }
   }
 
   public getStaffId(): string {
-    return this.currentStaffId;
+    return this.session?.staff?.id || this.currentStaffId;
   }
 
   public getIsConnected(): boolean {
     return this.isConnected;
   }
 
+  public async login(staffId: string, secret: string): Promise<AuthSession> {
+    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffId, secret })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Login failed. Invalid staff ID or PIN.');
+    }
+    const data: AuthSession = await res.json();
+    this.session = data;
+    this.currentStaffId = data.staff.id;
+    try {
+      localStorage.setItem('borj_ward_auth', JSON.stringify(data));
+    } catch {
+      // ignore
+    }
+    this.emit('auth_changed', data);
+
+    // Reconnect WebSocket with the new bearer token subprotocol
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.connectWebSocket();
+
+    return data;
+  }
+
+  public logout(): void {
+    this.session = null;
+    try {
+      localStorage.removeItem('borj_ward_auth');
+    } catch {
+      // ignore
+    }
+    this.emit('auth_changed', null);
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.connectWebSocket();
+  }
+
   private getHeaders(): Record<string, string> {
-    return {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-Staff-Id': this.currentStaffId
     };
+    if (this.session?.token) {
+      headers['Authorization'] = `Bearer ${this.session.token}`;
+    }
+    return headers;
   }
 
   public subscribe(listener: StreamListener): () => void {
@@ -52,11 +135,12 @@ class WardApiService {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use localhost:8000 if in dev or relative proxy
     const wsUrl = `${protocol}//${window.location.hostname}:8000/api/v1/wards/W1/stream`;
+    const token = this.session?.token || 'borj_demo_fallback_token';
 
     try {
-      this.ws = new WebSocket(wsUrl);
+      // Contract: Offer subprotocols ["bearer", "<login token>"]
+      this.ws = new WebSocket(wsUrl, ['bearer', token]);
 
       this.ws.onopen = () => {
         this.isConnected = true;
@@ -70,7 +154,7 @@ class WardApiService {
           if (msg.type === 'call' && msg.data?.state === 'sent') {
             audioAlerts.playChime();
           } else if (msg.type === 'alert') {
-            if (msg.data?.priority === 'critical') {
+            if (msg.data?.priority === 'critical' && msg.data?.active !== false) {
               audioAlerts.startCriticalAlarm();
             } else {
               audioAlerts.playChime();
@@ -82,9 +166,13 @@ class WardApiService {
         }
       };
 
-      this.ws.onclose = () => {
+      this.ws.onclose = (event) => {
         this.isConnected = false;
         this.emit('connection', { connected: false });
+        if (event.code === 4401) {
+          console.warn('WebSocket closed with 4401 (Authentication required/invalid)');
+          this.emit('auth_expired', true);
+        }
         this.scheduleReconnect();
       };
 
@@ -267,6 +355,22 @@ class WardApiService {
       method: 'POST',
       headers: this.getHeaders()
     });
+    return res.json();
+  }
+
+  public async getAuditLog(ward = 'W1', limit = 100) {
+    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/audit?limit=${limit}`, {
+      headers: this.getHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to fetch audit entries');
+    return res.json();
+  }
+
+  public async verifyAuditChain(ward = 'W1') {
+    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/audit/verify`, {
+      headers: this.getHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to verify audit chain');
     return res.json();
   }
 }

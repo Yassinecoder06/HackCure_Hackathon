@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { StationBoard } from './pages/StationBoard';
 import { StaffView } from './pages/StaffView';
 import { DoctorView } from './pages/DoctorView';
+import { LoginModal } from './components/LoginModal';
 import { wardApi } from './services/api';
 import './styles/index.css';
 
@@ -16,7 +17,9 @@ export const App: React.FC = () => {
   const [beds, setBeds] = useState<any[]>([]);
   const [calls, setCalls] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [triageMetrics, setTriageMetrics] = useState<any | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [targetFastEntryBed, setTargetFastEntryBed] = useState<string | null>(null);
 
   // Sync route on popstate or tab change
@@ -61,6 +64,12 @@ export const App: React.FC = () => {
     const unsubscribe = wardApi.subscribe((type, data) => {
       if (type === 'connection') {
         setIsConnected(data.connected);
+      } else if (type === 'auth_expired') {
+        setIsLoginOpen(true);
+      } else if (type === 'auth_changed') {
+        loadInitialSnapshot();
+      } else if (type === 'metrics') {
+        setTriageMetrics(data);
       } else if (type === 'snapshot') {
         setBeds(data.beds || []);
         setCalls(data.calls || []);
@@ -76,7 +85,8 @@ export const App: React.FC = () => {
       } else if (type === 'alert') {
         setAlerts(prev => {
           const filtered = prev.filter(a => a.alertId !== data.alertId);
-          if (data.acknowledgedBy) return filtered;
+          // Safety / Contract: if acknowledged or condition cleared (active === false), remove from active alerts
+          if (data.acknowledgedBy || data.active === false) return filtered;
           return [data, ...filtered];
         });
       }
@@ -94,6 +104,7 @@ export const App: React.FC = () => {
         onSelectTab={handleSelectTab}
         isConnected={isConnected}
         onPeakTriggered={loadInitialSnapshot}
+        onOpenLogin={() => setIsLoginOpen(true)}
       />
 
       {/* Track 2 Degraded Network Tolerance Banner */}
@@ -110,6 +121,7 @@ export const App: React.FC = () => {
             beds={beds}
             calls={calls}
             alerts={alerts}
+            triageMetrics={triageMetrics}
             onOpenFastEntry={(bedId) => {
               setTargetFastEntryBed(bedId);
               handleSelectTab('staff');
@@ -132,6 +144,16 @@ export const App: React.FC = () => {
           />
         )}
       </main>
+
+      {/* Staff Login / Switch User Modal */}
+      <LoginModal
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        onSuccess={() => {
+          setIsLoginOpen(false);
+          loadInitialSnapshot();
+        }}
+      />
     </div>
   );
 };

@@ -105,7 +105,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Full ward state (twin snapshot) */
+        /** Full ward state (twin snapshot). Audited per reader. */
         get: {
             parameters: {
                 query?: never;
@@ -126,6 +126,8 @@ export interface paths {
                         "application/json": components["schemas"]["WardSnapshot"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                404: components["responses"]["NotFound"];
             };
         };
         put?: never;
@@ -148,7 +150,11 @@ export interface paths {
          * @description Upgrade to WebSocket. The server first sends one `snapshot` message, then incremental
          *     messages. Every message is a `StreamMessage`. Clients re-request the snapshot after
          *     a reconnect. Staff alerts arrive here; the staff view plays sound/vibration while open
-         *     (Web Push is a stretch goal, see ADR 0005).
+         *     (Web Push is a stretch goal, see ADR 0005). Authenticate by offering the subprotocols
+         *     `["bearer", "<login token>"]` (`new WebSocket(url, ["bearer", token])`; browsers cannot set an
+         *     Authorization header on WebSockets, and a query-string token would leak into access logs). The
+         *     server accepts with subprotocol `bearer`; a missing or invalid token closes the socket with code
+         *     4401. Opening a stream is audited.
          */
         get: {
             parameters: {
@@ -1459,6 +1465,8 @@ export interface components {
             explanation: string[];
             acknowledgedBy?: components["schemas"]["Id"];
             confidence: components["schemas"]["Confidence"];
+            /** @description false = the condition has cleared (sent once on the stream so clients can remove it) */
+            active?: boolean;
             /** @description Roles reached so far (e.g. nurse, charge_nurse, doctor) */
             escalatedTo?: ("nurse" | "care_assistant" | "charge_nurse" | "doctor")[];
             /** @description Remote on-call doctor notes (telemedicine) */
