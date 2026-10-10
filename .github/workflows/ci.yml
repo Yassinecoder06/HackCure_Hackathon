@@ -18,7 +18,8 @@ jobs:
           cache-dependency-path: |
             requirements-dev.txt
             server/requirements.txt
-      - run: pip install -r requirements-dev.txt -r server/requirements.txt
+            inference/requirements.txt
+      - run: pip install -r requirements-dev.txt -r server/requirements.txt -r inference/requirements.txt
       - run: ruff check .
       - run: pytest
 
@@ -33,7 +34,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install paho-mqtt==2.1.0 jsonschema==4.26.0 referencing==0.37.0
-      - name: Events flow MQTT -> twin -> API
+      - name: Events flow MQTT -> twin -> inference -> API
         run: python tests/integration/mqtt_smoke.py
       - if: failure()
         run: docker compose -f infra/docker-compose.yml logs

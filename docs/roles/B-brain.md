@@ -33,15 +33,15 @@ Read first:
 - [ ] **AES-256-GCM** encryption of event payloads and audit details before storage. The key comes from env/secret, with a key id stored for rotation. Write a test that the raw database contains no plaintext vitals.
 
 **Inference service**
-- [ ] `inference/` (FastAPI, internal network only, stateless).
-- [ ] **NEWS2:**
+- [x] `inference/` (FastAPI, internal network only, stateless).
+- [x] **NEWS2:**
   - Thresholds in `inference/config/news2.yaml`, following the RCP chart, each marked "TO BE CONFIRMED BY A CLINICIAN" (invariant 8).
   - Uses only fresh, valid parameters. Missing, stale or invalid ones are listed and the result is labelled partial (invariant 5).
   - SpO2 scale 2 only when a clinician sets it.
   - Bands: 0–4 low, a 3 in any single parameter is low-medium, 5–6 medium, 7+ high.
   - Points per component.
   - **Confidence** = the share of parameters fresh and valid, discounted by age ([ADR 0011](../decisions/0011-interop-and-confidence.md)).
-- [ ] The server calls inference after each vitals update. If inference is down, the score shows "unavailable", never a guessed value.
+- [x] The server gets NEWS2 from inference for each admitted bed (currently computed when the snapshot is served; it moves to "after each vitals update" with the WebSocket). If inference is down, the score shows "unavailable", never a guessed value.
 
 **Security ([ADR 0010](../decisions/0010-security-baseline.md))**
 - [ ] **Login:** staff id + PIN/password (argon2) → short-lived signed token, with roles from the seed. It replaces `X-Staff-Id`.

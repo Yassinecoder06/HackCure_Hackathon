@@ -1,4 +1,4 @@
-"""End-to-end smoke test: MQTT -> server ingest -> twin -> REST snapshot.
+"""End-to-end smoke test: MQTT -> server ingest -> twin -> inference (NEWS2) -> REST snapshot.
 
 Needs the compose stack running (mosquitto + server):
     docker compose -f infra/docker-compose.yml up -d --build
@@ -47,6 +47,10 @@ def main() -> None:
     client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id="mqtt-smoke")
     client.connect("localhost", 1883)
     client.loop_start()
+    # Pin the demo clock so freshness (and therefore NEWS2) is deterministic.
+    clock = {"schemaVersion": 1, "ward": "W1", "simTs": "2026-10-10T22:10:00Z", "speed": 1,
+             "scenario": "smoke", "running": True}
+    client.publish("borj/W1/sim/clock", json.dumps(clock), qos=1, retain=True).wait_for_publish(5)
     for name in ("binding", "vitals.device", "vitals.manual", "device-status"):
         payload = json.loads((ROOT / "contracts" / "examples" / f"{name}.json").read_text(encoding="utf-8"))
         topic = bc.topic(name.split(".")[0], payload["ward"], bed=payload["bed"])
@@ -60,7 +64,10 @@ def main() -> None:
         return b04 if b04["admission"] and {"pulse", "consciousness"} <= set(b04["vitals"]) else None
 
     b04 = wait_for(b04_has_vitals, "B04 vitals in snapshot", timeout_s=20)
-    print("OK: events flowed MQTT -> twin -> API")
+    news2 = b04["news2"]
+    if b04["news2Status"] != "ok" or (news2["total"], news2["band"], news2["complete"]) != (8, "high", True):
+        raise SystemExit(f"unexpected NEWS2: {b04['news2Status']} {news2}")
+    print("OK: events flowed MQTT -> twin -> inference -> API (NEWS2 8, high, complete)")
     print(json.dumps(b04, indent=2))
 
 

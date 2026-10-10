@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
+from ..scoring import attach_news2, news2_inputs
 from ..twin.views import snapshot_view
 
 router = APIRouter()
@@ -21,4 +22,10 @@ def snapshot(ward: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail={"error": "unknown_ward", "detail": ward})
     with ingestor.lock:
         clock = ingestor.clock
-        return snapshot_view(ingestor.twin, clock.now(), clock.effective_mode)
+        now = clock.now()
+        snap = snapshot_view(ingestor.twin, now, clock.effective_mode)
+        inputs = news2_inputs(ingestor.twin, now)
+    # Outside the lock: never hold up ingest while waiting on the inference layer.
+    inference = request.app.state.inference
+    attach_news2(snap, inference.news2_batch(snap["asOf"], inputs) if inference else None)
+    return snap

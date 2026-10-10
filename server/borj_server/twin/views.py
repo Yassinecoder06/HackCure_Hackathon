@@ -35,7 +35,8 @@ def bed_view(bed: Bed, now: datetime) -> dict[str, Any]:
         "bed": bed.bed,
         "room": bed.room,
         "admission": None,
-        "news2": None,  # NEWS2 engine: P1
+        "news2": None,  # filled from the inference layer by scoring.attach_news2
+        "news2Status": "not_admitted" if bed.admission is None else "unavailable",
         "vitals": {param: reading_view(r, now) for param, r in sorted(bed.vitals.items())},
         "devices": [
             {"deviceId": d.device_id, "deviceType": d.device_type, "status": d.status,

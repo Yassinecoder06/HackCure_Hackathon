@@ -26,6 +26,10 @@ class Settings:
     mqtt_enabled: bool = True
     mqtt_host: str = "localhost"
     mqtt_port: int = 1883
+    # Inference layer (ADR 0009). None = no inference service: NEWS2 shows as unavailable.
+    inference_url: str | None = "http://localhost:8001"
+    # Short: NEWS2 is on the triage path (latency budget < 1 s end to end).
+    inference_timeout_s: float = 0.5
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -37,4 +41,6 @@ class Settings:
             mqtt_enabled=_env_bool("BORJ_MQTT_ENABLED", cls.mqtt_enabled),
             mqtt_host=os.environ.get("MQTT_HOST", cls.mqtt_host),
             mqtt_port=int(os.environ.get("MQTT_PORT", str(cls.mqtt_port))),
+            inference_url=os.environ.get("INFERENCE_URL", cls.inference_url) or None,
+            inference_timeout_s=float(os.environ.get("INFERENCE_TIMEOUT_S", str(cls.inference_timeout_s))),
         )
