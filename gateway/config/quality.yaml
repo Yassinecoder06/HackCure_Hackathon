@@ -1,0 +1,35 @@
+# Plausibility ranges and freshness timeouts for vital signs.
+#
+# SAFETY INVARIANT 8: Every block must carry `validated_by`.
+# Clinical/biomedical staff must sign off before real ward use.
+
+parameters:
+  resp_rate:
+    validated_by: "TO BE CONFIRMED BY BIOMEDICAL / CLINICAL STAFF"
+    min_plausible: 4
+    max_plausible: 60
+    stale_after_s: 900
+
+  spo2:
+    validated_by: "TO BE CONFIRMED BY BIOMEDICAL / CLINICAL STAFF"
+    min_plausible: 50
+    max_plausible: 100
+    stale_after_s: 900
+
+  pulse:
+    validated_by: "TO BE CONFIRMED BY BIOMEDICAL / CLINICAL STAFF"
+    min_plausible: 25
+    max_plausible: 250
+    stale_after_s: 900
+
+  sys_bp:
+    validated_by: "TO BE CONFIRMED BY BIOMEDICAL / CLINICAL STAFF"
+    min_plausible: 40
+    max_plausible: 260
+    stale_after_s: 1800
+
+  temp_c:
+    validated_by: "TO BE CONFIRMED BY BIOMEDICAL / CLINICAL STAFF"
+    min_plausible: 28.0
+    max_plausible: 43.0
+    stale_after_s: 1800

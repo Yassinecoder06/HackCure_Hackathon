@@ -1,10 +1,23 @@
 # gateway/ (owner: A)
 
-Ward gateway. Runs on a laptop in the demo, or on the Raspberry Pi. **Not implemented yet.** See [`docs/roles/A-edge.md`](../docs/roles/A-edge.md), P1.
+Ward Device Gateway. Runs on a ward laptop or on the Raspberry Pi.
 
-- `adapters/`: one adapter per device family behind a common read-only interface. Starts with a replay adapter for simulator streams.
-- Validity and freshness flags (`sensor_off`, `artifact`, `implausible`, `stale_after_s`), with ranges in config.
-- Device → bed binding from `binding` events.
-- Store-and-forward outbox (local SQLite, payloads AES-256-GCM encrypted) that keeps the original `eventId` and `ts` and adds the `late_delivery` flag.
-- HMAC-SHA256 signing of every outgoing message (`borj_contracts.sign`), and CRC/checksum verification of raw device frames.
-- **Never writes to a device** (whitepaper 4.1).
+Implements **Role A, P1** specification in [`docs/roles/A-edge.md`](../docs/roles/A-edge.md).
+
+---
+
+## 1. Capabilities
+
+- **Device Adapters (Read-Only)**: `DeviceAdapter` interface. Never writes to medical machines (whitepaper 4.1). Includes `ReplayAdapter` with CRC32 checksum verification for frame integrity.
+- **Validity & Freshness**: Evaluates vital signs against `gateway/config/quality.yaml`, applying `sensor_off`, `artifact`, and `implausible` flags.
+- **Dynamic Bed Binding**: Subscribes to `borj/{ward}/+/binding` events to maintain live device-to-bed and bed-to-admission mappings.
+- **Store-and-Forward Outbox**: Local SQLite storage where patient payloads are encrypted at rest with **AES-256-GCM** (safety invariant 10). Replays pending observations with `late_delivery` flag when link returns.
+- **HMAC-SHA256 Signing**: Every outgoing message carries an HMAC-SHA256 signature in its `integrity` envelope (safety invariant 13).
+
+---
+
+## 2. Running Tests
+
+```bash
+pytest gateway/tests/
+```

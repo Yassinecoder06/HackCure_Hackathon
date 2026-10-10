@@ -19,6 +19,8 @@ from typing import Any
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
+from .ulid import generate_ulid as generate_ulid
+
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
 BASE_URI = "https://borj.local/schemas/"
 
