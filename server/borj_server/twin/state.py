@@ -86,6 +86,34 @@ class Call:
 
 
 @dataclass
+class Prescription:
+    """Entered by a doctor. The system never creates or changes one (safety invariant 1)."""
+
+    prescription_id: str
+    admission_id: str
+    bed: str
+    drug: str
+    dose: str
+    route: str
+    times: tuple[str, ...]
+    start_date: str
+    end_date: str | None
+    is_infusion: bool
+    prescribed_by: str
+
+
+@dataclass
+class Administration:
+    """A nurse's record: the only thing that closes a dose."""
+
+    action: str  # given | not_given
+    staff_id: str
+    ts: datetime
+    presence: str | None = None
+    reason: str | None = None
+
+
+@dataclass
 class AlertAck:
     staff_id: str
     ts: datetime
@@ -103,3 +131,6 @@ class WardTwin:
         # bed -> nurse. Changes ONLY through approved `assignment` events (safety invariant 1).
         self.assignments: dict[str, str] = {}
         self.alert_acks: dict[str, AlertAck] = {}
+        self.prescriptions: dict[str, Prescription] = {}
+        self.administrations: dict[str, Administration] = {}  # doseId -> nurse record
+        self.patient_reported: dict[str, datetime] = {}        # doseId -> "I took my pills" (never closes a dose)

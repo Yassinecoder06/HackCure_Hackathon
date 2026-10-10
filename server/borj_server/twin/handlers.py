@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ..timeutil import parse_ts
-from .state import Admission, AlertAck, Bed, Call, Device, Reading, WardTwin
+from .state import Administration, Admission, AlertAck, Bed, Call, Device, Prescription, Reading, WardTwin
 
 log = logging.getLogger(__name__)
 
@@ -179,6 +179,32 @@ def apply_assignment(twin: WardTwin, payload: dict[str, Any]) -> str:
     return "applied"
 
 
+def apply_prescription(twin: WardTwin, payload: dict[str, Any]) -> str:
+    if _bed(twin, payload) is None:
+        return "ignored:unknown_bed"
+    twin.prescriptions[payload["prescriptionId"]] = Prescription(
+        prescription_id=payload["prescriptionId"], admission_id=payload["admissionId"], bed=payload["bed"],
+        drug=payload["drug"], dose=payload["dose"], route=payload["route"], times=tuple(payload["times"]),
+        start_date=payload["startDate"], end_date=payload.get("endDate"),
+        is_infusion=bool(payload.get("isInfusion")), prescribed_by=payload["prescribedBy"],
+    )
+    return "applied"
+
+
+def apply_med(twin: WardTwin, payload: dict[str, Any]) -> str:
+    """Only a nurse's record closes a dose; a patient's report is kept apart (whitepaper 4.3)."""
+    ts = parse_ts(payload["ts"])
+    if payload["recordedBy"] == "patient_reported":
+        twin.patient_reported.setdefault(payload["doseId"], ts)
+        return "applied"
+    current = twin.administrations.get(payload["doseId"])
+    if current is not None and ts < current.ts:
+        return "ignored:older_than_current_record"
+    twin.administrations[payload["doseId"]] = Administration(
+        payload["action"], payload["staffId"], ts, payload.get("presence"), payload.get("reason"))
+    return "applied"
+
+
 def apply_ack(twin: WardTwin, payload: dict[str, Any]) -> str:
     """Acks on alerts are recorded here. Acks on calls are turned into call/state by the call engine."""
     if payload["target"] != "alert" or payload["action"] != "acknowledge":
@@ -196,7 +222,8 @@ HANDLERS: dict[str, Callable[[WardTwin, dict[str, Any]], str]] = {
     "call-state": apply_call_state,
     "ack": apply_ack,
     "assignment": apply_assignment,
-    # med: stored now, handled by the medication engine (P3).
+    "prescription": apply_prescription,
+    "med": apply_med,
 }
 
 

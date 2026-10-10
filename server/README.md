@@ -55,6 +55,15 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   each occupied bed's NEWS2 band) to the inference simulator, adds the disruptions, and returns baseline vs scenario
   (median, p5–p95) with the assumptions. Beds without a complete NEWS2 are disclosed in the assumptions. Audited;
   never touches live state.
+- P3: **medication timeline** (`meds.py`, rules in [`config/meds.yaml`](config/meds.yaml)).
+  - **Only a doctor** creates a prescription (`POST .../prescriptions`). It is stored as an internal event in
+    the encrypted log and **never published on MQTT** (it contains drug names).
+  - Doses are generated from the daily times in ward local time (UTC+1).
+  - **Only a nurse's record** (`POST .../doses/{id}/administration`, given / not given with a reason) closes a
+    dose. A patient's "I took my pills" is shown separately and never closes one.
+  - Overdue doses raise `dose_overdue` alerts. **Clashes** (too many doses, or more than one infusion, due for
+    the same nurse in 15 min) are listed in `GET .../meds/timeline`.
+  - The system never selects drugs or doses (invariant 1, statically checked).
 - Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
 
 ## Run

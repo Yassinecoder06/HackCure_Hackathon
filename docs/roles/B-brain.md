@@ -74,7 +74,7 @@ Read first:
   - Clone the twin, apply the disruptions, simulate ahead over N seeds, using the same seeds for baseline and scenario.
   - Report the median and p5–p95, plus the assumptions list.
   - **Erlang-C oracle test**: 26 calls/h at 8 min each gives 3 nurses → unbounded, 4 → 10.8 min, 5 → 1.9 min; routed 40% to care assistants gives 4.2 / 0.8 / 0.2 min.
-- [ ] **Medications:** the doctor enters the prescription → the engine creates doses and flags overdue ones and clashes. Only a nurse's tap closes a dose; patient-reported entries are stored separately. Never choose drugs or doses.
+- [x] **Medications:** the doctor enters the prescription → the engine creates doses and flags overdue ones and clashes. Only a nurse's tap closes a dose; patient-reported entries are stored separately. Never choose drugs or doses.
 - [ ] **Remote doctor instructions:** a short note on an alert, audited and shown to the nurse. It works asynchronously: queued and delivered when the doctor's phone reconnects.
 - [ ] **FHIR R4 export (read-only)** following [`fhir-mapping.md`](../../contracts/fhir-mapping.md): `Patient`, `Encounter`, `Observation` (LOINC), `MedicationAdministration`. Access is audited.
 - [ ] **Explainer:** template sentences from the rule traces.

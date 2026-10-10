@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def test_1_advisory_only():
     """Suggestions change nothing; only a recorded human approval does, and both are audited.
-    (Prescriptions join this test with the medication engine.)"""
+    Prescriptions are created only by a doctor and never by the system."""
     import re
 
     from borj_server.assignment import AssignmentService
@@ -44,6 +44,19 @@ def test_1_advisory_only():
     assert emitters == ["server/borj_server/assignment.py"]
     assert "def _apply" in (ROOT / "server" / "borj_server" / "assignment.py").read_text(encoding="utf-8")
     service.close()
+
+    # Prescriptions: only a doctor's REST entry creates one; nothing in the system writes or changes one,
+    # and none is ever published on MQTT (drug names stay in the encrypted log and on staff screens).
+    sources = {p.relative_to(ROOT).as_posix(): p.read_text(encoding="utf-8")
+               for p in (ROOT / "server" / "borj_server").rglob("*.py")}
+    rx_emitters = [name for name, code in sources.items() if re.search(r'topic\(\s*"prescription"', code)]
+    assert rx_emitters == ["server/borj_server/api/routes.py"]
+    routes = sources["server/borj_server/api/routes.py"]
+    create = routes[routes.index("def create_prescription"):routes.index("def meds_timeline")]
+    assert 'require_role(who, "doctor")' in create
+    publishers = [name for name, code in sources.items() if "publish_retained" in code]
+    assert sorted(publishers) == ["server/borj_server/main.py", "server/borj_server/mqtt.py"]
+    assert "prescription" not in sources["server/borj_server/calls.py"]
 
 
 @pytest.mark.skip(reason="P4, B: privacy filter output from a twin full of vitals/scores/drugs passes only allow-list")

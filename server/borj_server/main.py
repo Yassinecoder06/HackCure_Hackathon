@@ -25,6 +25,7 @@ from .crypto import DataCipher
 from .inference_client import InferenceClient
 from .ingest import Ingestor
 from .live import news2_by_bed, news2_total
+from .meds import MedsConfig
 from .mqtt import MqttListener
 from .store import EventStore
 from .stream import StreamHub
@@ -69,6 +70,7 @@ def create_app(
         listener = MqttListener(ingestor, settings.mqtt_host, settings.mqtt_port) if settings.mqtt_enabled else None
 
         app.state.call_config = CallConfig.load(settings.calls_config_path)
+        app.state.meds_config = MedsConfig.load(settings.meds_config_path)
         app.state.first_seen = FirstSeen()
         app.state.calls = CallEngine(
             ingestor, app.state.call_config,

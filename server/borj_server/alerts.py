@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Any
 
 from .calls import CallConfig
+from .meds import MedsConfig, timeline
 from .news2_labels import LABELS
 from .timeutil import format_ts
 from .twin.state import WardTwin
@@ -38,7 +39,8 @@ class FirstSeen:
 
 
 def derive_alerts(twin: WardTwin, news2: dict[str, dict[str, Any] | None], now: datetime, cfg: CallConfig,
-                  first_seen: FirstSeen, bed_ids: set[str] | None = None) -> list[dict[str, Any]]:
+                  first_seen: FirstSeen, bed_ids: set[str] | None = None,
+                  meds_cfg: MedsConfig | None = None) -> list[dict[str, Any]]:
     alerts: list[dict[str, Any]] = []
 
     def add(alert_id: str, bed: str, kind: str, priority: str, explanation: list[str], confidence: dict[str, Any],
@@ -85,6 +87,13 @@ def derive_alerts(twin: WardTwin, news2: dict[str, dict[str, Any] | None], now: 
                     [f"{device.device_id} reported '{device.status}' at {format_ts(device.last_seen)}; "
                      "its readings will go stale."],
                     {"value": DETERMINISTIC, "basis": "device status message"})
+
+    if meds_cfg is not None:
+        for dose in timeline(twin, now, meds_cfg, hours=0)["doses"]:
+            if dose["status"] == "overdue" and (bed_ids is None or dose["bed"] in bed_ids):
+                add(alert_id("dose", dose["doseId"]), dose["bed"], "dose_overdue", meds_cfg.overdue_priority,
+                    [f"{dose['label']} for {dose['bed']} was due at {dose['due']} and no nurse has recorded it."],
+                    {"value": DETERMINISTIC, "basis": "doctor prescription schedule and nurse records"})
 
     for call in twin.calls.values():
         if bed_ids is not None and call.bed not in bed_ids:
