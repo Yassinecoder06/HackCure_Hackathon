@@ -24,8 +24,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 import borj_contracts as bc
-from borj_contracts import generate_ulid
 import paho.mqtt.client as mqtt
+from borj_contracts import generate_ulid
 from paho.mqtt.enums import CallbackAPIVersion
 
 log = logging.getLogger("mock_monitor")
@@ -114,7 +114,7 @@ class MockMedicalMonitor:
             "ts": now_utc,
             "ward": self.ward,
             "bed": self.bed,
-            "source": f"app-N1",
+            "source": "app-N1",
             "sourceType": "staff_app",
             "action": "admit",
             "admissionId": f"ADM-{self.bed}",
