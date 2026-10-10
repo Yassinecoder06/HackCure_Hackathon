@@ -1,0 +1,53 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const familyDir = path.resolve(__dirname, '../apps/family/src');
+
+console.log('--- Testing Safety Invariant 2 & 3: Family Care Link Isolation ---');
+
+if (!fs.existsSync(familyDir)) {
+  console.log('apps/family/src does not exist yet. Passing provisional check.');
+  process.exit(0);
+}
+
+function checkFiles(dir) {
+  let violations = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      violations = violations.concat(checkFiles(fullPath));
+    } else if (entry.isFile() && /\.(ts|tsx|js|jsx)$/.test(entry.name)) {
+      const content = fs.readFileSync(fullPath, 'utf8');
+
+      // Check forbidden imports
+      if (/from\s+['"].*apps\/ward.*['"]/.test(content)) {
+        violations.push(`${fullPath}: imports from apps/ward`);
+      }
+      if (/from\s+['"].*contracts\/openapi\.yaml.*['"]/.test(content) || /from\s+['"].*ward-api.*['"]/.test(content)) {
+        violations.push(`${fullPath}: imports ward API contracts (must only use family-gateway)`);
+      }
+      if (/http:\/\/localhost:8000/.test(content) || /api\/v1\/wards/.test(content)) {
+        violations.push(`${fullPath}: references ward server port 8000 or /api/v1/wards endpoints`);
+      }
+    }
+  }
+  return violations;
+}
+
+const violations = checkFiles(familyDir);
+
+if (violations.length > 0) {
+  console.error('FAILED: Family isolation invariants violated:');
+  for (const v of violations) {
+    console.error(' - ' + v);
+  }
+  process.exit(1);
+} else {
+  console.log('PASSED: Safety Invariants 2 & 3 verified! apps/family has zero forbidden imports or ward endpoints.');
+  process.exit(0);
+}
