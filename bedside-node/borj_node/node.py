@@ -43,7 +43,7 @@ class BedsideNode:
         key: bytes | None = None,
         key_id: str | None = None,
         receipt_timeout_s: float = 4.0,
-        volume: int = 50,
+        volume: int = 90,
         mock_gpio: bool = False,
         audio_enabled: bool = True,
     ) -> None:

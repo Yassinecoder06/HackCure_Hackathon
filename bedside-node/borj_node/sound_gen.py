@@ -41,7 +41,7 @@ def generate_beep_wav(path: Path, freq: float = 1000.0, duration_s: float = 0.08
         t = i / rate
         # envelope with fast attack and decay
         env = math.sin(math.pi * i / n)
-        samples.append(0.35 * env * math.sin(2 * math.pi * freq * t))
+        samples.append(0.85 * env * math.sin(2 * math.pi * freq * t))
     _write_wav(path, samples, rate)
 
 
@@ -54,7 +54,7 @@ def generate_chime_wav(path: Path) -> None:
         for i in range(n):
             t = i / rate
             env = math.exp(-4.0 * t / dur)
-            samples.append(0.3 * env * math.sin(2 * math.pi * freq * t))
+            samples.append(0.85 * env * math.sin(2 * math.pi * freq * t))
     _write_wav(path, samples, rate)
 
 
@@ -66,7 +66,7 @@ def generate_buzzer_wav(path: Path) -> None:
         n_buzz = int(rate * 0.12)
         for i in range(n_buzz):
             t = i / rate
-            s = 0.4 * (math.sin(2 * math.pi * 440 * t) + 0.3 * math.sin(2 * math.pi * 880 * t))
+            s = 0.85 * (math.sin(2 * math.pi * 440 * t) + 0.3 * math.sin(2 * math.pi * 880 * t))
             samples.append(s)
         # gap
         samples.extend([0.0] * int(rate * 0.06))
