@@ -51,7 +51,7 @@ Read first:
 
 **API**
 - [x] WebSocket `stream`: an initial snapshot, then `bed`/`staff`/`clock`/`metrics` messages (`call`/`alert` come with P2).
-- [ ] `POST .../observations`: manual fast entry → a `vitals` event with `sourceType: manual`.
+- [x] `POST .../observations`: manual fast entry → a `vitals` event with `sourceType: manual`.
 
 ## P2: calls, escalation, latency
 

@@ -30,6 +30,7 @@ from .ingest import Ingestor
 from .live import news2_by_bed, news2_total
 from .meds import MedsConfig
 from .mqtt import MqttListener
+from .observations import ObservationsConfig
 from .store import EventStore
 from .stream import StreamHub
 from .twin.layout import WardLayout
@@ -74,6 +75,7 @@ def create_app(
 
         app.state.call_config = CallConfig.load(settings.calls_config_path)
         app.state.meds_config = MedsConfig.load(settings.meds_config_path)
+        app.state.observations_config = ObservationsConfig.load(settings.observations_config_path)
         app.state.first_seen = FirstSeen()
         app.state.calls = CallEngine(
             ingestor, app.state.call_config,
