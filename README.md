@@ -78,7 +78,9 @@ python infra/gen_secrets.py
 
 # The demo stack: Mosquitto, PostgreSQL, inference, server (more services are added phase by phase)
 docker compose -f infra/docker-compose.yml up --build
-curl localhost:8000/api/v1/wards/W1/snapshot
+# Log in with a demo PIN printed by gen_secrets.py (also in infra/.env), then use the token:
+#   curl -X POST localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"staffId":"CN1","secret":"<PIN>"}'
+#   curl -H "Authorization: Bearer <token>" localhost:8000/api/v1/wards/W1/snapshot
 ```
 
 Each component's README lists its own dependencies and run commands. Copy `.env.example` to `.env` for local settings, and never commit `.env`.

@@ -5,13 +5,16 @@ Run locally:  uvicorn borj_server.main:app --reload   (with contracts/ and serve
 
 from __future__ import annotations
 
+import base64
 import logging
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from .api.routes import router
+from .auth import Auth, AuthError, parse_pins
 from .clock import Clock
 from .config import Settings
 from .crypto import DataCipher
@@ -34,8 +37,17 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        if not settings.token_key_b64:
+            raise AuthError("BORJ_TOKEN_KEY is not set; run `python infra/gen_secrets.py`")
+        layout = WardLayout.load(settings.seed_path)
+        app.state.auth = Auth(
+            pins=parse_pins(settings.staff_pins),
+            roles={s.staff_id: s.role for s in layout.staff},
+            token_key=base64.b64decode(settings.token_key_b64),
+            ttl_s=settings.token_ttl_s,
+        )
         store = EventStore(settings.db_url, cipher or DataCipher.from_env())
-        ingestor = Ingestor(WardLayout.load(settings.seed_path), store, Clock(settings.clock_mode))
+        ingestor = Ingestor(layout, store, Clock(settings.clock_mode))
         ingestor.rebuild()  # restore the twin from the persisted log
         app.state.ingestor = ingestor
         if inference_http is not None:
@@ -59,6 +71,13 @@ def create_app(
             store.close()
 
     app = FastAPI(title="Borj ward server", version="0.1.0", lifespan=lifespan)
+
+    @app.exception_handler(HTTPException)
+    async def contract_errors(_request: Request, exc: HTTPException) -> JSONResponse:
+        # contracts/openapi.yaml Error shape: {"error": ..., "detail": ...}
+        body = exc.detail if isinstance(exc.detail, dict) else {"error": "http_error", "detail": str(exc.detail)}
+        return JSONResponse(body, status_code=exc.status_code, headers=exc.headers)
+
     app.include_router(router)
     return app
 

@@ -1,19 +1,7 @@
 from __future__ import annotations
 
-from borj_inference.main import create_app as create_inference_app
-from borj_server.config import Settings
-from borj_server.main import create_app
-from fastapi.testclient import TestClient
-
-from .conftest import SEED, make_test_cipher, openapi_validator
-
-
-def client(tmp_path, with_inference: bool = False) -> TestClient:
-    """Ward server app. with_inference=True plugs in the real inference app in-process."""
-    settings = Settings(seed_path=SEED, db_url=f"sqlite:///{(tmp_path / 'borj.sqlite').as_posix()}",
-                        mqtt_enabled=False, inference_url=None)
-    inference_http = TestClient(create_inference_app()) if with_inference else None
-    return TestClient(create_app(settings, inference_http=inference_http, cipher=make_test_cipher()))
+from .conftest import login, openapi_validator
+from .conftest import make_client as client
 
 
 def bed(body: dict, bed_id: str) -> dict:
@@ -22,11 +10,13 @@ def bed(body: dict, bed_id: str) -> dict:
 
 def test_health(tmp_path):
     with client(tmp_path) as c:
+        login(c)
         assert c.get("/health").json() == {"status": "ok"}
 
 
 def test_snapshot_endpoint(tmp_path, make_event):
     with client(tmp_path) as c:
+        login(c)
         ingestor = c.app.state.ingestor
         ingestor.handle(*make_event("binding"))
         body = c.get("/api/v1/wards/W1/snapshot").json()
@@ -40,19 +30,23 @@ def test_snapshot_endpoint(tmp_path, make_event):
 
 def test_unknown_ward_is_404(tmp_path):
     with client(tmp_path) as c:
+        login(c)
         assert c.get("/api/v1/wards/W9/snapshot").status_code == 404
 
 
 def test_twin_survives_restart(tmp_path, make_event):
     with client(tmp_path) as c:
+        login(c)
         c.app.state.ingestor.handle(*make_event("binding"))
     with client(tmp_path) as c:  # new app, same database: twin rebuilt from the log
+        login(c)
         body = c.get("/api/v1/wards/W1/snapshot").json()
     assert bed(body, "B04")["admission"]["admissionId"] == "ADM-0004"
 
 
 def test_snapshot_carries_news2_from_inference(tmp_path, make_event):
     with client(tmp_path, with_inference=True) as c:
+        login(c)
         ingestor = c.app.state.ingestor
         ingestor.handle(*make_event("binding"))
         ingestor.handle(*make_event("vitals.device"))  # resp 22, SpO2 93, BP 104, pulse 112, temp 38.4
@@ -71,6 +65,7 @@ def test_snapshot_carries_news2_from_inference(tmp_path, make_event):
 def test_stale_readings_make_the_score_partial(tmp_path, make_event):
     """Invariant 5 end to end: twin freshness -> inference -> labelled partial score."""
     with client(tmp_path, with_inference=True) as c:
+        login(c)
         ingestor = c.app.state.ingestor
         ingestor.handle(*make_event("binding"))
         ingestor.handle(*make_event("vitals.device"))
@@ -86,6 +81,7 @@ def test_stale_readings_make_the_score_partial(tmp_path, make_event):
 
 def test_inference_down_shows_unavailable_never_a_guess(tmp_path, make_event):
     with client(tmp_path) as c:  # no inference service configured
+        login(c)
         c.app.state.ingestor.handle(*make_event("binding"))
         body = c.get("/api/v1/wards/W1/snapshot").json()
     b04 = bed(body, "B04")

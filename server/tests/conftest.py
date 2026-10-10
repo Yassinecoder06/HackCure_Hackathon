@@ -33,6 +33,35 @@ def _ulids():
 _ids = _ulids()
 
 
+# Synthetic test-only credentials: they exist only in this test code, never in a real deployment.
+TEST_TOKEN_KEY_B64 = "dGVzdC1vbmx5LXRva2VuLWtleS1ub3QtYS1zZWNyZXQtISE="  # 32+ bytes once decoded
+TEST_PINS = {"CN1": "111111", "N1": "222222", "DR1": "333333"}
+
+
+def make_client(tmp_path, with_inference: bool = False):
+    """Ward server TestClient. with_inference=True plugs in the real inference app in-process."""
+    from borj_inference.main import create_app as create_inference_app
+    from borj_server.config import Settings
+    from borj_server.main import create_app
+    from fastapi.testclient import TestClient
+
+    settings = Settings(
+        seed_path=SEED, db_url=f"sqlite:///{(tmp_path / 'borj.sqlite').as_posix()}", mqtt_enabled=False,
+        inference_url=None, token_key_b64=TEST_TOKEN_KEY_B64,
+        staff_pins=",".join(f"{k}:{v}" for k, v in TEST_PINS.items()),
+    )
+    inference_http = TestClient(create_inference_app()) if with_inference else None
+    return TestClient(create_app(settings, inference_http=inference_http, cipher=make_test_cipher()))
+
+
+def login(client, staff_id: str = "CN1") -> dict:
+    """Log in and make the client send the token on every following request."""
+    resp = client.post("/api/v1/auth/login", json={"staffId": staff_id, "secret": TEST_PINS[staff_id]})
+    assert resp.status_code == 200, resp.text
+    client.headers["Authorization"] = f"Bearer {resp.json()['token']}"
+    return resp.json()
+
+
 def make_test_cipher() -> DataCipher:
     """A fixed, obviously synthetic key for tests only."""
     return DataCipher({"test": b"T" * 32}, "test")

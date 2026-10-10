@@ -14,7 +14,13 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
 - P1 (in progress): the snapshot carries **NEWS2 per admitted bed** from the [inference layer](../inference/README.md)
   (`news2Status`: `ok` / `unavailable` / `not_admitted`). The server decides each reading's freshness against the ward
   clock and sends it to inference (`scoring.py`, `inference_client.py`, 0.5 s timeout). If inference is down, NEWS2
-  shows as `unavailable`, never as a guess. Still to come in P1: login + access audit, HMAC checks, WebSocket.
+  shows as `unavailable`, never as a guess.
+- P1: **login** (`POST /api/v1/auth/login`): demo PINs for the synthetic staff (`BORJ_STAFF_PINS` in `infra/.env`) are
+  hashed with argon2id at startup, and a successful login returns a short-lived HS256 token (4 h). Five failures
+  lock the staff id for 5 minutes. **Every access to patient data needs a token and is audited with the actor's
+  name.** The audit log is **hash-chained** (`store.verify_audit_chain`, `GET /api/v1/wards/{ward}/audit/verify`,
+  charge nurse only), so editing or deleting any entry is detected.
+- Still to come in P1: HMAC checks on incoming frames, WebSocket stream.
 
 ## Run
 

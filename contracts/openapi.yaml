@@ -85,7 +85,7 @@ paths:
   /api/v1/wards/{ward}/snapshot:
     get:
       tags: [ward]
-      summary: Full ward state (twin snapshot)
+      summary: Full ward state (twin snapshot). Audited per reader.
       parameters: [{ $ref: "#/components/parameters/ward" }]
       responses:
         "200":
@@ -93,6 +93,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WardSnapshot" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/wards/{ward}/stream:
     get:

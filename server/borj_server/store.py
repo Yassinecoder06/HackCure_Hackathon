@@ -7,10 +7,15 @@
   topic, ward, timestamp. The topic names a bed, never a patient.
 - The twin is derived state: it can always be rebuilt by replaying `events`.
 - Inserting an eventId that already exists is a no-op (invariant 6).
+- The audit log is hash-chained (invariant 11): each entry stores the hash of the previous one,
+  computed over its metadata and its ciphertext, so editing, deleting or reordering any entry
+  breaks verification, and verification needs no decryption key.
 """
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import threading
 import uuid
@@ -72,7 +77,21 @@ audit = Table(
     Column("key_id", String(40), nullable=False),
     Column("nonce", LargeBinary, nullable=False),
     Column("ciphertext", LargeBinary, nullable=False),
+    Column("prev_hash", String(64), nullable=False),
+    Column("hash", String(64), nullable=False),
 )
+
+GENESIS_HASH = "0" * 64
+
+
+def _audit_hash(prev_hash: str, audit_id: str, ts: str, actor: str, action: str, target: str,
+                key_id: str, nonce: bytes, ciphertext: bytes) -> str:
+    material = json.dumps(
+        [prev_hash, audit_id, ts, actor, action, target, key_id,
+         base64.b64encode(nonce).decode(), hashlib.sha256(ciphertext).hexdigest()],
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -146,14 +165,34 @@ class EventStore:
     # --- audit log: every suggestion and every human decision (invariants 1, 11) ---------
 
     def audit(self, actor: str, action: str, target: str, detail: dict[str, Any] | None = None) -> str:
+        """Append one entry to the chain. Single writer: the in-process lock serialises the chain."""
         audit_id = str(uuid.uuid4())
+        ts = format_ts(utcnow())
         sealed = self.cipher.seal(_to_bytes(detail or {}), associated=audit_id.encode())
         with self._lock, self.engine.begin() as conn:
+            last = conn.execute(select(audit.c.hash).order_by(audit.c.seq.desc()).limit(1)).scalar()
+            prev_hash = last or GENESIS_HASH
+            digest = _audit_hash(prev_hash, audit_id, ts, actor, action, target,
+                                 sealed.key_id, sealed.nonce, sealed.ciphertext)
             conn.execute(audit.insert().values(
-                audit_id=audit_id, ts=format_ts(utcnow()), actor=actor, action=action, target=target,
+                audit_id=audit_id, ts=ts, actor=actor, action=action, target=target,
                 key_id=sealed.key_id, nonce=sealed.nonce, ciphertext=sealed.ciphertext,
+                prev_hash=prev_hash, hash=digest,
             ))
         return audit_id
+
+    def verify_audit_chain(self) -> dict[str, Any]:
+        """Recompute the chain from the start. Returns the AuditVerify shape from openapi.yaml."""
+        with self._lock, self.engine.connect() as conn:
+            rows = conn.execute(select(audit).order_by(audit.c.seq)).mappings().all()
+        prev_hash = GENESIS_HASH
+        for r in rows:
+            expected = _audit_hash(prev_hash, r["audit_id"], r["ts"], r["actor"], r["action"], r["target"],
+                                   r["key_id"], r["nonce"], r["ciphertext"])
+            if r["prev_hash"] != prev_hash or r["hash"] != expected:
+                return {"valid": False, "entries": len(rows), "firstBrokenAuditId": r["audit_id"]}
+            prev_hash = r["hash"]
+        return {"valid": True, "entries": len(rows)}
 
     def audit_entries(self, limit: int = 100) -> list[dict[str, Any]]:
         query = select(audit).order_by(audit.c.seq.desc()).limit(limit)
@@ -162,7 +201,7 @@ class EventStore:
         return [
             {
                 "auditId": r["audit_id"], "ts": r["ts"], "actor": r["actor"], "action": r["action"],
-                "target": r["target"],
+                "target": r["target"], "prevHash": r["prev_hash"], "hash": r["hash"],
                 "detail": json.loads(self.cipher.open(Sealed(r["key_id"], r["nonce"], r["ciphertext"]),
                                                       associated=r["audit_id"].encode())),
             }

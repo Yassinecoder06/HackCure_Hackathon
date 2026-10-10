@@ -62,6 +62,9 @@ services:
       # AES-256-GCM key for patient payloads at rest (ADR 0010).
       BORJ_DATA_KEY: ${BORJ_DATA_KEY:?missing - run python infra/gen_secrets.py}
       BORJ_DATA_KEY_ID: ${BORJ_DATA_KEY_ID:-k1}
+      # Login (ADR 0010): token signing key and demo PINs for the synthetic staff.
+      BORJ_TOKEN_KEY: ${BORJ_TOKEN_KEY:?missing - run python infra/gen_secrets.py}
+      BORJ_STAFF_PINS: ${BORJ_STAFF_PINS:?missing - run python infra/gen_secrets.py}
     ports:
       - "8000:8000"
     depends_on:
