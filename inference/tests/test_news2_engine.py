@@ -111,3 +111,18 @@ def test_no_readings_at_all():
     assert result["missing"] == list(PARAMS)
     assert result["confidence"]["value"] == 0.0
     assert result["complete"] is False
+
+
+@pytest.mark.parametrize(("param", "bad"), [("consciousness", "X"), ("pulse", "fast"), ("on_oxygen", None)])
+def test_unscorable_value_is_marked_invalid_not_a_crash(param, bad):
+    result = score(full(**{param: bad}), CFG)
+    component = next(c for c in result["components"] if c["param"] == param)
+    assert component["status"] == "invalid"
+    assert param in result["missing"]
+    assert result["complete"] is False
+
+
+def test_scale_2_never_assumes_on_air_from_a_bad_oxygen_value():
+    result = score(full(spo2=95, on_oxygen=None), CFG, spo2_scale=2)
+    assert points_of(result, "spo2") is None
+    assert {"spo2", "on_oxygen"} <= set(result["missing"])

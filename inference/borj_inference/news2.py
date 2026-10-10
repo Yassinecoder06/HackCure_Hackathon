@@ -61,9 +61,13 @@ def _points(cfg: News2Config, param: str, value: Any, spo2_scale: int, on_oxygen
     """Points for one fresh parameter, or None if it cannot be scored without another input."""
     c = cfg.params[param]
     if param == "on_oxygen":
+        if not isinstance(value, bool):
+            raise TypeError(f"on_oxygen must be true/false, got {value!r}")
         return int(c["points_if_true"] if value else c["points_if_false"])
     if param == "consciousness":
         return int(c["points"][value])
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise TypeError(f"{param} must be a number, got {value!r}")
     if param == "spo2":
         if spo2_scale == 1:
             return _band_points(c["scale_1"], value)
@@ -83,7 +87,8 @@ def _age_weight(cfg: News2Config, reading: Reading) -> float:
 def score(readings: dict[str, Reading], cfg: News2Config, spo2_scale: int = 1) -> dict[str, Any]:
     """Score one bed. Returns the News2Result shape from contracts/openapi.yaml (minus computedAt)."""
     fresh = {p: r for p, r in readings.items() if p in PARAMS and r.status == "fresh"}
-    on_oxygen = bool(fresh["on_oxygen"].value) if "on_oxygen" in fresh else None
+    oxygen_value = fresh["on_oxygen"].value if "on_oxygen" in fresh else None
+    on_oxygen = oxygen_value if isinstance(oxygen_value, bool) else None  # never guess "on air"
 
     components: list[dict[str, Any]] = []
     missing: list[str] = []
@@ -100,13 +105,19 @@ def score(readings: dict[str, Reading], cfg: News2Config, spo2_scale: int = 1) -
             missing.append(param)
             weights.append(0.0)
             continue
+        if reading.status == "fresh":
+            try:
+                points = _points(cfg, param, reading.value, spo2_scale, on_oxygen)
+            except (KeyError, TypeError, ValueError):
+                # A value the chart cannot score (e.g. unknown ACVPU letter): never guess, mark it invalid.
+                reading = Reading(reading.value, "invalid", reading.age_s, reading.stale_after_s)
+                readings = {**readings, param: reading}
         component: dict[str, Any] = {"param": param, "value": reading.value, "status": reading.status}
         if reading.status != "fresh":
             (stale if reading.status == "stale" else missing).append(param)
             weights.append(0.0)
             components.append(component)
             continue
-        points = _points(cfg, param, reading.value, spo2_scale, on_oxygen)
         if points is None:
             missing.append(param)
             notes.append("SpO2 scale 2 needs a fresh oxygen status")
