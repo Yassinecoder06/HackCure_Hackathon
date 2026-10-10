@@ -11,7 +11,7 @@ Critical alerts reach the nurse's phone, then the charge nurse, then a **remote 
 
 **Advisory only:** a clinician validates or rejects every suggestion, in 3 steps at most, and every action is audited.
 
-> **Status:** P0. Architecture, contracts and team plan are done; the server skeleton is in review ([PR #1](https://github.com/Yassinecoder06/HackCure_Hackathon/pull/1)).
+> **Status:** P0. Architecture, contracts and team plan are done; the server skeleton is in review ([PR #2](https://github.com/Yassinecoder06/HackCure_Hackathon/pull/2)).
 > Everything runs on **synthetic data**. No real patients, devices or hospital systems.
 
 ## Start here

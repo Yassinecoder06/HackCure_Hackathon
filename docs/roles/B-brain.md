@@ -18,7 +18,7 @@ Read first:
 
 ---
 
-## P0: server skeleton ✅ (PR #1)
+## P0: server skeleton ✅ (PR #2)
 
 - Event log keyed by `eventId`, where duplicates are no-ops (invariant 6).
 - Live twin derived from the log (bindings, vitals, devices, presence), with event-time guards and a rebuild on out-of-order arrival.
