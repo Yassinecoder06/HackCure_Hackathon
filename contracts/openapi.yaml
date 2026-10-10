@@ -128,7 +128,9 @@ paths:
       description: |
         The 10-second form. Typically consciousness (ACVPU) and on_oxygen, sometimes
         resp_rate. Only fields the nurse actually entered are sent (absent, not zero). The
-        server publishes a `vitals` event with sourceType=manual.
+        server records a `vitals` event with sourceType=manual and the nurse's staffId (same
+        schema as MQTT vitals; staleness from server/config/observations.yaml). 409 if no
+        patient is admitted in the bed. Nurses, charge nurses and care assistants only.
       parameters:
         - { $ref: "#/components/parameters/ward" }
         - { $ref: "#/components/parameters/bed" }
@@ -143,6 +145,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Accepted" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/Invalid" }
 
   /api/v1/wards/{ward}/beds/{bed}/binding:

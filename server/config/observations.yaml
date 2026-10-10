@@ -1,0 +1,11 @@
+# Manual observations entered by staff on the bedside form (POST .../beds/{bed}/observations).
+# SAFETY INVARIANT 8: parameters, not code. Each block says who must validate it.
+
+manual:
+  validated_by: "TO BE CONFIRMED BY THE WARD (observation frequency policy, nursing direction)"
+  # How long a hand-entered value counts as current. After this it is shown as stale and NEWS2
+  # leaves it out (invariant 5). 4 h matches the usual minimum observation interval on a medical
+  # ward; the device values from the gateway go stale much sooner (gateway/config/quality.yaml).
+  stale_after_s: 14400
+  # Who may enter observations. Care assistants usually take routine observations.
+  roles: [nurse, charge_nurse, care_assistant]

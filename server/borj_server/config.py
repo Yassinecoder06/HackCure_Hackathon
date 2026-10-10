@@ -41,6 +41,7 @@ class Settings:
     calls_config_path: Path = REPO_ROOT / "server" / "config" / "calls.yaml"
     meds_config_path: Path = REPO_ROOT / "server" / "config" / "meds.yaml"
     family_config_path: Path = REPO_ROOT / "server" / "config" / "family.yaml"
+    observations_config_path: Path = REPO_ROOT / "server" / "config" / "observations.yaml"
     escalation_tick_s: float = 1.0
     # Language of explanations when a request does not ask (?lang= or Accept-Language): en | fr.
     default_lang: str = "en"

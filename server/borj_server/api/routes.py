@@ -19,6 +19,7 @@ from ..explain import Explainer, pick_lang
 from ..ids import new_ulid
 from ..live import build_beds, build_snapshot, news2_by_bed
 from ..meds import timeline
+from ..observations import manual_vitals
 from ..timeutil import format_ts
 from ..twin.views import call_view, staff_view
 
@@ -208,6 +209,43 @@ def decide_suggestion(ward: str, suggestionId: str, body: DecisionIn, request: R
     decided = _suggestion_call(request.app.state.assignment.decide, suggestionId, body.decision, who.staff_id,
                                body.reason)
     return render_suggestion(decided, explainer(request))
+
+
+class ObservationIn(BaseModel):
+    """contracts/openapi.yaml ManualObservation: only what the nurse entered, never defaults."""
+    model_config = {"extra": "forbid"}
+    resp_rate: int | None = Field(default=None, ge=0, le=100)
+    spo2: int | None = Field(default=None, ge=0, le=100)
+    on_oxygen: bool | None = None
+    sys_bp: int | None = Field(default=None, ge=0, le=300)
+    pulse: int | None = Field(default=None, ge=0, le=300)
+    consciousness: str | None = Field(default=None, pattern="^[ACVPU]$")
+    temp_c: float | None = Field(default=None, ge=20, le=45)
+
+
+@router.post("/api/v1/wards/{ward}/beds/{bed}/observations", status_code=201)
+def record_observations(ward: str, bed: str, body: ObservationIn, request: Request, who: Staff) -> dict:
+    """The 10-second form: a `vitals` event with sourceType manual and the nurse's staff id."""
+    _check_ward(request, ward)
+    cfg = request.app.state.observations_config
+    require_role(who, *cfg.roles)
+    params = body.model_dump(exclude_none=True)  # absent stays absent (safety invariant 5)
+    if not params:
+        raise HTTPException(422, {"error": "invalid", "detail": "enter at least one observation"})
+    ingestor = request.app.state.ingestor
+    with ingestor.lock:
+        known = ingestor.twin.beds.get(bed)
+        admitted = known is not None and known.admission is not None
+    if known is None:
+        raise HTTPException(404, {"error": "not_found", "detail": f"no bed {bed}"})
+    if not admitted:
+        raise HTTPException(409, {"error": "conflict", "detail": f"no patient admitted in {bed}"})
+    payload = manual_vitals(new_ulid(), format_ts(ingestor.event_now()), ward, bed, who.staff_id, params, cfg)
+    result = ingestor.handle(bc.topic("vitals", ward, bed=bed), payload)
+    if result.status != "accepted":
+        raise HTTPException(422, {"error": "rejected", "detail": result.detail})
+    ingestor.store.audit(who.staff_id, "vitals.manual_entry", bed, {"params": sorted(params)})
+    return {"eventId": payload["eventId"]}
 
 
 @router.post("/api/v1/wards/{ward}/prescriptions", status_code=201)
