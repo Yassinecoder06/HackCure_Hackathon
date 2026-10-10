@@ -27,7 +27,21 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   NEWS2 in a worker thread and sends them (`stream.py`, `live.py`). All beds are re-pushed every 30 s so readings
   visibly age into "stale" without new events. `metrics.triageLatencyMs` (p50/p95 over 60 s) is the server's share
   of the triage latency budget: event received to update sent.
-- Still to come in P1: HMAC checks on incoming frames.
+- P2: **call engine** (`calls.py`, rules in [`config/calls.yaml`](config/calls.yaml)).
+  - Assist calls go to nurses, comfort calls to care assistants.
+  - Escalation: unacknowledged after 120 s → level 1; after 300 s → level 2 (charge nurse, plus the on-call
+    doctor for assist calls). A repeated press escalates one level. A press from a patient with NEWS2 ≥ 5
+    escalates at once. Timers run on the ward clock, from the patient's *original* press time (late-delivered
+    calls escalate sooner).
+  - Every decision is a server-published, retained `call/state` event that goes through normal ingest, so
+    replays rebuild call states without re-running timers. Escalations are audited as `system`.
+  - One-tap `POST .../calls/{id}/ack` and `.../resolve` record a staff `ack` event (audited).
+- P2: **alerts** (`alerts.py`), derived from the twin: NEWS2 band (`news2_high`, `news2_single_param_3`),
+  escalated calls, stale data, offline devices. Each alert has a priority on the ladder (low / medium /
+  critical), a **confidence** and **explanation** sentences. `POST .../alerts/{id}/ack` silences an alert while
+  its condition lasts. The stream sends `call` and `alert` messages; a cleared alert is sent once with
+  `active: false`.
+- Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
 
 ## Run
 

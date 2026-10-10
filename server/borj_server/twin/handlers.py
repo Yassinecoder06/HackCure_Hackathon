@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ..timeutil import parse_ts
-from .state import Admission, Bed, Device, Reading, WardTwin
+from .state import Admission, AlertAck, Bed, Call, Device, Reading, WardTwin
 
 log = logging.getLogger(__name__)
 
@@ -131,12 +131,62 @@ def apply_staff_presence(twin: WardTwin, payload: dict[str, Any]) -> str:
     return "applied"
 
 
+def apply_call(twin: WardTwin, payload: dict[str, Any]) -> str:
+    """A press from the bedside node: facts only. Whether it escalates is the call engine's decision."""
+    if _bed(twin, payload) is None:
+        return "ignored:unknown_bed"
+    ts = parse_ts(payload["ts"])
+    call = twin.calls.get(payload["callId"])
+    if call is None:
+        twin.calls[payload["callId"]] = Call(
+            call_id=payload["callId"], bed=payload["bed"], kind=payload["kind"], pressed_at=ts,
+            press_count=payload["pressCount"], delivered_late=bool(payload.get("deliveredLate")),
+        )
+        return "applied"
+    call.press_count = max(call.press_count, payload["pressCount"])
+    call.pressed_at = min(call.pressed_at, ts)
+    call.delivered_late = call.delivered_late or bool(payload.get("deliveredLate"))
+    return "applied"
+
+
+def apply_call_state(twin: WardTwin, payload: dict[str, Any]) -> str:
+    ts = parse_ts(payload["ts"])
+    call = twin.calls.get(payload["callId"])
+    if call is None:  # state without a stored press (should not happen): keep what the server decided
+        call = twin.calls[payload["callId"]] = Call(
+            call_id=payload["callId"], bed=payload["bed"], kind=payload["kind"],
+            pressed_at=parse_ts(payload.get("pressedAt", payload["ts"])),
+        )
+    if call.state_ts is not None and ts < call.state_ts:
+        return "ignored:older_than_current_state"
+    call.state = payload["state"]
+    call.state_ts = ts
+    call.escalation_level = payload["escalationLevel"]
+    call.escalation_reason = payload.get("escalationReason", call.escalation_reason)
+    call.routed_to_role = payload.get("routedToRole", call.routed_to_role)
+    if payload["state"] == "acknowledged":
+        call.acknowledged_by = payload.get("acknowledgedBy")
+        call.acknowledged_at = ts
+    return "applied"
+
+
+def apply_ack(twin: WardTwin, payload: dict[str, Any]) -> str:
+    """Acks on alerts are recorded here. Acks on calls are turned into call/state by the call engine."""
+    if payload["target"] != "alert" or payload["action"] != "acknowledge":
+        return "stored_only"
+    twin.alert_acks.setdefault(payload["targetId"], AlertAck(payload["staffId"], parse_ts(payload["ts"])))
+    return "applied"
+
+
 HANDLERS: dict[str, Callable[[WardTwin, dict[str, Any]], str]] = {
     "binding": apply_binding,
     "vitals": apply_vitals,
     "device-status": apply_device_status,
     "staff-presence": apply_staff_presence,
-    # call, call-state, ack, med: stored now, handled by the call engine (P2) and meds engine (P3).
+    "call": apply_call,
+    "call-state": apply_call_state,
+    "ack": apply_ack,
+    # med: stored now, handled by the medication engine (P3).
 }
 
 

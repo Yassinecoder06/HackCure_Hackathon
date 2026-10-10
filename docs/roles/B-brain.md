@@ -55,14 +55,14 @@ Read first:
 
 ## P2: calls, escalation, latency
 
-- [ ] A call state machine as in [`mqtt-topics.md`](../../contracts/mqtt-topics.md). Only the server publishes `call/state`.
-- [ ] Routing: `assist` to nurses, `comfort` to care assistants.
-- [ ] Escalation on: unacknowledged timeout (level 1 re-alert, level 2 charge nurse), repeated press, NEWS2 ≥ 5. Timers live in `server/config/calls.yaml`.
-- [ ] Alerts follow the escalation ladder (low/medium/critical), each with a confidence and an explanation.
-- [ ] Ack and resolve endpoints, which take **one tap**. All audited.
-- [ ] **Latency metric:** end-to-end from the event `ts` to delivery on the WebSocket, published as `metrics` (p50/p95) for the board. Budget: under 1 s.
-- [ ] Escalation to the **remote on-call doctor** (level 2+) through the same alert stream. The SMS fallback hook is a stub, behind config.
-- [ ] Tests: escalation on the demo clock, repeated press, replay is a no-op, latency is measured.
+- [x] A call state machine as in [`mqtt-topics.md`](../../contracts/mqtt-topics.md). Only the server publishes `call/state`.
+- [x] Routing: `assist` to nurses, `comfort` to care assistants.
+- [x] Escalation on: unacknowledged timeout (level 1 re-alert, level 2 charge nurse), repeated press, NEWS2 ≥ 5. Timers live in `server/config/calls.yaml`.
+- [x] Alerts follow the escalation ladder (low/medium/critical), each with a confidence and an explanation.
+- [x] Ack and resolve endpoints, which take **one tap**. All audited.
+- [x] **Latency metric:** end-to-end from the event `ts` to delivery on the WebSocket, published as `metrics` (p50/p95) for the board. Budget: under 1 s.
+- [x] Escalation to the **remote on-call doctor** (level 2+) through the same alert stream (`escalatedTo` includes `doctor`). The SMS fallback hook is a stub that only logs for now.
+- [x] Tests: escalation on the demo clock, repeated press, replay is a no-op, latency is measured.
 
 ## P3: decisions and telemedicine
 
