@@ -1,0 +1,46 @@
+# Synthetic ward layout and roster. NO REAL DATA (safety invariant 7).
+# Shared by the simulator (what exists on the ward) and the server (twin layout,
+# assignment proximity, staff roster). Owner: Person A (edge/data).
+ward: W1
+name: Internal Medicine (synthetic)
+
+# Positions in metres along the corridor; the nurse station is at x=0.
+# Used for walking distances (assignment "proximity") and the 2D floor plan.
+station: { x: 0, y: 0 }
+rooms:
+  - { id: R1, x: -12, y: 4, beds: [B01, B02] }
+  - { id: R2, x: -6, y: 4, beds: [B03, B04] }
+  - { id: R3, x: 6, y: 4, beds: [B05, B06] }
+  - { id: R4, x: 12, y: 4, beds: [B07, B08] }
+  - { id: R5, x: -9, y: -4, beds: [B09, B10] }
+  - { id: R6, x: 9, y: -4, beds: [B11, B12] }
+
+# Devices per bed. `provides` lists what each machine can actually read; anything not
+# listed must come from manual fast entry (absent, not zero).
+device_profiles:
+  full_monitor: [{ type: bedside_monitor, provides: [resp_rate, spo2, sys_bp, pulse, temp_c] }]
+  monitor_no_rr: [{ type: bedside_monitor, provides: [spo2, sys_bp, pulse, temp_c] }]
+  oximeter_only: [{ type: pulse_oximeter, provides: [spo2, pulse] }]
+  none: []
+
+beds:
+  B01: full_monitor
+  B02: full_monitor
+  B03: monitor_no_rr
+  B04: full_monitor
+  B05: full_monitor
+  B06: full_monitor
+  B07: full_monitor
+  B08: monitor_no_rr
+  B09: oximeter_only
+  B10: full_monitor
+  B11: oximeter_only
+  B12: none
+
+staff:
+  - { id: CN1, name: "Charge Nurse A", role: charge_nurse, skills: [iv, senior] }
+  - { id: N1, name: "Nurse B", role: nurse, skills: [iv] }
+  - { id: N2, name: "Nurse C", role: nurse, skills: [iv, resp] }
+  - { id: N3, name: "Nurse D", role: nurse, skills: [] }
+  - { id: CA1, name: "Care Assistant E", role: care_assistant, skills: [] }
+  - { id: DR1, name: "Doctor F", role: doctor, skills: [] }

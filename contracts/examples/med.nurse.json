@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T21",
+  "ts": "2026-10-10T22:30:00Z",
+  "ward": "W1",
+  "bed": "B04",
+  "source": "staff-app",
+  "sourceType": "staff_app",
+  "admissionId": "ADM-0004",
+  "doseId": "D-0004-2200",
+  "action": "given",
+  "recordedBy": "nurse",
+  "staffId": "N1",
+  "presence": "wristband_scan"
+}

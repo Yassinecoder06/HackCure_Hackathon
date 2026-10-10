@@ -1,0 +1,39 @@
+# Secrets (invariant 7): commit .env.example, never .env
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+
+# Node
+node_modules/
+apps/*/dist/
+.vite/
+
+# Runtime data
+*.sqlite
+*.sqlite3
+*.db
+data/
+infra/mosquitto/data/
+infra/mosquitto/log/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Recordings (keep large demo videos out of git)
+*.mp4
+*.mov

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "ward": "W1",
+  "simTs": "2026-10-10T22:15:00Z",
+  "speed": 10,
+  "scenario": "night-shift-peak",
+  "running": true
+}

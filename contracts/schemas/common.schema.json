@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/common.schema.json",
+  "title": "Borj common definitions",
+  "description": "Shared building blocks. Every MQTT message (except the demo clock) starts from `envelope`.",
+  "$defs": {
+    "schemaVersion": { "const": 1 },
+    "eventId": {
+      "description": "ULID (26 chars, Crockford base32). Unique per message; replaying the same eventId must change nothing (safety invariant 6).",
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "utcTimestamp": {
+      "description": "ISO 8601 UTC timestamp, always with trailing Z.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+    },
+    "id": {
+      "description": "Ward, bed, staff, device, admission and other identifiers. Synthetic only (safety invariant 7).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+    },
+    "sourceType": {
+      "description": "Where the data originated. device = ward machine via gateway; manual = nurse fast entry; bedside_node = patient call node; staff_app = staff phone/board; server = ward server.",
+      "enum": ["device", "manual", "bedside_node", "staff_app", "server"]
+    },
+    "tsSource": {
+      "description": "Which clock produced `ts`. device_rtc is preferred; gateway/server are fallbacks when a device has no clock.",
+      "enum": ["device_rtc", "gateway", "server", "simulator"]
+    },
+    "envelope": {
+      "type": "object",
+      "required": ["schemaVersion", "eventId", "ts", "ward", "source", "sourceType"],
+      "properties": {
+        "schemaVersion": { "$ref": "#/$defs/schemaVersion" },
+        "eventId": { "$ref": "#/$defs/eventId" },
+        "ts": { "$ref": "#/$defs/utcTimestamp" },
+        "tsSource": { "$ref": "#/$defs/tsSource" },
+        "ward": { "$ref": "#/$defs/id" },
+        "source": {
+          "description": "Name of the emitting component instance, e.g. gateway-sim, gateway-pi-1, node-B04, staff-app.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "sourceType": { "$ref": "#/$defs/sourceType" }
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+name: deterioration
+description: >
+  One patient (B06) deteriorates over 90 minutes (fever, tachycardia, falling SpO2 and BP,
+  then new confusion). Everything else is quiet. Drives the NEWS2 vertical slice.
+ward_file: ../../seed/ward-W1.yaml
+start: "2026-10-10T22:00:00Z"
+duration_min: 180
+seed: 11
+on_shift: [CN1, N1, N2, N3, CA1]
+empty_beds: [B12]
+
+rates:
+  device_vitals_every_min: 5
+  manual_obs_every_min: 60
+  device_heartbeat_every_min: 15
+  calls_per_hour: 4
+  comfort_share: 0.4
+  repeat_press_prob: 0.05
+  artifact_prob: 0.0
+  background_ack:
+    prob: 1.0
+    delay_min: [1, 4]
+    resolve_after_min: [3, 8]
+
+events:
+  - at: 15
+    type: deteriorate
+    bed: B06
+    over_min: 90
+    to: { resp_rate: 25, spo2: 91, sys_bp: 98, pulse: 124, temp_c: 39.1 }
+  - at: 95
+    type: set_manual
+    bed: B06
+    values: { consciousness: C }

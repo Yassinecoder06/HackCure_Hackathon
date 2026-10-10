@@ -1,0 +1,40 @@
+name: night-shift-peak
+description: >
+  The demo storyline (whitepaper section 2). 3 am-style peak: a patient in B06 spikes a
+  fever and deteriorates, call volume rises to peak (26/h, Erlang-C example), an assist
+  call from B06 goes unacknowledged and must escalate, two emergency admissions arrive,
+  N3 is called away, a monitor drops out, and one call is delivered late after a
+  node outage. Numbers are illustrative.
+ward_file: ../../seed/ward-W1.yaml
+start: "2026-10-10T23:30:00Z"
+duration_min: 240
+seed: 42
+on_shift: [CN1, N1, N2, N3, CA1]
+empty_beds: [B11, B12]
+
+rates:
+  device_vitals_every_min: 5
+  manual_obs_every_min: 60
+  device_heartbeat_every_min: 15
+  calls_per_hour: 12
+  comfort_share: 0.4
+  repeat_press_prob: 0.1
+  artifact_prob: 0.01
+  background_ack:
+    prob: 0.9
+    delay_min: [1, 6]
+    resolve_after_min: [3, 10]
+
+events:
+  - { at: 10, type: deteriorate, bed: B06, over_min: 80,
+      to: { resp_rate: 24, spo2: 92, sys_bp: 99, pulse: 122, temp_c: 39.3 } }
+  - { at: 45, type: call_rate, calls_per_hour: 26 }
+  - { at: 60, type: admit, bed: B11, acuity: 3, patient_ref: "Patient 11" }
+  - { at: 65, type: admit, bed: B12, acuity: 3, patient_ref: "Patient 12" }
+  - { at: 70, type: call, bed: B06, kind: assist, no_ack: true }
+  - { at: 72, type: call, bed: B06, kind: assist, no_ack: true, repeat_of_previous: true }
+  - { at: 80, type: staff_leaves, staff: N3 }
+  - { at: 85, type: device_offline, bed: B07, for_min: 30 }
+  - { at: 95, type: set_manual, bed: B06, values: { consciousness: C, on_oxygen: true } }
+  - { at: 100, type: node_outage_call, bed: B02, kind: comfort, delay_min: 3 }
+  - { at: 150, type: call_rate, calls_per_hour: 12 }

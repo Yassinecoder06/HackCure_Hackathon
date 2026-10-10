@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "inviteId": "01K7ZQ8V3E4M5N6P7Q8R9S0T25",
+  "linkId": "FL-7Q2M",
+  "relativeLabel": "Daughter",
+  "allowedKinds": ["visiting_info", "meal_served", "medication_round_completed", "nurse_note", "ward_contact"],
+  "consentRecordedAt": "2026-10-10T18:00:00Z",
+  "expiresAt": "2026-10-24T18:00:00Z",
+  "codeHash": "scrypt$demo$c2FsdHNhbHQ$ZGVtb2hhc2hkZW1vaGFzaA"
+}

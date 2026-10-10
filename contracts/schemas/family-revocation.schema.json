@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/family-revocation.schema.json",
+  "title": "Family link revocation (ward -> family-gateway)",
+  "description": "Pushed outbound on consent withdrawal, discharge or transfer. family-gateway must stop serving the link immediately and delete its queued updates (safety invariant 4).",
+  "type": "object",
+  "required": ["schemaVersion", "revocationId", "linkId", "reason", "effectiveAt"],
+  "properties": {
+    "schemaVersion": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "revocationId": { "$ref": "common.schema.json#/$defs/eventId" },
+    "linkId": { "$ref": "common.schema.json#/$defs/id" },
+    "inviteId": {
+      "description": "Revoke one relative only. Omit to revoke every invite on the link.",
+      "$ref": "common.schema.json#/$defs/eventId"
+    },
+    "reason": { "enum": ["consent_withdrawn", "discharge", "transfer", "staff_revoked"] },
+    "effectiveAt": { "$ref": "common.schema.json#/$defs/utcTimestamp" }
+  },
+  "additionalProperties": false
+}

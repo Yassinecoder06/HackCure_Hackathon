@@ -1,0 +1,8 @@
+# Tooling for contract validation and tests at the repo root.
+# Components pin their own runtime deps in their own requirements.txt.
+jsonschema==4.26.0
+referencing==0.37.0
+PyYAML==6.0.3
+openapi-spec-validator==0.9.0
+pytest==9.1.1
+ruff==0.17.0

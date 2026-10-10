@@ -1,0 +1,150 @@
+openapi: 3.1.0
+info:
+  title: Borj family-gateway API
+  version: 1.0.0
+  description: |
+    The DMZ service for the Family Care Link (contract v1).
+
+    Two faces:
+    - `/ingest/v1/*` receives pushes FROM the ward (family publisher). The ward initiates every
+      connection; family-gateway never connects into the ward network (safety invariant 3).
+      Payloads must validate against the allow-list schemas in `schemas/family-*.schema.json`;
+      anything else is rejected (invariant 2).
+    - `/family/v1/*` serves relatives' phones (family app). Strong auth = QR invite + one-time
+      code, then a session token. Every view is audited and rate-limited.
+
+    This service holds no vitals, scores, drug names, doses, staff identities or locations,
+    and has no way to obtain them.
+servers:
+  - url: http://localhost:8100
+    description: Local docker compose (dmz network)
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      responses:
+        "200":
+          description: OK
+
+  /ingest/v1/invites:
+    post:
+      summary: Ward pushes a new invite (after recorded consent)
+      security: [{ publisherToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "schemas/family-invite.schema.json" }
+      responses:
+        "202": { description: Stored }
+        "401": { description: Bad publisher token }
+        "422": { description: Rejected by allow-list schema }
+
+  /ingest/v1/updates:
+    post:
+      summary: Ward pushes a nurse-approved update
+      description: Rejected with 409 if the link has no active invite (consent first, invariant 4).
+      security: [{ publisherToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "schemas/family-update.schema.json" }
+      responses:
+        "202": { description: Stored }
+        "401": { description: Bad publisher token }
+        "409": { description: No active invite for this link }
+        "422": { description: Rejected by allow-list schema }
+
+  /ingest/v1/revocations:
+    post:
+      summary: Ward revokes a link or one invite (consent withdrawn, discharge, transfer)
+      description: Effective immediately; sessions for the link are killed and stored updates deleted.
+      security: [{ publisherToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "schemas/family-revocation.schema.json" }
+      responses:
+        "202": { description: Applied }
+        "401": { description: Bad publisher token }
+        "422": { description: Rejected by schema }
+
+  /family/v1/redeem:
+    post:
+      summary: Relative redeems an invite (QR + one-time code)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inviteId, code]
+              additionalProperties: false
+              properties:
+                inviteId: { type: string }
+                code: { type: string, minLength: 4, maxLength: 12 }
+      responses:
+        "200":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessionToken, expiresAt]
+                properties:
+                  sessionToken: { type: string }
+                  expiresAt: { type: string, format: date-time }
+        "401": { description: "Wrong code, revoked or expired invite" }
+        "429": { description: Rate limited }
+
+  /family/v1/feed:
+    get:
+      summary: The relative's view
+      security: [{ familySession: [] }]
+      responses:
+        "200":
+          description: Approved updates for this link, filtered to the kinds this relative may see
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyFeed" }
+        "401": { description: "No session, revoked or expired" }
+        "429": { description: Rate limited }
+
+components:
+  securitySchemes:
+    publisherToken:
+      type: http
+      scheme: bearer
+      description: Shared secret held by the ward family publisher (env var). mTLS in production.
+    familySession:
+      type: http
+      scheme: bearer
+  schemas:
+    FamilyFeed:
+      type: object
+      required: [notice, wardContact, allowedKinds, updates]
+      additionalProperties: false
+      properties:
+        notice:
+          type: string
+          description: Always shown. "This is not an emergency channel. In an emergency call the ward on ..."
+        wardContact:
+          type: string
+          description: Ward phone number (synthetic in the demo)
+        allowedKinds:
+          type: array
+          items: { enum: [visiting_info, meal_served, medication_round_completed, nurse_note, ward_contact] }
+        updates:
+          type: array
+          items:
+            type: object
+            required: [kind, publishedAt]
+            additionalProperties: false
+            properties:
+              kind: { enum: [visiting_info, meal_served, medication_round_completed, nurse_note, ward_contact] }
+              text: { type: string, maxLength: 280 }
+              publishedAt: { type: string, format: date-time }

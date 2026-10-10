@@ -1,0 +1,986 @@
+openapi: 3.1.0
+info:
+  title: Borj ward server API
+  version: 1.0.0
+  description: |
+    REST + WebSocket API of the ward server (contract v1). Used by the ward app
+    (station board + staff view). The family app NEVER calls this API: it talks only to
+    family-gateway (see family-gateway.openapi.yaml), which the ward pushes to outbound.
+
+    Rules that apply everywhere:
+    - Advisory only. Endpoints that change care (assignment decisions, administrations)
+      require a human staff id and are written to the audit log (safety invariant 1).
+    - Missing or stale data is returned as missing/stale, never as a normal value (invariant 5).
+    - Auth is a DEMO STUB: the `X-Staff-Id` header names a seeded synthetic staff member.
+      Real deployment needs hospital SSO (out of scope).
+servers:
+  - url: http://localhost:8000
+    description: Local docker compose
+security:
+  - staffHeader: []
+tags:
+  - name: ward
+  - name: vitals
+  - name: calls
+  - name: assignment
+  - name: whatif
+  - name: meds
+  - name: family
+  - name: audit
+
+paths:
+  /health:
+    get:
+      tags: [ward]
+      security: []
+      summary: Liveness probe
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { const: ok }
+
+  /api/v1/wards/{ward}/snapshot:
+    get:
+      tags: [ward]
+      summary: Full ward state (twin snapshot)
+      parameters: [{ $ref: "#/components/parameters/ward" }]
+      responses:
+        "200":
+          description: Current ward state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WardSnapshot" }
+
+  /api/v1/wards/{ward}/stream:
+    get:
+      tags: [ward]
+      summary: Live updates (WebSocket)
+      description: |
+        Upgrade to WebSocket. The server first sends one `snapshot` message, then incremental
+        messages. Every message is a `StreamMessage`. Clients re-request the snapshot after
+        a reconnect. Staff alerts arrive here; the staff view plays sound/vibration while open
+        (Web Push is a stretch goal, see ADR 0005).
+      parameters: [{ $ref: "#/components/parameters/ward" }]
+      responses:
+        "101":
+          description: Switching protocols. Messages follow the StreamMessage schema.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StreamMessage" }
+
+  /api/v1/wards/{ward}/beds/{bed}/observations:
+    post:
+      tags: [vitals]
+      summary: Manual fast entry of observations
+      description: |
+        The 10-second form. Typically consciousness (ACVPU) and on_oxygen, sometimes
+        resp_rate. Only fields the nurse actually entered are sent (absent, not zero). The
+        server publishes a `vitals` event with sourceType=manual.
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/bed" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ManualObservation" }
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Accepted" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /api/v1/wards/{ward}/beds/{bed}/binding:
+    post:
+      tags: [ward]
+      summary: Admit, discharge, transfer or attach/detach a device (wristband scan)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/bed" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BindingRequest" }
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Accepted" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /api/v1/wards/{ward}/staff/{staffId}/presence:
+    post:
+      tags: [ward]
+      summary: Staff member arrives, leaves, is called away or takes a break
+      description: Availability only, not location tracking. Publishes a staff-presence event and may trigger an assignment suggestion.
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - name: staffId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [onWard, reason]
+              additionalProperties: false
+              properties:
+                onWard: { type: boolean }
+                reason: { enum: [shift_start, shift_end, called_away, returned, break_start, break_end] }
+                expectedBackMin: { type: integer, minimum: 0, maximum: 720 }
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Accepted" }
+
+  /api/v1/wards/{ward}/calls/{callId}/ack:
+    post:
+      tags: [calls]
+      summary: Acknowledge a call (someone is coming)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/callId" }
+      responses:
+        "200":
+          description: New call state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Call" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/wards/{ward}/calls/{callId}/resolve:
+    post:
+      tags: [calls]
+      summary: Resolve a call at the bedside
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/callId" }
+      responses:
+        "200":
+          description: New call state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Call" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/wards/{ward}/alerts/{alertId}/ack:
+    post:
+      tags: [calls]
+      summary: Acknowledge an alert (required for critical alerts)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/alertId" }
+      responses:
+        "200":
+          description: Updated alert
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Alert" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/wards/{ward}/assignments/suggestions:
+    get:
+      tags: [assignment]
+      summary: List assignment suggestions
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - name: status
+          in: query
+          schema: { enum: [pending, approved, rejected, expired] }
+      responses:
+        "200":
+          description: Suggestions, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AssignmentSuggestion" }
+    post:
+      tags: [assignment]
+      summary: Ask the optimiser for a suggestion now
+      description: Never applies anything. Returns a pending suggestion for a human to decide.
+      parameters: [{ $ref: "#/components/parameters/ward" }]
+      responses:
+        "201":
+          description: New pending suggestion
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssignmentSuggestion" }
+
+  /api/v1/wards/{ward}/assignments/suggestions/{suggestionId}/decision:
+    post:
+      tags: [assignment]
+      summary: Approve or reject a suggestion (charge nurse)
+      description: The only path that changes assignments. Logged with the staff id (invariant 1).
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - name: suggestionId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Decision" }
+      responses:
+        "200":
+          description: Decided suggestion
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssignmentSuggestion" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/wards/{ward}/whatif/runs:
+    post:
+      tags: [whatif]
+      summary: Run a what-if simulation on a clone of the current ward
+      description: |
+        Clones the twin, applies the disruptions and simulates forward with SimPy. Baseline and
+        scenario run on the SAME seeds; each metric is reported as median and 5th-95th
+        percentile. Never touches live state.
+      parameters: [{ $ref: "#/components/parameters/ward" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WhatIfRequest" }
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WhatIfResult" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /api/v1/wards/{ward}/prescriptions:
+    post:
+      tags: [meds]
+      summary: Doctor enters a prescription
+      description: The system schedules and reminds from this entry. It never chooses drugs or doses.
+      parameters: [{ $ref: "#/components/parameters/ward" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrescriptionRequest" }
+      responses:
+        "201":
+          description: Created, with generated doses
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Prescription" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /api/v1/wards/{ward}/meds/timeline:
+    get:
+      tags: [meds]
+      summary: Medication timeline (staff only)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - name: hours
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 48, default: 8 }
+      responses:
+        "200":
+          description: Doses and clashes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MedTimeline" }
+
+  /api/v1/wards/{ward}/doses/{doseId}/administration:
+    post:
+      tags: [meds]
+      summary: Nurse records given / not given (the administration record)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - name: doseId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Administration" }
+      responses:
+        "200":
+          description: Updated dose
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dose" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /api/v1/wards/{ward}/admissions/{admissionId}/family/consents:
+    post:
+      tags: [family]
+      summary: Record patient (or legal representative) consent for one relative
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/admissionId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConsentRequest" }
+      responses:
+        "201":
+          description: Consent recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Consent" }
+
+  /api/v1/wards/{ward}/admissions/{admissionId}/family/consents/{consentId}/revoke:
+    post:
+      tags: [family]
+      summary: Withdraw consent (takes effect immediately)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/admissionId" }
+        - name: consentId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+      responses:
+        "200":
+          description: Revoked; a family-revocation is pushed outbound
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Consent" }
+
+  /api/v1/wards/{ward}/admissions/{admissionId}/family/invites:
+    post:
+      tags: [family]
+      summary: Create an invite for a consented relative
+      description: Fails with 409 if no active consent exists (invariant 4). The one-time code is returned once and never stored in clear.
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/admissionId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consentId]
+              properties:
+                consentId: { $ref: "#/components/schemas/Id" }
+              additionalProperties: false
+      responses:
+        "201":
+          description: Invite created and pushed to family-gateway
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InviteCreated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/wards/{ward}/admissions/{admissionId}/family/updates:
+    post:
+      tags: [family]
+      summary: Draft a family update (pending nurse approval)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/admissionId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FamilyUpdateDraft" }
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyUpdate" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /api/v1/wards/{ward}/family/updates:
+    get:
+      tags: [family]
+      summary: List family updates (e.g. pending approval)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - name: status
+          in: query
+          schema: { enum: [pending_approval, published, rejected] }
+      responses:
+        "200":
+          description: Updates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FamilyUpdate" }
+
+  /api/v1/wards/{ward}/family/updates/{updateId}/decision:
+    post:
+      tags: [family]
+      summary: Nurse approves or rejects a family update
+      description: On approve, the privacy filter runs and the update is pushed outbound to family-gateway.
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - name: updateId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Decision" }
+      responses:
+        "200":
+          description: Decided update
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyUpdate" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/wards/{ward}/audit:
+    get:
+      tags: [audit]
+      summary: Audit log (every suggestion and every human decision)
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+      responses:
+        "200":
+          description: Entries, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuditEntry" }
+
+components:
+  securitySchemes:
+    staffHeader:
+      type: apiKey
+      in: header
+      name: X-Staff-Id
+      description: DEMO ONLY. Synthetic staff id from the seed data. No real authentication.
+
+  parameters:
+    ward:
+      name: ward
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    bed:
+      name: bed
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    callId:
+      name: callId
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    alertId:
+      name: alertId
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    admissionId:
+      name: admissionId
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+
+  responses:
+    Invalid:
+      description: Validation failed
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Invalid state transition or missing precondition (e.g. no consent)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Role not allowed (e.g. only a charge nurse decides assignments)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Id:
+      type: string
+      pattern: "^[A-Za-z0-9_-]{1,40}$"
+    Timestamp:
+      type: string
+      format: date-time
+      description: UTC with trailing Z
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        detail: { type: string }
+    Accepted:
+      type: object
+      required: [eventId]
+      properties:
+        eventId: { type: string }
+
+    WardSnapshot:
+      type: object
+      required: [ward, asOf, clockMode, beds, staff, calls, alerts]
+      properties:
+        ward: { $ref: "#/components/schemas/Id" }
+        asOf: { $ref: "#/components/schemas/Timestamp" }
+        clockMode:
+          enum: [wall, sim]
+          description: "sim = demo clock from the simulator is used as 'now'"
+        beds:
+          type: array
+          items: { $ref: "#/components/schemas/Bed" }
+        staff:
+          type: array
+          items: { $ref: "#/components/schemas/Staff" }
+        calls:
+          type: array
+          description: Open calls (not resolved)
+          items: { $ref: "#/components/schemas/Call" }
+        alerts:
+          type: array
+          description: Open alerts
+          items: { $ref: "#/components/schemas/Alert" }
+
+    Bed:
+      type: object
+      required: [bed, room, vitals, devices]
+      properties:
+        bed: { $ref: "#/components/schemas/Id" }
+        room: { type: string }
+        admission:
+          oneOf:
+            - { $ref: "#/components/schemas/Admission" }
+            - { type: "null" }
+        news2:
+          oneOf:
+            - { $ref: "#/components/schemas/News2Result" }
+            - { type: "null" }
+        vitals:
+          type: object
+          description: Latest reading per parameter. A parameter never received is absent.
+          additionalProperties: { $ref: "#/components/schemas/ParamReading" }
+        devices:
+          type: array
+          items: { $ref: "#/components/schemas/DeviceState" }
+        assignedNurse: { $ref: "#/components/schemas/Id" }
+
+    Admission:
+      type: object
+      required: [admissionId, patientRef, acuity, admittedAt]
+      properties:
+        admissionId: { $ref: "#/components/schemas/Id" }
+        patientRef: { type: string, description: "Synthetic label, e.g. Patient 04" }
+        acuity: { type: integer, minimum: 1, maximum: 4 }
+        admittedAt: { $ref: "#/components/schemas/Timestamp" }
+
+    ParamReading:
+      type: object
+      required: [value, ts, ageS, status, sourceType]
+      properties:
+        value: { description: "number, boolean or ACVPU letter" }
+        ts: { $ref: "#/components/schemas/Timestamp" }
+        ageS: { type: integer, minimum: 0 }
+        status:
+          enum: [fresh, stale, invalid]
+          description: stale and invalid readings are shown as such and excluded from NEWS2
+        sourceType: { enum: [device, manual] }
+
+    News2Result:
+      type: object
+      description: |
+        Deterministic NEWS2. Thresholds come from config (to be confirmed by a clinician).
+        If any parameter is missing/stale/invalid the score is PARTIAL and labelled as such.
+      required: [total, complete, band, anySingleParam3, components, missing, stale, label, computedAt]
+      properties:
+        total: { type: integer, minimum: 0, description: "Sum over fresh, valid parameters only" }
+        complete: { type: boolean }
+        band: { enum: [low, low_medium, medium, high] }
+        anySingleParam3: { type: boolean, description: "A single parameter scored 3 (urgent ward-based review)" }
+        response: { type: string, description: "Expected response text from config" }
+        components:
+          type: array
+          items:
+            type: object
+            required: [param, status]
+            properties:
+              param: { enum: [resp_rate, spo2, on_oxygen, sys_bp, pulse, consciousness, temp_c] }
+              value: {}
+              points: { type: integer, minimum: 0, maximum: 3 }
+              status: { enum: [fresh, stale, missing, invalid] }
+        missing:
+          type: array
+          items: { type: string }
+        stale:
+          type: array
+          items: { type: string }
+        label: { type: string, description: "e.g. 'Partial score: consciousness missing'" }
+        spo2Scale: { enum: [1, 2] }
+        computedAt: { $ref: "#/components/schemas/Timestamp" }
+
+    DeviceState:
+      type: object
+      required: [deviceId, deviceType, status, lastSeen]
+      properties:
+        deviceId: { $ref: "#/components/schemas/Id" }
+        deviceType: { type: string }
+        status: { enum: [ok, offline, error, low_battery] }
+        lastSeen: { $ref: "#/components/schemas/Timestamp" }
+
+    Staff:
+      type: object
+      required: [staffId, displayName, role, onShift, assignedBeds]
+      properties:
+        staffId: { $ref: "#/components/schemas/Id" }
+        displayName: { type: string, description: Synthetic }
+        role: { enum: [nurse, charge_nurse, care_assistant, doctor, biomed_tech] }
+        skills:
+          type: array
+          items: { type: string }
+        onShift: { type: boolean }
+        onWard: { type: boolean, description: "False when called away or on break" }
+        assignedBeds:
+          type: array
+          items: { $ref: "#/components/schemas/Id" }
+        load: { type: number, description: Acuity-weighted workload }
+
+    Call:
+      type: object
+      required: [callId, bed, kind, state, escalationLevel, routedToRole, pressedAt]
+      properties:
+        callId: { $ref: "#/components/schemas/Id" }
+        bed: { $ref: "#/components/schemas/Id" }
+        kind: { enum: [assist, comfort] }
+        state: { enum: [pressed, sent, not_sent, acknowledged, escalated, resolved] }
+        escalationLevel: { type: integer, minimum: 0, maximum: 2 }
+        escalationReason: { enum: [unacknowledged_timeout, repeat_press, high_news2] }
+        routedToRole: { enum: [nurse, care_assistant, charge_nurse] }
+        pressCount: { type: integer, minimum: 1 }
+        deliveredLate: { type: boolean }
+        pressedAt: { $ref: "#/components/schemas/Timestamp" }
+        acknowledgedBy: { $ref: "#/components/schemas/Id" }
+        acknowledgedAt: { $ref: "#/components/schemas/Timestamp" }
+
+    Alert:
+      type: object
+      required: [alertId, type, priority, createdAt, explanation]
+      properties:
+        alertId: { $ref: "#/components/schemas/Id" }
+        bed: { $ref: "#/components/schemas/Id" }
+        type: { enum: [news2_rise, news2_high, stale_data, device_offline, call_escalated, dose_overdue, assignment_suggested] }
+        priority:
+          enum: [low, medium, critical]
+          description: "Escalation ladder: low = silent badge, medium = normal notification, critical = persistent alarm until acknowledged"
+        createdAt: { $ref: "#/components/schemas/Timestamp" }
+        explanation:
+          type: array
+          description: Template sentences built from the rule trace (no clinical authority)
+          items: { type: string }
+        acknowledgedBy: { $ref: "#/components/schemas/Id" }
+
+    StreamMessage:
+      type: object
+      required: [type, data]
+      properties:
+        type: { enum: [snapshot, bed, call, alert, staff, assignment_suggestion, clock] }
+        data:
+          type: object
+          description: "WardSnapshot for snapshot, Bed for bed, Call for call, Alert for alert, Staff for staff, AssignmentSuggestion for assignment_suggestion, {simTs, speed, running} for clock"
+
+    ManualObservation:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        resp_rate: { type: integer, minimum: 0, maximum: 100 }
+        spo2: { type: integer, minimum: 0, maximum: 100 }
+        on_oxygen: { type: boolean }
+        sys_bp: { type: integer, minimum: 0, maximum: 300 }
+        pulse: { type: integer, minimum: 0, maximum: 300 }
+        consciousness: { enum: [A, C, V, P, U] }
+        temp_c: { type: number, minimum: 20, maximum: 45 }
+
+    BindingRequest:
+      type: object
+      required: [action, admissionId, method]
+      additionalProperties: false
+      properties:
+        action: { enum: [admit, discharge, transfer_in, transfer_out, attach_device, detach_device] }
+        admissionId: { $ref: "#/components/schemas/Id" }
+        patientRef: { type: string, maxLength: 40 }
+        acuity: { type: integer, minimum: 1, maximum: 4 }
+        deviceId: { $ref: "#/components/schemas/Id" }
+        method: { enum: [wristband_scan, manual] }
+
+    AssignmentSuggestion:
+      type: object
+      required: [suggestionId, createdAt, trigger, status, changes, reasons]
+      properties:
+        suggestionId: { $ref: "#/components/schemas/Id" }
+        createdAt: { $ref: "#/components/schemas/Timestamp" }
+        trigger: { type: string, description: "What changed, e.g. 'N2 left the ward', 'NEWS2 rise in B06'" }
+        status: { enum: [pending, approved, rejected, expired] }
+        changes:
+          type: array
+          items:
+            type: object
+            required: [bed, toStaffId]
+            properties:
+              bed: { $ref: "#/components/schemas/Id" }
+              fromStaffId: { $ref: "#/components/schemas/Id" }
+              toStaffId: { $ref: "#/components/schemas/Id" }
+        reasons:
+          type: array
+          items: { type: string }
+        loadBefore:
+          type: object
+          additionalProperties: { type: number }
+        loadAfter:
+          type: object
+          additionalProperties: { type: number }
+        decidedBy: { $ref: "#/components/schemas/Id" }
+        decidedAt: { $ref: "#/components/schemas/Timestamp" }
+        decisionReason: { type: string }
+
+    Decision:
+      type: object
+      required: [decision]
+      additionalProperties: false
+      properties:
+        decision: { enum: [approve, reject] }
+        reason: { type: string, maxLength: 200 }
+
+    WhatIfRequest:
+      type: object
+      required: [disruptions]
+      additionalProperties: false
+      properties:
+        horizonMin: { type: integer, minimum: 30, maximum: 720, default: 240 }
+        seeds: { type: integer, minimum: 10, maximum: 2000, default: 200 }
+        applySuggestion:
+          description: Also simulate the scenario with this pending assignment suggestion applied
+          $ref: "#/components/schemas/Id"
+        disruptions:
+          type: array
+          items:
+            type: object
+            required: [type, atMin]
+            properties:
+              type: { enum: [staff_leaves, staff_joins, admissions, call_surge, route_comfort_to_assistants, patient_deteriorates] }
+              atMin: { type: integer, minimum: 0, description: Minutes from now }
+              staffId: { $ref: "#/components/schemas/Id" }
+              role: { enum: [nurse, care_assistant] }
+              count: { type: integer, minimum: 1 }
+              bed: { $ref: "#/components/schemas/Id" }
+              callsPerHour: { type: number, minimum: 0 }
+
+    WhatIfResult:
+      type: object
+      required: [runId, seeds, horizonMin, baseline, scenario, assumptions]
+      properties:
+        runId: { $ref: "#/components/schemas/Id" }
+        seeds: { type: integer }
+        horizonMin: { type: integer }
+        baseline: { $ref: "#/components/schemas/MetricSet" }
+        scenario: { $ref: "#/components/schemas/MetricSet" }
+        withSuggestion: { $ref: "#/components/schemas/MetricSet" }
+        assumptions:
+          type: array
+          description: Illustrative parameters used (shown on screen for honesty)
+          items: { type: string }
+
+    MetricSet:
+      type: object
+      required: [wait_for_nurse_min, longest_wait_min, queue_length, nurse_utilization, overdue_meds, patients_without_obs]
+      properties:
+        wait_for_nurse_min: { $ref: "#/components/schemas/Dist" }
+        longest_wait_min: { $ref: "#/components/schemas/Dist" }
+        queue_length: { $ref: "#/components/schemas/Dist" }
+        nurse_utilization: { $ref: "#/components/schemas/Dist" }
+        overdue_meds: { $ref: "#/components/schemas/Dist" }
+        patients_without_obs: { $ref: "#/components/schemas/Dist" }
+
+    Dist:
+      type: object
+      required: [median, p5, p95]
+      properties:
+        median: { type: number }
+        p5: { type: number }
+        p95: { type: number }
+
+    PrescriptionRequest:
+      type: object
+      required: [admissionId, drug, dose, route, times, startDate]
+      additionalProperties: false
+      properties:
+        admissionId: { $ref: "#/components/schemas/Id" }
+        drug: { type: string, maxLength: 80, description: "Entered by the doctor. Staff-only, never leaves the ward." }
+        dose: { type: string, maxLength: 40 }
+        route: { enum: [oral, iv, im, sc, inhaled, topical, other] }
+        times:
+          type: array
+          minItems: 1
+          items: { type: string, pattern: "^\\d{2}:\\d{2}$" }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        isInfusion: { type: boolean, default: false }
+
+    Prescription:
+      allOf:
+        - { $ref: "#/components/schemas/PrescriptionRequest" }
+        - type: object
+          required: [prescriptionId, prescribedBy, doses]
+          properties:
+            prescriptionId: { $ref: "#/components/schemas/Id" }
+            prescribedBy: { $ref: "#/components/schemas/Id" }
+            doses:
+              type: array
+              items: { $ref: "#/components/schemas/Dose" }
+
+    Dose:
+      type: object
+      required: [doseId, admissionId, bed, due, status, label]
+      properties:
+        doseId: { $ref: "#/components/schemas/Id" }
+        admissionId: { $ref: "#/components/schemas/Id" }
+        bed: { $ref: "#/components/schemas/Id" }
+        due: { $ref: "#/components/schemas/Timestamp" }
+        status: { enum: [due, overdue, given, not_given] }
+        label: { type: string, description: "Drug and dose, staff only" }
+        patientReportedAt:
+          $ref: "#/components/schemas/Timestamp"
+          description: Shown separately; never changes status
+        administeredBy: { $ref: "#/components/schemas/Id" }
+        administeredAt: { $ref: "#/components/schemas/Timestamp" }
+
+    MedTimeline:
+      type: object
+      required: [doses, clashes]
+      properties:
+        doses:
+          type: array
+          items: { $ref: "#/components/schemas/Dose" }
+        clashes:
+          type: array
+          items:
+            type: object
+            required: [at, doseIds, reason]
+            properties:
+              at: { $ref: "#/components/schemas/Timestamp" }
+              doseIds:
+                type: array
+                items: { $ref: "#/components/schemas/Id" }
+              reason: { type: string }
+
+    Administration:
+      type: object
+      required: [action, presence]
+      additionalProperties: false
+      properties:
+        action: { enum: [given, not_given] }
+        presence: { enum: [badge_tap, wristband_scan, none] }
+        reason: { type: string, maxLength: 200 }
+
+    FamilyKind:
+      enum: [visiting_info, meal_served, medication_round_completed, nurse_note, ward_contact]
+
+    ConsentRequest:
+      type: object
+      required: [relativeLabel, allowedKinds, givenBy]
+      additionalProperties: false
+      properties:
+        relativeLabel: { type: string, maxLength: 40 }
+        allowedKinds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/FamilyKind" }
+        givenBy: { enum: [patient, legal_representative] }
+
+    Consent:
+      allOf:
+        - { $ref: "#/components/schemas/ConsentRequest" }
+        - type: object
+          required: [consentId, admissionId, recordedAt, recordedBy, active]
+          properties:
+            consentId: { $ref: "#/components/schemas/Id" }
+            admissionId: { $ref: "#/components/schemas/Id" }
+            recordedAt: { $ref: "#/components/schemas/Timestamp" }
+            recordedBy: { $ref: "#/components/schemas/Id" }
+            active: { type: boolean }
+            revokedAt: { $ref: "#/components/schemas/Timestamp" }
+
+    InviteCreated:
+      type: object
+      required: [inviteId, linkId, qrUrl, oneTimeCode, expiresAt]
+      properties:
+        inviteId: { type: string }
+        linkId: { $ref: "#/components/schemas/Id" }
+        qrUrl: { type: string, description: "URL encoded in the QR, points at family-gateway" }
+        oneTimeCode: { type: string, description: "Shown once to the nurse to hand over; not stored in clear" }
+        expiresAt: { $ref: "#/components/schemas/Timestamp" }
+
+    FamilyUpdateDraft:
+      type: object
+      required: [kind]
+      additionalProperties: false
+      properties:
+        kind: { $ref: "#/components/schemas/FamilyKind" }
+        text: { type: string, maxLength: 280 }
+
+    FamilyUpdate:
+      type: object
+      required: [updateId, admissionId, kind, status, createdAt]
+      properties:
+        updateId: { type: string }
+        admissionId: { $ref: "#/components/schemas/Id" }
+        kind: { $ref: "#/components/schemas/FamilyKind" }
+        text: { type: string }
+        status: { enum: [pending_approval, published, rejected] }
+        createdAt: { $ref: "#/components/schemas/Timestamp" }
+        decidedAt: { $ref: "#/components/schemas/Timestamp" }
+
+    AuditEntry:
+      type: object
+      required: [auditId, ts, actor, action, target]
+      properties:
+        auditId: { type: string }
+        ts: { $ref: "#/components/schemas/Timestamp" }
+        actor: { type: string, description: "staffId, or 'system' for suggestions" }
+        action: { type: string, description: "e.g. suggestion.created, suggestion.approved, call.acknowledged, dose.given" }
+        target: { type: string }
+        detail: { type: object }

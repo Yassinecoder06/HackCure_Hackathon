@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T22",
+  "ts": "2026-10-10T22:41:00Z",
+  "ward": "W1",
+  "bed": "B09",
+  "source": "node-B09",
+  "sourceType": "bedside_node",
+  "admissionId": "ADM-0009",
+  "doseId": "D-0009-2200",
+  "action": "patient_reported_taken",
+  "recordedBy": "patient_reported"
+}

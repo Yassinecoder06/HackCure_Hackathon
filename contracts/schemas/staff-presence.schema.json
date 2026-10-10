@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/staff-presence.schema.json",
+  "title": "Staff presence",
+  "description": "Topic borj/{ward}/staff/{staffId}/presence. Whether a staff member is available on the ward (shift start/end, called away, break). Input to the twin, assignment and what-if. NOT location tracking, never used to rank staff, never sent to family components.",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "required": ["staffId", "onWard", "reason"],
+  "properties": {
+    "sourceType": { "enum": ["staff_app", "server"] },
+    "staffId": { "$ref": "common.schema.json#/$defs/id" },
+    "onWard": { "type": "boolean" },
+    "reason": { "enum": ["shift_start", "shift_end", "called_away", "returned", "break_start", "break_end"] },
+    "expectedBackMin": { "type": "integer", "minimum": 0, "maximum": 720 }
+  },
+  "unevaluatedProperties": false
+}

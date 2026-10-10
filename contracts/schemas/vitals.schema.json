@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/vitals.schema.json",
+  "title": "Vitals observation",
+  "description": "Topic borj/{ward}/{bed}/vitals. One observation set from one source at one time. Any parameter the source does not provide is ABSENT, never zero or null (safety invariant 5). Ranges below are physical sanity bounds only; clinical plausibility is flagged by the gateway in `quality.flags`.",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "required": ["bed", "params", "quality"],
+  "properties": {
+    "bed": { "$ref": "common.schema.json#/$defs/id" },
+    "sourceType": { "enum": ["device", "manual"] },
+    "deviceId": {
+      "description": "Required when sourceType is device.",
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "staffId": {
+      "description": "Required when sourceType is manual (who entered it).",
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "params": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "resp_rate": { "description": "breaths/min", "type": "integer", "minimum": 0, "maximum": 100 },
+        "spo2": { "description": "%", "type": "integer", "minimum": 0, "maximum": 100 },
+        "spo2_scale": {
+          "description": "NEWS2 SpO2 scale. 2 only on a clinician's decision; default 1.",
+          "enum": [1, 2]
+        },
+        "on_oxygen": { "description": "Supplemental oxygen. Almost always manual entry.", "type": "boolean" },
+        "sys_bp": { "description": "Systolic BP, mmHg", "type": "integer", "minimum": 0, "maximum": 300 },
+        "pulse": { "description": "beats/min", "type": "integer", "minimum": 0, "maximum": 300 },
+        "consciousness": {
+          "description": "ACVPU. Almost always manual entry.",
+          "enum": ["A", "C", "V", "P", "U"]
+        },
+        "temp_c": { "description": "Temperature, degrees C", "type": "number", "minimum": 20, "maximum": 45 }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["valid", "stale_after_s"],
+      "additionalProperties": false,
+      "properties": {
+        "valid": { "description": "False if any flag makes the observation unusable for scoring.", "type": "boolean" },
+        "stale_after_s": {
+          "description": "Seconds after `ts` when these values must be shown as stale and excluded from NEWS2.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "flags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["sensor_off", "artifact", "implausible", "late_delivery"] }
+        }
+      }
+    }
+  },
+  "if": { "properties": { "sourceType": { "const": "manual" } } },
+  "then": { "required": ["staffId"] },
+  "else": { "required": ["deviceId"] },
+  "unevaluatedProperties": false
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T1V",
+  "ts": "2026-10-10T22:03:21Z",
+  "tsSource": "device_rtc",
+  "ward": "W1",
+  "bed": "B04",
+  "source": "gateway-sim",
+  "sourceType": "device",
+  "deviceId": "MON-B04",
+  "params": {
+    "resp_rate": 22,
+    "spo2": 93,
+    "sys_bp": 104,
+    "pulse": 112,
+    "temp_c": 38.4
+  },
+  "quality": { "valid": true, "stale_after_s": 900 }
+}

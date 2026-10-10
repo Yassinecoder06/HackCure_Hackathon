@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/call-state.schema.json",
+  "title": "Call state",
+  "description": "Topic borj/{ward}/{bed}/call/state (retained). Published ONLY by the server; bedside nodes drive their LED/buzzer from it, and the board and staff app show the same states. See contracts/mqtt-topics.md for the state machine.",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "required": ["bed", "callId", "kind", "state", "escalationLevel"],
+  "properties": {
+    "bed": { "$ref": "common.schema.json#/$defs/id" },
+    "sourceType": { "const": "server" },
+    "callId": { "$ref": "common.schema.json#/$defs/id" },
+    "kind": { "enum": ["assist", "comfort"] },
+    "state": { "enum": ["pressed", "sent", "not_sent", "acknowledged", "escalated", "resolved"] },
+    "escalationLevel": {
+      "description": "0 = routed normally, 1 = re-alerted, 2 = charge nurse.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "escalationReason": { "enum": ["unacknowledged_timeout", "repeat_press", "high_news2"] },
+    "routedToRole": { "enum": ["nurse", "care_assistant", "charge_nurse"] },
+    "acknowledgedBy": {
+      "description": "Staff id. Shown on staff devices only, never sent to family components (safety invariant 2).",
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "pressedAt": { "$ref": "common.schema.json#/$defs/utcTimestamp" }
+  },
+  "unevaluatedProperties": false
+}

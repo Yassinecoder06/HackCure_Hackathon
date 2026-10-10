@@ -1,0 +1,53 @@
+# Borj-PiCare demo stack. Owner: A.
+# Today: Mosquitto only. Each role adds its service in its P0/P1 task (commented below).
+#
+# Networks enforce safety invariant 3 (outbound-only family link):
+#   ward : broker, server, simulator, gateway, ward app
+#   dmz  : family-gateway (+ family app). Only the family publisher joins both, and it
+#          exposes NO listening port, so nothing on dmz can open a connection into ward.
+
+name: borj
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks: [ward]
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-W", "3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # simulator:        # A, P0
+  #   build: { context: .., dockerfile: simulator/Dockerfile }
+  #   env_file: ../.env
+  #   depends_on: { mosquitto: { condition: service_healthy } }
+  #   networks: [ward]
+
+  # gateway:          # A, P1
+  #   networks: [ward]
+
+  # server:           # B, P0  (REST + WebSocket on 8000)
+  #   ports: ["8000:8000"]
+  #   volumes: ["server-data:/data"]
+  #   networks: [ward]
+
+  # family-publisher: # B, P4  (outbound only: no ports, no listening socket)
+  #   networks: [ward, dmz]
+
+  # ward-app:         # C, P0  (/board and /staff on 5173)
+  #   networks: [ward]
+
+  # family-gateway:   # A, P4  (serves apps/family on 8100)
+  #   networks: [dmz]
+
+networks:
+  ward: {}
+  dmz: {}
+
+# volumes:
+#   server-data: {}

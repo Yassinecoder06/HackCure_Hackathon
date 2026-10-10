@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T1X",
+  "ts": "2026-10-10T22:10:00Z",
+  "ward": "W1",
+  "bed": "B07",
+  "source": "gateway-sim",
+  "sourceType": "device",
+  "deviceId": "MON-B07",
+  "deviceType": "bedside_monitor",
+  "status": "offline",
+  "detail": "no data for 120 s"
+}
