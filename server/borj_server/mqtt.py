@@ -10,13 +10,16 @@ import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 
 from .ingest import Ingestor
+from .integrity import IntegrityGate
 
 log = logging.getLogger(__name__)
 
 
 class MqttListener:
-    def __init__(self, ingestor: Ingestor, host: str, port: int, client_id: str = "borj-server") -> None:
+    def __init__(self, ingestor: Ingestor, host: str, port: int, client_id: str = "borj-server",
+                 gate: IntegrityGate | None = None) -> None:
         self.ingestor = ingestor
+        self.gate = gate or IntegrityGate({}, "off")
         self.host = host
         self.port = port
         self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id)
@@ -52,7 +55,7 @@ class MqttListener:
     def _on_message(self, _client, _userdata, message: mqtt.MQTTMessage) -> None:
         # Our own call/state publications (P2) are stored like any other event; dedupe makes it safe.
         try:
-            result = self.ingestor.handle_raw(message.topic, message.payload)
+            result = self.gate.handle_raw(self.ingestor, message.topic, message.payload)
         except Exception:
             # Never let one failing message (e.g. a database error) kill the MQTT thread: log and go on.
             log.exception("ingest failed for message on %s", message.topic)

@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class IngestResult:
-    status: str  # accepted | duplicate | invalid | clock | other_ward
+    status: str  # accepted | duplicate | invalid | clock | other_ward | integrity (rejected at the MQTT boundary)
     detail: str = ""
 
 
