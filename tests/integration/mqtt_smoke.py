@@ -76,7 +76,12 @@ def main() -> None:
         b04 = next(b for b in beds if b["bed"] == "B04")
         return b04 if b04["admission"] and {"pulse", "consciousness"} <= set(b04["vitals"]) else None
 
-    b04 = wait_for(b04_has_vitals, "B04 vitals in snapshot", timeout_s=20)
+    try:
+        b04 = wait_for(b04_has_vitals, "B04 vitals in snapshot", timeout_s=20)
+    except SystemExit:
+        beds = get_json("/api/v1/wards/W1/snapshot")["beds"]
+        print("B04 at timeout:", json.dumps(next(b for b in beds if b["bed"] == "B04"), indent=2))
+        raise
     news2 = b04["news2"]
     if b04["news2Status"] != "ok" or (news2["total"], news2["band"], news2["complete"]) != (8, "high", True):
         raise SystemExit(f"unexpected NEWS2: {b04['news2Status']} {news2}")

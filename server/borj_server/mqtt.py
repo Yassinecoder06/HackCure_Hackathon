@@ -23,6 +23,7 @@ class MqttListener:
         self.client.on_message = self._on_message
         self.client.on_disconnect = self._on_disconnect
         self.client.reconnect_delay_set(min_delay=1, max_delay=30)
+        self.client.enable_logger(logging.getLogger("borj_server.paho"))
 
     def start(self) -> None:
         log.info("connecting to MQTT %s:%d", self.host, self.port)
@@ -45,4 +46,11 @@ class MqttListener:
 
     def _on_message(self, _client, _userdata, message: mqtt.MQTTMessage) -> None:
         # Our own call/state publications (P2) are stored like any other event; dedupe makes it safe.
-        self.ingestor.handle_raw(message.topic, message.payload)
+        try:
+            result = self.ingestor.handle_raw(message.topic, message.payload)
+        except Exception:
+            # Never let one failing message (e.g. a database error) kill the MQTT thread: log and go on.
+            log.exception("ingest failed for message on %s", message.topic)
+            return
+        if result.status == "accepted" and message.topic.endswith("/binding"):
+            log.info("binding on %s: %s", message.topic, result.detail)
