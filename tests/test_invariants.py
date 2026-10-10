@@ -33,9 +33,22 @@ def test_4_consent_first():
     pass
 
 
-@pytest.mark.skip(reason="P1, B: stale/missing params excluded from NEWS2 and the score is labelled partial")
 def test_5_missing_or_stale_is_labelled():
-    pass
+    """A stale reading that would score 3 is excluded, listed, and the score is labelled partial."""
+    from borj_inference.news2 import News2Config, Reading, score
+
+    readings = {
+        "resp_rate": Reading(16, "fresh", 60, 900),
+        "pulse": Reading(140, "stale", 1800, 900),  # would score 3 if it were (wrongly) used
+        "temp_c": Reading(37.0, "invalid", 60, 900),
+    }
+    result = score(readings, News2Config.load())
+    assert result["total"] == 0
+    assert result["complete"] is False
+    assert result["stale"] == ["pulse"]
+    assert {"temp_c", "consciousness", "spo2", "on_oxygen", "sys_bp"} <= set(result["missing"])
+    assert result["label"].startswith("Partial NEWS2")
+    assert result["confidence"]["value"] < 1
 
 
 def test_6_idempotency():
@@ -82,9 +95,19 @@ def test_7_no_env_files_committed():
     assert not leaked, f".env files must not be committed: {leaked}"
 
 
-@pytest.mark.skip(reason="P1, B: every clinical threshold lives in server/config with a 'who validates' comment")
 def test_8_clinical_parameters_are_config():
-    pass
+    """Every clinical config block names who must validate it, and the engine reads thresholds from it."""
+    import yaml
+
+    for path in sorted(ROOT.glob("*/config/*.yaml")):
+        cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
+        blocks = list(cfg.get("parameters", {}).values()) + [v for k, v in cfg.items() if k != "parameters"]
+        missing = [b for b in blocks if isinstance(b, dict) and not b.get("validated_by")]
+        assert not missing, f"{path}: blocks without validated_by"
+
+    engine = (ROOT / "inference" / "borj_inference" / "news2.py").read_text(encoding="utf-8")
+    for threshold in ("upto: 91", "<= 91", "< 92", ">= 131"):
+        assert threshold not in engine, "NEWS2 thresholds must come from config, not code"
 
 
 @pytest.mark.skip(reason="P1, A+B: TLS 1.3 broker/proxy; AES-256-GCM at rest (no plaintext vitals in the DB)")

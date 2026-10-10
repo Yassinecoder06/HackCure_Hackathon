@@ -730,7 +730,7 @@ components:
 
     Bed:
       type: object
-      required: [bed, room, vitals, devices]
+      required: [bed, room, vitals, devices, news2Status]
       properties:
         bed: { $ref: "#/components/schemas/Id" }
         room: { type: string }
@@ -742,6 +742,9 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/News2Result" }
             - { type: "null" }
+        news2Status:
+          enum: [ok, unavailable, not_admitted]
+          description: "unavailable = the inference layer could not be reached; the board shows 'score unavailable', never a guessed value"
         vitals:
           type: object
           description: Latest reading per parameter. A parameter never received is absent.

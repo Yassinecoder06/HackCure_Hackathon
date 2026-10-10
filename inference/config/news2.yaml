@@ -1,0 +1,98 @@
+# NEWS2 scoring configuration (Royal College of Physicians, NEWS2, 2017).
+#
+# SAFETY INVARIANT 8: clinical parameters live here, never in code. Every block carries
+# `validated_by`. Until a clinician has reviewed and signed it off, it stays
+# "TO BE CONFIRMED BY A CLINICIAN" and the system is a non-certified prototype.
+#
+# Band matching: take the first band whose `upto` (inclusive upper limit) is >= the value.
+# `upto: null` means no upper limit. Values are in the contract units
+# (breaths/min, %, mmHg, beats/min, degrees C).
+
+parameters:
+  resp_rate:
+    validated_by: "TO BE CONFIRMED BY A CLINICIAN"
+    bands:
+      - { upto: 8, points: 3 }
+      - { upto: 11, points: 1 }
+      - { upto: 20, points: 0 }
+      - { upto: 24, points: 2 }
+      - { upto: null, points: 3 }
+
+  spo2:
+    validated_by: "TO BE CONFIRMED BY A CLINICIAN"
+    # Scale 1: default for all patients.
+    scale_1:
+      - { upto: 91, points: 3 }
+      - { upto: 93, points: 2 }
+      - { upto: 95, points: 1 }
+      - { upto: null, points: 0 }
+    # Scale 2: ONLY for patients with confirmed hypercapnic respiratory failure, on a
+    # clinician's decision (spo2_scale: 2). Above 92% the points depend on oxygen use.
+    scale_2:
+      - { upto: 83, points: 3 }
+      - { upto: 85, points: 2 }
+      - { upto: 87, points: 1 }
+      - { upto: 92, points: 0 }
+    scale_2_from_93_on_air:
+      - { upto: null, points: 0 }
+    scale_2_from_93_on_oxygen:
+      - { upto: 94, points: 1 }
+      - { upto: 96, points: 2 }
+      - { upto: null, points: 3 }
+
+  on_oxygen:
+    validated_by: "TO BE CONFIRMED BY A CLINICIAN"
+    points_if_true: 2
+    points_if_false: 0
+
+  sys_bp:
+    validated_by: "TO BE CONFIRMED BY A CLINICIAN"
+    bands:
+      - { upto: 90, points: 3 }
+      - { upto: 100, points: 2 }
+      - { upto: 110, points: 1 }
+      - { upto: 219, points: 0 }
+      - { upto: null, points: 3 }
+
+  pulse:
+    validated_by: "TO BE CONFIRMED BY A CLINICIAN"
+    bands:
+      - { upto: 40, points: 3 }
+      - { upto: 50, points: 1 }
+      - { upto: 90, points: 0 }
+      - { upto: 110, points: 1 }
+      - { upto: 130, points: 2 }
+      - { upto: null, points: 3 }
+
+  consciousness:
+    validated_by: "TO BE CONFIRMED BY A CLINICIAN"
+    # ACVPU: Alert scores 0; new Confusion, Voice, Pain, Unresponsive score 3.
+    points: { A: 0, C: 3, V: 3, P: 3, U: 3 }
+
+  temp_c:
+    validated_by: "TO BE CONFIRMED BY A CLINICIAN"
+    bands:
+      - { upto: 35.0, points: 3 }
+      - { upto: 36.0, points: 1 }
+      - { upto: 38.0, points: 0 }
+      - { upto: 39.0, points: 1 }
+      - { upto: null, points: 2 }
+
+# Clinical response bands (RCP NEWS2 thresholds and triggers).
+response:
+  validated_by: "TO BE CONFIRMED BY A CLINICIAN"
+  high_from_total: 7
+  medium_from_total: 5
+  texts:
+    low: "Low risk: continue routine monitoring per ward protocol."
+    low_medium: "A single parameter scores 3: urgent ward-based review."
+    medium: "Medium risk (key threshold): urgent clinical response."
+    high: "High risk: emergency clinical response."
+
+# Confidence index (HackCure section 6). NOT clinical: it measures input quality.
+# Each of the 7 parameters contributes 1/7. A fresh, valid reading counts fully when new and
+# decays linearly to `weight_at_stale_threshold` as it approaches its stale_after_s; a missing,
+# stale or invalid reading contributes 0.
+confidence:
+  validated_by: "Borj team (data-quality metric, not a clinical parameter)"
+  weight_at_stale_threshold: 0.5

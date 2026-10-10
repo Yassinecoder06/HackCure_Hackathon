@@ -8,11 +8,13 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 
 from .api.routes import router
 from .clock import Clock
 from .config import Settings
+from .inference_client import InferenceClient
 from .ingest import Ingestor
 from .mqtt import MqttListener
 from .store import EventStore
@@ -21,7 +23,8 @@ from .twin.layout import WardLayout
 log = logging.getLogger("borj_server")
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, inference_http: httpx.Client | None = None) -> FastAPI:
+    """inference_http lets tests plug in an in-process inference app instead of a URL."""
     settings = settings or Settings.from_env()
 
     @asynccontextmanager
@@ -30,6 +33,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ingestor = Ingestor(WardLayout.load(settings.seed_path), store, Clock(settings.clock_mode))
         ingestor.rebuild()  # restore the twin from the persisted log
         app.state.ingestor = ingestor
+        if inference_http is not None:
+            app.state.inference = InferenceClient(inference_http)
+        elif settings.inference_url:
+            app.state.inference = InferenceClient.from_url(settings.inference_url, settings.inference_timeout_s)
+        else:
+            app.state.inference = None
         listener = None
         if settings.mqtt_enabled:
             listener = MqttListener(ingestor, settings.mqtt_host, settings.mqtt_port)
@@ -40,6 +49,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             if listener is not None:
                 listener.stop()
+            if app.state.inference is not None and inference_http is None:
+                app.state.inference.close()
             store.close()
 
     app = FastAPI(title="Borj ward server", version="0.1.0", lifespan=lifespan)

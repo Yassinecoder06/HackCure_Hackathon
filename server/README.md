@@ -4,8 +4,13 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
 
 ## Status
 
-P0 done: event log (SQLite, deduped by `eventId`), live twin rebuilt from the log, MQTT ingest with contract
-validation, demo clock, `GET /health`, `GET /api/v1/wards/{ward}/snapshot`, audit log table.
+- P0 done: event log (SQLite, deduped by `eventId`), live twin rebuilt from the log, MQTT ingest with contract
+  validation, demo clock, `GET /health`, `GET /api/v1/wards/{ward}/snapshot`, audit log table.
+- P1 (in progress): the snapshot carries **NEWS2 per admitted bed** from the [inference layer](../inference/README.md)
+  (`news2Status`: `ok` / `unavailable` / `not_admitted`). The server decides each reading's freshness against the ward
+  clock and sends it to inference (`scoring.py`, `inference_client.py`, 0.5 s timeout). If inference is down, NEWS2
+  shows as `unavailable`, never as a guess. Still to come in P1: PostgreSQL + encryption at rest, login + access audit,
+  HMAC checks, WebSocket.
 
 ## Run
 
