@@ -31,10 +31,20 @@ services:
   # gateway:          # A, P1
   #   networks: [ward]
 
-  # server:           # B, P0  (REST + WebSocket on 8000)
-  #   ports: ["8000:8000"]
-  #   volumes: ["server-data:/data"]
-  #   networks: [ward]
+  server:             # B: twin + API (REST + WebSocket on 8000)
+    build: { context: .., dockerfile: server/Dockerfile }
+    environment:
+      BORJ_WARD: W1
+      BORJ_CLOCK_MODE: sim
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+    ports:
+      - "8000:8000"
+    volumes:
+      - server-data:/data
+    depends_on:
+      mosquitto: { condition: service_healthy }
+    networks: [ward]
 
   # family-publisher: # B, P4  (outbound only: no ports, no listening socket)
   #   networks: [ward, dmz]
@@ -49,5 +59,5 @@ networks:
   ward: {}
   dmz: {}
 
-# volumes:
-#   server-data: {}
+volumes:
+  server-data: {}
