@@ -115,3 +115,19 @@ def test_deterioration_scenario_events():
     # Manual observation with consciousness C
     manual_entries = [v for v in b06_vitals if v["sourceType"] == "manual"]
     assert any(m["params"].get("consciousness") == "C" for m in manual_entries)
+
+
+def test_mock_medical_monitor():
+    from borj_sim.mock_monitor import MockMedicalMonitor
+
+    monitor = MockMedicalMonitor(ward="W1", bed="B06", profile="deteriorate")
+    vitals = monitor.publish_vitals()
+    bc.validate_message("borj/W1/B06/vitals", vitals)
+    assert vitals["bed"] == "B06"
+    assert vitals["ward"] == "W1"
+    assert "pulse" in vitals["params"]
+    assert "spo2" in vitals["params"]
+    assert "sys_bp" in vitals["params"]
+    assert "temp_c" in vitals["params"]
+    assert "resp_rate" in vitals["params"]
+

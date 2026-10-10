@@ -18,6 +18,7 @@ from borj_contracts import generate_ulid
 from .audio import AudioManager
 from .buttons import ButtonController
 from .client import NodeMqttClient
+from .encoder import RotaryEncoderController
 from .leds import LedController
 from .outbox import NodeOutbox
 
@@ -33,9 +34,11 @@ class BedsideNode:
         broker_port: int = 1883,
         pin_assist: int = 17,
         pin_comfort: int = 27,
-        pin_led_green: int | None = 22,
-        pin_led_red: int | None = 23,
+        pin_led_green: int | None = 25,
+        pin_led_red: int | None = 22,
         pin_led_amber: int | None = None,
+        pin_clk: int | None = 23,
+        pin_dt: int | None = 24,
         db_path: Path | str = ":memory:",
         key: bytes | None = None,
         key_id: str | None = None,
@@ -55,6 +58,13 @@ class BedsideNode:
             pin_amber=pin_led_amber,
             mock=mock_gpio,
         )
+        self.encoder = None
+        if pin_clk is not None and pin_dt is not None:
+            self.encoder = RotaryEncoderController(
+                pin_clk=pin_clk,
+                pin_dt=pin_dt,
+                mock=mock_gpio,
+            )
         self.outbox = NodeOutbox(db_path=db_path)
 
         self.mqtt = NodeMqttClient(
@@ -98,6 +108,8 @@ class BedsideNode:
         log.info("Stopping BedsideNode")
         self._heartbeat_stop.set()
         self._cancel_receipt_timer()
+        if self.encoder:
+            self.encoder.close()
         self.buttons.close()
         self.leds.close()
         self.audio.stop()

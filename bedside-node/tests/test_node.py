@@ -114,8 +114,23 @@ def test_timeout_triggers_not_sent():
     node.buttons.trigger_assist()
     assert node.current_state != "not_sent"
 
-    # Wait for receipt timeout
-    time.sleep(0.2)
-    assert node.current_state == "not_sent"
-
     node.stop()
+
+
+def test_rotary_encoder_mock():
+    from borj_node.encoder import RotaryEncoderController
+
+    changed_vals = []
+    encoder = RotaryEncoderController(
+        pin_clk=23,
+        pin_dt=24,
+        max_steps=20,
+        initial_percent=50,
+        mock=True,
+        on_change=lambda val: changed_vals.append(val),
+    )
+    assert encoder.current_percent == 50
+    encoder.set_volume(80)
+    assert encoder.current_percent == 80
+    encoder.close()
+

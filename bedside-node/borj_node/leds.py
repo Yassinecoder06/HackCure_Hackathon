@@ -25,8 +25,8 @@ class LedController:
 
     def __init__(
         self,
-        pin_green: int | None = 22,
-        pin_red: int | None = 23,
+        pin_green: int | None = 25,
+        pin_red: int | None = 22,
         pin_amber: int | None = None,
         mock: bool = False,
     ) -> None:

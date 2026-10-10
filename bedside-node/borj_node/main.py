@@ -24,9 +24,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--broker", default="10.42.0.1:1883", help="MQTT broker host:port (default: 10.42.0.1:1883)")
     parser.add_argument("--pin-assist", type=int, default=17, help="GPIO pin for Assist button (default: 17)")
     parser.add_argument("--pin-comfort", type=int, default=27, help="GPIO pin for Comfort button (default: 27)")
-    parser.add_argument("--pin-led-green", type=int, default=22, help="GPIO pin for Green LED (default: 22)")
-    parser.add_argument("--pin-led-red", type=int, default=23, help="GPIO pin for Red LED (default: 23)")
+    parser.add_argument("--pin-led-green", type=int, default=25, help="GPIO pin for Green LED (default: 25)")
+    parser.add_argument("--pin-led-red", type=int, default=22, help="GPIO pin for Red LED (default: 22)")
     parser.add_argument("--pin-led-amber", type=int, default=None, help="GPIO pin for Amber LED (optional)")
+    parser.add_argument("--pin-clk", type=int, default=23, help="GPIO pin for Rotary Encoder CLK (default: 23)")
+    parser.add_argument("--pin-dt", type=int, default=24, help="GPIO pin for Rotary Encoder DT (default: 24)")
     parser.add_argument("--db", default="node_outbox.db", help="SQLite outbox database path (default: node_outbox.db)")
     parser.add_argument("--timeout", type=float, default=4.0, help="Receipt timeout in seconds (default: 4.0)")
     parser.add_argument("--mock", action="store_true", help="Force mock GPIO mode (for laptops / tests)")
@@ -73,6 +75,7 @@ def main() -> None:
     print(f"  Broker: {host}:{port}")
     print(f"  Buttons: Assist=GPIO {args.pin_assist}, Comfort=GPIO {args.pin_comfort}")
     print(f"  LEDs: Green=GPIO {args.pin_led_green}, Red=GPIO {args.pin_led_red}")
+    print(f"  Encoder: CLK=GPIO {args.pin_clk}, DT=GPIO {args.pin_dt}")
     print(f"  Outbox: {args.db}")
     print("=" * 65)
 
@@ -86,6 +89,8 @@ def main() -> None:
         pin_led_green=args.pin_led_green,
         pin_led_red=args.pin_led_red,
         pin_led_amber=args.pin_led_amber,
+        pin_clk=args.pin_clk,
+        pin_dt=args.pin_dt,
         db_path=args.db,
         receipt_timeout_s=args.timeout,
         mock_gpio=args.mock,
