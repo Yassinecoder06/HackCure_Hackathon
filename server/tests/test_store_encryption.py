@@ -21,8 +21,10 @@ def test_no_plaintext_patient_data_in_the_database():
     payload = example("vitals.device")
     store.append("borj/W1/B04/vitals", "vitals", payload)
 
-    raw = repr(raw_rows(store)).encode()
-    for secret in (b"pulse", b"112", b"resp_rate", b"MON-B04", b"38.4", b"gateway-sim"):
+    # Search the raw stored bytes for plaintext fragments. (Short strings like b"112" could appear
+    # in random ciphertext by chance; these multi-byte JSON fragments realistically cannot.)
+    raw = b"".join(v if isinstance(v, bytes) else str(v).encode() for row in raw_rows(store) for v in row)
+    for secret in (b'"pulse":112', b'"resp_rate":22', b'"MON-B04"', b'"temp_c":38.4', b'"gateway-sim"'):
         assert secret not in raw, f"{secret!r} stored in clear"
     assert [e.payload for e in store.events()] == [payload]  # but it reads back intact
 

@@ -41,6 +41,39 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   critical), a **confidence** and **explanation** sentences. `POST .../alerts/{id}/ack` silences an alert while
   its condition lasts. The stream sends `call` and `alert` messages; a cleared alert is sent once with
   `active: false`.
+- P3: **assignment suggestions** (`assignment.py`). The server sends the live twin to the inference
+  optimiser and keeps the result as a **pending** suggestion. It is audited when created and changes nothing.
+  - Only `POST .../suggestions/{id}/decision` by a **charge nurse** applies it, as a server-only `assignment`
+    event (stored, replayable, audited with the decider). Safety invariant 1 is enforced in code, with a static
+    check in `tests/test_invariants.py`.
+  - A newer suggestion expires older pending ones. Approving a plan the ward has moved past is refused as
+    `stale_suggestion`.
+  - Suggestions are made automatically (debounced, off the MQTT thread) when staff presence or admissions
+    change, and pushed on the stream as `assignment_suggestion`.
+  - The snapshot shows `assignedNurse` per bed and `assignedBeds` per staff member.
+- P3: **what-if** `POST .../whatif/runs`. The server describes the live ward (nurses and care assistants on the ward,
+  each occupied bed's NEWS2 band) to the inference simulator, adds the disruptions, and returns baseline vs scenario
+  (median, p5–p95) with the assumptions. Beds without a complete NEWS2 are disclosed in the assumptions. Audited;
+  never touches live state.
+- P3: **medication timeline** (`meds.py`, rules in [`config/meds.yaml`](config/meds.yaml)).
+  - **Only a doctor** creates a prescription (`POST .../prescriptions`). It is stored as an internal event in
+    the encrypted log and **never published on MQTT** (it contains drug names).
+  - Doses are generated from the daily times in ward local time (UTC+1).
+  - **Only a nurse's record** (`POST .../doses/{id}/administration`, given / not given with a reason) closes a
+    dose. A patient's "I took my pills" is shown separately and never closes one.
+  - Overdue doses raise `dose_overdue` alerts. **Clashes** (too many doses, or more than one infusion, due for
+    the same nurse in 15 min) are listed in `GET .../meds/timeline`.
+  - The system never selects drugs or doses (invariant 1, statically checked).
+- P3: **read-only FHIR R4 export** (`fhir.py`, `api/fhir_routes.py`, mapping in
+  [`contracts/fhir-mapping.md`](../contracts/fhir-mapping.md)): `GET /fhir/r4/Patient/{id}`, `Encounter`,
+  `Observation` and `MedicationAdministration` searches, returned as `application/fhir+json`.
+  - Pseudonymised patients carry the HL7 `PSEUDED` label.
+  - Vital signs come from the **event log** (the admission's full history), with LOINC codes and UCUM units.
+    Flagged readings carry a note.
+  - NEWS2 is a survey Observation with its components; a partial score is `preliminary`.
+  - Only nurse-recorded doses are exported.
+  - Every request is audited; there are no write methods (405).
+  - Tests validate every resource with `fhir.resources` (R4B models).
 - Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
 
 ## Run

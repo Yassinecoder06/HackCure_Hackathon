@@ -28,6 +28,7 @@ RESERVED_BED_IDS = {"staff", "sim"}
 _ID = r"[A-Za-z0-9_-]{1,40}"
 _TOPIC_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(rf"^borj/(?P<ward>{_ID})/sim/clock$"), "clock"),
+    (re.compile(rf"^borj/(?P<ward>{_ID})/assignment$"), "assignment"),
     (re.compile(rf"^borj/(?P<ward>{_ID})/staff/(?P<staffId>{_ID})/ack$"), "ack"),
     (re.compile(rf"^borj/(?P<ward>{_ID})/staff/(?P<staffId>{_ID})/presence$"), "staff-presence"),
     (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/vitals$"), "vitals"),
@@ -36,6 +37,8 @@ _TOPIC_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/call/state$"), "call-state"),
     (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/med$"), "med"),
     (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/binding$"), "binding"),
+    # Internal only: stored in the event log, never published on MQTT (contains drug names).
+    (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/prescription$"), "prescription"),
 ]
 
 # Subscribe pattern covering every contract topic.
@@ -109,6 +112,8 @@ def topic(kind: str, ward: str, bed: str | None = None, staff_id: str | None = N
     """Build a contract topic. kind is a schema name."""
     if kind == "clock":
         return f"borj/{ward}/sim/clock"
+    if kind == "assignment":
+        return f"borj/{ward}/assignment"
     if kind in ("ack", "staff-presence"):
         if not staff_id:
             raise ContractError(f"{kind} needs a staff id")
@@ -120,6 +125,7 @@ def topic(kind: str, ward: str, bed: str | None = None, staff_id: str | None = N
         "call-state": "call/state",
         "med": "med",
         "binding": "binding",
+        "prescription": "prescription",
     }[kind]
     if not bed or bed in RESERVED_BED_IDS:
         raise ContractError(f"invalid bed for {kind}: {bed!r}")

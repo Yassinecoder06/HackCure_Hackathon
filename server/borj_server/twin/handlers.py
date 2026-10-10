@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ..timeutil import parse_ts
-from .state import Admission, AlertAck, Bed, Call, Device, Reading, WardTwin
+from .state import Administration, Admission, AlertAck, Bed, Call, Device, Prescription, Reading, WardTwin
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +67,7 @@ def apply_binding(twin: WardTwin, payload: dict[str, Any]) -> str:
         )
     else:
         bed.admission = None
+        twin.assignments.pop(bed.bed, None)  # an empty bed needs no nurse
     return "applied"
 
 
@@ -170,6 +171,40 @@ def apply_call_state(twin: WardTwin, payload: dict[str, Any]) -> str:
     return "applied"
 
 
+def apply_assignment(twin: WardTwin, payload: dict[str, Any]) -> str:
+    """An approved suggestion: the only way assignments change (safety invariant 1)."""
+    for change in payload["changes"]:
+        if change["bed"] in twin.beds and change["toStaffId"] in twin.staff:
+            twin.assignments[change["bed"]] = change["toStaffId"]
+    return "applied"
+
+
+def apply_prescription(twin: WardTwin, payload: dict[str, Any]) -> str:
+    if _bed(twin, payload) is None:
+        return "ignored:unknown_bed"
+    twin.prescriptions[payload["prescriptionId"]] = Prescription(
+        prescription_id=payload["prescriptionId"], admission_id=payload["admissionId"], bed=payload["bed"],
+        drug=payload["drug"], dose=payload["dose"], route=payload["route"], times=tuple(payload["times"]),
+        start_date=payload["startDate"], end_date=payload.get("endDate"),
+        is_infusion=bool(payload.get("isInfusion")), prescribed_by=payload["prescribedBy"],
+    )
+    return "applied"
+
+
+def apply_med(twin: WardTwin, payload: dict[str, Any]) -> str:
+    """Only a nurse's record closes a dose; a patient's report is kept apart (whitepaper 4.3)."""
+    ts = parse_ts(payload["ts"])
+    if payload["recordedBy"] == "patient_reported":
+        twin.patient_reported.setdefault(payload["doseId"], ts)
+        return "applied"
+    current = twin.administrations.get(payload["doseId"])
+    if current is not None and ts < current.ts:
+        return "ignored:older_than_current_record"
+    twin.administrations[payload["doseId"]] = Administration(
+        payload["action"], payload["staffId"], ts, payload.get("presence"), payload.get("reason"))
+    return "applied"
+
+
 def apply_ack(twin: WardTwin, payload: dict[str, Any]) -> str:
     """Acks on alerts are recorded here. Acks on calls are turned into call/state by the call engine."""
     if payload["target"] != "alert" or payload["action"] != "acknowledge":
@@ -186,7 +221,9 @@ HANDLERS: dict[str, Callable[[WardTwin, dict[str, Any]], str]] = {
     "call": apply_call,
     "call-state": apply_call_state,
     "ack": apply_ack,
-    # med: stored now, handled by the medication engine (P3).
+    "assignment": apply_assignment,
+    "prescription": apply_prescription,
+    "med": apply_med,
 }
 
 

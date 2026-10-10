@@ -1,0 +1,33 @@
+# What-if simulation (SimPy). Whitepaper 5.3: compares scenarios; it does not predict patient
+# outcomes. All rates and durations are ILLUSTRATIVE until calibrated with timings measured in a
+# shadow-mode pilot. SAFETY INVARIANT 8: parameters, not code; each block says who must validate it.
+
+calls:
+  validated_by: "TO BE CALIBRATED with measured ward data (pilot); illustrative values"
+  calls_per_hour: 12          # whole ward, normal night (whitepaper Erlang-C example)
+  comfort_share: 0.4          # share of calls that are non-clinical
+  service_min: 8              # mean time a staff member spends per call (exponential)
+
+observations:
+  validated_by: "TO BE CONFIRMED BY A CLINICIAN (RCP NEWS2 monitoring frequencies, adapted)"
+  # Minutes between observation rounds by NEWS2 band; "continuous" bands use the shortest interval.
+  interval_min: { low: 240, low_medium: 60, medium: 60, high: 30 }
+  service_min: 5
+  overdue_grace_min: 30       # a bed counts as "without observations" once this late
+
+medications:
+  validated_by: "TO BE CALIBRATED with the ward's real medication rounds (pilot)"
+  doses_per_bed_per_hour: 0.25
+  service_min: 4
+  overdue_after_min: 30
+
+admissions:
+  validated_by: "TO BE CALIBRATED with measured ward data (pilot)"
+  nurse_work_min: 30          # admission assessment, per new patient
+  new_patient_band: medium    # monitoring band assumed for a new emergency admission
+
+simulation:
+  validated_by: "Borj team (simulation settings, not clinical parameters)"
+  default_seeds: 200
+  default_horizon_min: 240
+  queue_sample_min: 1

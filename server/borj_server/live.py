@@ -28,7 +28,7 @@ def build_snapshot(app: FastAPI) -> dict[str, Any]:
     attach_news2(snap, inference.news2_batch(snap["asOf"], inputs) if inference else None)
     with ingestor.lock:
         snap["alerts"] = derive_alerts(ingestor.twin, _news2_by_bed(snap["beds"]), now, app.state.call_config,
-                                       app.state.first_seen)
+                                       app.state.first_seen, meds_cfg=app.state.meds_config)
     return snap
 
 
@@ -38,14 +38,14 @@ def build_beds(app: FastAPI, bed_ids: set[str] | None) -> tuple[list[dict[str, A
     with ingestor.lock:
         now = ingestor.clock.now()
         beds = [b for b in ingestor.twin.beds.values() if bed_ids is None or b.bed in bed_ids]
-        views = {"beds": [bed_view(b, now) for b in beds]}
+        views = {"beds": [bed_view(b, now, ingestor.twin.assignments.get(b.bed)) for b in beds]}
         inputs = [i for i in news2_inputs(ingestor.twin, now) if bed_ids is None or i["bed"] in bed_ids]
         as_of = format_ts(now)
     inference = app.state.inference
     attach_news2(views, inference.news2_batch(as_of, inputs) if inference else None)
     with ingestor.lock:
         alerts = derive_alerts(ingestor.twin, _news2_by_bed(views["beds"]), now, app.state.call_config,
-                               app.state.first_seen, bed_ids)
+                               app.state.first_seen, bed_ids, meds_cfg=app.state.meds_config)
     return views["beds"], alerts
 
 
@@ -58,7 +58,13 @@ def build_calls(app: FastAPI, call_ids: set[str]) -> list[dict[str, Any]]:
 def build_staff(app: FastAPI, staff_ids: set[str]) -> list[dict[str, Any]]:
     ingestor = app.state.ingestor
     with ingestor.lock:
-        return [staff_view(ingestor.twin.staff[s]) for s in staff_ids if s in ingestor.twin.staff]
+        return [staff_view(ingestor.twin.staff[s], ingestor.twin.assignments)
+                for s in staff_ids if s in ingestor.twin.staff]
+
+
+def news2_by_bed(app: FastAPI) -> dict[str, dict[str, Any] | None]:
+    beds, _ = build_beds(app, None)
+    return _news2_by_bed(beds)
 
 
 def news2_total(app: FastAPI, bed_id: str) -> int | None:

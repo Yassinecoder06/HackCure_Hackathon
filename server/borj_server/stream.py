@@ -43,6 +43,7 @@ class Change:
     beds: set[str] = field(default_factory=set)
     staff: set[str] = field(default_factory=set)
     calls: set[str] = field(default_factory=set)
+    suggestions: list[dict[str, Any]] = field(default_factory=list)
     all_beds: bool = False
     clock: dict[str, Any] | None = None
     received: float = field(default_factory=time.monotonic)
@@ -88,8 +89,20 @@ class StreamHub:
             change = Change(beds={payload["bed"]})
         elif schema == "staff-presence":
             change = Change(staff={payload["staffId"]})
+        elif schema == "assignment":
+            moved = {c["bed"] for c in payload["changes"]}
+            people = {c["toStaffId"] for c in payload["changes"]} | {
+                c["fromStaffId"] for c in payload["changes"] if "fromStaffId" in c}
+            change = Change(beds=moved, staff=people)
         else:
             return
+        self._broadcast(change)
+
+    def on_suggestion(self, suggestion: dict[str, Any]) -> None:
+        if self.loop is not None and self.queues:
+            self._broadcast(Change(suggestions=[dict(suggestion)]))
+
+    def _broadcast(self, change: Change) -> None:
         for queue in list(self.queues):
             self.loop.call_soon_threadsafe(queue.put_nowait, change)
 
@@ -139,11 +152,14 @@ async def _push_changes(websocket: WebSocket, app: FastAPI, queue: asyncio.Queue
             merged.beds |= nxt.beds
             merged.staff |= nxt.staff
             merged.calls |= nxt.calls
+            merged.suggestions += nxt.suggestions
             merged.all_beds |= nxt.all_beds
             merged.clock = nxt.clock or merged.clock
             merged.received = min(merged.received, nxt.received)
         if merged.clock:
             await websocket.send_json({"type": "clock", "data": merged.clock})
+        for suggestion in merged.suggestions:
+            await websocket.send_json({"type": "assignment_suggestion", "data": suggestion})
         if merged.calls:
             for call in await asyncio.to_thread(build_calls, app, merged.calls):
                 await websocket.send_json({"type": "call", "data": call})

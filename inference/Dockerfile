@@ -5,7 +5,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/inference \
-    INFERENCE_NEWS2_CONFIG=/app/inference/config/news2.yaml
+    INFERENCE_NEWS2_CONFIG=/app/inference/config/news2.yaml     INFERENCE_ASSIGNMENT_CONFIG=/app/inference/config/assignment.yaml     INFERENCE_WHATIF_CONFIG=/app/inference/config/whatif.yaml
 
 COPY inference/requirements.txt inference/requirements.txt
 RUN pip install --no-cache-dir -r inference/requirements.txt
