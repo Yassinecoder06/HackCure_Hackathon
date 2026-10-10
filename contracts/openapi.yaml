@@ -12,6 +12,9 @@ info:
       require a human staff id and are written to the audit log (safety invariant 1).
     - Missing or stale data is returned as missing/stale, never as a normal value (invariant 5).
     - Every algorithmic output carries a `confidence` and an explanation, and is advisory (invariant 12).
+    - Language of every explanation, label and reason: `?lang=en|fr`, else the `Accept-Language` header, else
+      the server default. The same applies to the WebSocket stream (query parameter `lang`). Times inside
+      sentences are ward local time.
     - Auth: `POST /api/v1/auth/login` returns a short-lived bearer token. Every access to patient data
       is written to the hash-chained audit log (invariants 10, 11). Hospital SSO is out of scope.
     - Served only over HTTPS/WSS (TLS 1.3, via Caddy) in the demo.
@@ -749,6 +752,26 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/News2Result" }
             - { type: "null" }
+        news2Trend:
+          type: array
+          description: NEWS2 as the bed stood N minutes ago (recomputed from its reading history), for trends
+          items:
+            type: object
+            required: [minutesAgo, total, complete]
+            properties:
+              minutesAgo: { type: integer }
+              total: { type: integer }
+              complete: { type: boolean }
+        priority:
+          type: object
+          description: Rank among admitted beds (1 = most urgent) with the reasons, in the viewer's language
+          required: [rank, of, reasons]
+          properties:
+            rank: { type: integer, minimum: 1 }
+            of: { type: integer, minimum: 1 }
+            reasons:
+              type: array
+              items: { type: string }
         news2Status:
           enum: [ok, unavailable, not_admitted]
           description: "unavailable = the inference layer could not be reached; the board shows 'score unavailable', never a guessed value"

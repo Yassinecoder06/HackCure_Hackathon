@@ -13,7 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket
 from pydantic import BaseModel, Field
 
 from .. import stream
+from ..assignment import render as render_suggestion
 from ..auth import AuthError, Principal, TooManyAttempts, require_role, require_staff
+from ..explain import Explainer, pick_lang
 from ..ids import new_ulid
 from ..live import build_beds, build_snapshot, news2_by_bed
 from ..meds import timeline
@@ -27,6 +29,13 @@ Staff = Annotated[Principal, Depends(require_staff)]
 class LoginIn(BaseModel):
     staffId: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")
     secret: str = Field(min_length=4, max_length=128)
+
+
+def explainer(request: Request) -> Explainer:
+    """Language from ?lang=, then Accept-Language, then the server default."""
+    lang = pick_lang(request.query_params.get("lang"), request.headers.get("accept-language"),
+                     default=request.app.state.settings.default_lang)
+    return Explainer(lang, request.app.state.meds_config.ward_tz)
 
 
 def _check_ward(request: Request, ward: str) -> None:
@@ -61,7 +70,7 @@ def login(body: LoginIn, request: Request) -> dict:
 def snapshot(ward: str, request: Request, who: Staff) -> dict:
     _check_ward(request, ward)
     request.app.state.ingestor.store.audit(who.staff_id, "snapshot.read", ward)
-    return build_snapshot(request.app)
+    return build_snapshot(request.app, explainer(request))
 
 
 def _staff_ack(request: Request, who: Principal, target: str, target_id: str, action: str,
@@ -119,7 +128,7 @@ def ack_alert(ward: str, alertId: str, request: Request, who: Staff) -> dict:  #
     if not any(a["alertId"] == alertId for a in alerts):
         raise HTTPException(404, {"error": "not_found", "detail": f"no active alert {alertId}"})
     _staff_ack(request, who, "alert", alertId, "acknowledge")
-    _, alerts = build_beds(request.app, None)
+    _, alerts = build_beds(request.app, None, explainer(request))
     return next(a for a in alerts if a["alertId"] == alertId)
 
 
@@ -178,14 +187,16 @@ def _suggestion_call(fn, *args):
 @router.get("/api/v1/wards/{ward}/assignments/suggestions")
 def list_suggestions(ward: str, request: Request, who: Staff, status: str | None = None) -> list:
     _check_ward(request, ward)
-    return request.app.state.assignment.list(status)
+    ex = explainer(request)
+    return [render_suggestion(s, ex) for s in request.app.state.assignment.list(status)]
 
 
 @router.post("/api/v1/wards/{ward}/assignments/suggestions", status_code=201)
 def create_suggestion(ward: str, request: Request, who: Staff) -> dict:
     """Ask the optimiser now. Never applies anything: the result is a pending suggestion."""
     _check_ward(request, ward)
-    return _suggestion_call(request.app.state.assignment.suggest, f"requested by {who.staff_id}")
+    suggestion = _suggestion_call(request.app.state.assignment.suggest, f"requested by {who.staff_id}")
+    return render_suggestion(suggestion, explainer(request))
 
 
 @router.post("/api/v1/wards/{ward}/assignments/suggestions/{suggestionId}/decision")
@@ -194,8 +205,9 @@ def decide_suggestion(ward: str, suggestionId: str, body: DecisionIn, request: R
     """The only path that changes assignments: a charge nurse's decision (safety invariant 1)."""
     _check_ward(request, ward)
     require_role(who, "charge_nurse")
-    return _suggestion_call(request.app.state.assignment.decide, suggestionId, body.decision, who.staff_id,
-                            body.reason)
+    decided = _suggestion_call(request.app.state.assignment.decide, suggestionId, body.decision, who.staff_id,
+                               body.reason)
+    return render_suggestion(decided, explainer(request))
 
 
 @router.post("/api/v1/wards/{ward}/prescriptions", status_code=201)
@@ -234,7 +246,8 @@ def meds_timeline(ward: str, request: Request, who: Staff,
     ingestor = request.app.state.ingestor
     ingestor.store.audit(who.staff_id, "meds.read", ward, {"hours": hours})
     with ingestor.lock:
-        return timeline(ingestor.twin, ingestor.clock.now(), request.app.state.meds_config, hours)
+        return timeline(ingestor.twin, ingestor.clock.now(), request.app.state.meds_config, hours,
+                        explainer(request))
 
 
 @router.post("/api/v1/wards/{ward}/doses/{doseId}/administration")
@@ -299,9 +312,10 @@ def whatif_run(ward: str, body: WhatIfIn, request: Request, who: Staff) -> dict:
     result = inference.whatif(payload) if inference else None
     if result is None:
         raise HTTPException(503, {"error": "inference_unavailable", "detail": "inference layer unreachable"})
+    ex = explainer(request)
+    result["assumptions"] = ex.items(result.pop("assumptionItems"))
     if uncertain:
-        result["assumptions"].append(f"{uncertain} bed(s) have no complete NEWS2: simulated with their minimum "
-                                     "band (or low risk if unavailable), so their workload may be underestimated.")
+        result["assumptions"].append(ex.say("whatif.partial_news2", count=uncertain))
     result["runId"] = f"W-{new_ulid()[:16]}"
     ingestor.store.audit(who.staff_id, "whatif.run", result["runId"],
                          {"disruptions": disruptions, "seeds": body.seeds, "horizonMin": body.horizonMin})
@@ -318,7 +332,7 @@ def instruct_alert(ward: str, alertId: str, body: InstructionIn, request: Reques
     if not any(a["alertId"] == alertId for a in alerts):
         raise HTTPException(404, {"error": "not_found", "detail": f"no active alert {alertId}"})
     _staff_ack(request, who, "alert", alertId, "instruct", note=body.text)
-    _, alerts = build_beds(request.app, None)
+    _, alerts = build_beds(request.app, None, explainer(request))
     return next(a for a in alerts if a["alertId"] == alertId)
 
 

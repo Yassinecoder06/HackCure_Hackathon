@@ -20,6 +20,7 @@ from typing import Any
 
 import borj_contracts as bc
 
+from .explain import Explainer
 from .ids import new_ulid
 from .ingest import Ingestor
 from .timeutil import format_ts
@@ -27,6 +28,15 @@ from .timeutil import format_ts
 log = logging.getLogger(__name__)
 
 TRIGGER_SCHEMAS = {"staff-presence", "binding"}
+
+
+def render(suggestion: dict[str, Any], ex: Explainer) -> dict[str, Any]:
+    """A suggestion in the contract shape (AssignmentSuggestion), reasons in the viewer's language."""
+    out = {k: v for k, v in suggestion.items() if k != "reasonItems"}
+    out["reasons"] = ex.items(suggestion["reasonItems"])
+    out["confidence"] = {"value": suggestion["confidence"]["value"],
+                         "basis": ex.items([suggestion["confidence"]["basisItem"]])[0]}
+    return out
 
 
 class SuggestionError(Exception):
@@ -108,7 +118,8 @@ class AssignmentService:
             "trigger": trigger,
             "status": "pending" if result["status"] != "infeasible" else "expired",
             "changes": result["changes"],
-            "reasons": result["reasons"],
+            # Language-neutral reason codes: rendered for each viewer by render() (explain.py).
+            "reasonItems": result["reasonItems"],
             "confidence": result["confidence"],
             "loadBefore": result["loadBefore"],
             "loadAfter": result["loadAfter"],

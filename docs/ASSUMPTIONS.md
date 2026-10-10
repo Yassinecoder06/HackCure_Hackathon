@@ -24,7 +24,7 @@ Inputs:
 | Question | Default | Why it matters |
 |---|---|---|
 | Add a real **PPG + temperature sensor** (e.g. MAX30102 + DS18B20) to the Pi? | **Recommended, not yet decided** | Turns one bedside channel from simulated to real. It ticks HackCure's "biometric sensors" box and makes the live demo more convincing. It costs a few dinars. |
-| UI language | English | The specification and jury are francophone, so a French UI may land better. Strings are kept in one module per app, which makes switching cheap. |
+| UI language | English, with **French explanations available now** (server side: `?lang=fr`) | The specification and jury are francophone. Server-generated sentences are bilingual; the apps' own strings stay in one module per app, so a French UI is cheap. Arabic later. |
 
 ## Consequences of the answers
 

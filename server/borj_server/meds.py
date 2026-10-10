@@ -17,6 +17,7 @@ from typing import Any
 
 import yaml
 
+from .explain import Explainer
 from .timeutil import format_ts
 from .twin.state import Prescription, WardTwin
 
@@ -68,7 +69,8 @@ def due_times(rx: Prescription, start: datetime, end: datetime, cfg: MedsConfig)
     return sorted(times)
 
 
-def timeline(twin: WardTwin, now: datetime, cfg: MedsConfig, hours: float) -> dict[str, Any]:
+def timeline(twin: WardTwin, now: datetime, cfg: MedsConfig, hours: float,
+             ex: Explainer | None = None) -> dict[str, Any]:
     start, end = now - cfg.past, now + timedelta(hours=hours)
     doses = []
     infusion_ids = set()
@@ -94,10 +96,11 @@ def timeline(twin: WardTwin, now: datetime, cfg: MedsConfig, hours: float) -> di
                 infusion_ids.add(did)
             doses.append(dose)
     doses.sort(key=lambda d: (d["due"], d["bed"]))
-    return {"doses": doses, "clashes": _clashes(doses, infusion_ids, twin, cfg)}
+    return {"doses": doses, "clashes": _clashes(doses, infusion_ids, twin, cfg, ex or Explainer("en", cfg.ward_tz))}
 
 
-def _clashes(doses: list[dict[str, Any]], infusions: set[str], twin: WardTwin, cfg: MedsConfig) -> list[dict[str, Any]]:
+def _clashes(doses: list[dict[str, Any]], infusions: set[str], twin: WardTwin, cfg: MedsConfig,
+             ex: Explainer) -> list[dict[str, Any]]:
     open_doses = [d for d in doses if d["status"] in ("due", "overdue")]
     clashes = []
     seen: set[tuple[str, ...]] = set()
@@ -115,10 +118,11 @@ def _clashes(doses: list[dict[str, Any]], infusions: set[str], twin: WardTwin, c
             key = tuple(sorted(d["doseId"] for d in mine))
             if (too_many or too_many_infusions) and key not in seen:
                 seen.add(key)
-                what = f"{infusion_count} infusions" if too_many_infusions else f"{len(mine)} doses"
-                who = "unassigned beds" if nurse == "unassigned" else nurse
+                who = ex.say("meds.unassigned") if nurse == "unassigned" else nurse
                 beds = ", ".join(sorted({d["bed"] for d in mine}))
-                clashes.append({"at": anchor["due"], "doseIds": list(key),
-                                "reason": f"{what} due within {int(cfg.window.total_seconds() // 60)} min "
-                                          f"for {who} ({beds})"})
+                window = int(cfg.window.total_seconds() // 60)
+                reason = (ex.say("meds.clash.infusions", count=infusion_count, window=window, who=who, beds=beds)
+                          if too_many_infusions else
+                          ex.say("meds.clash.doses", count=len(mine), window=window, who=who, beds=beds))
+                clashes.append({"at": anchor["due"], "doseIds": list(key), "reason": reason})
     return clashes

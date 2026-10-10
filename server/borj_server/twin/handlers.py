@@ -58,6 +58,7 @@ def apply_binding(twin: WardTwin, payload: dict[str, Any]) -> str:
     bed.binding_ts = ts
     # A new or departing patient must never inherit the previous patient's readings.
     bed.vitals.clear()
+    bed.history.clear()
     if action in ADMIT_ACTIONS:
         bed.admission = Admission(
             admission_id=payload["admissionId"],
@@ -84,10 +85,12 @@ def apply_vitals(twin: WardTwin, payload: dict[str, Any]) -> str:
     flags = tuple(quality.get("flags", ()))
     updated = 0
     for param, value in payload["params"].items():
+        reading = Reading(value, ts, payload["sourceType"], quality["valid"], quality["stale_after_s"], flags)
+        bed.history.append((param, reading))
         current = bed.vitals.get(param)
         if current is not None and ts < current.ts:
             continue  # a newer reading already exists
-        bed.vitals[param] = Reading(value, ts, payload["sourceType"], quality["valid"], quality["stale_after_s"], flags)
+        bed.vitals[param] = reading
         updated += 1
 
     device_id = payload.get("deviceId")

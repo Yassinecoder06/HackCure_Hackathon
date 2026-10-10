@@ -77,7 +77,7 @@ Read first:
 - [x] **Medications:** the doctor enters the prescription → the engine creates doses and flags overdue ones and clashes. Only a nurse's tap closes a dose; patient-reported entries are stored separately. Never choose drugs or doses.
 - [x] **Remote doctor instructions:** a short note on an alert, audited and shown to the nurse. It works asynchronously: queued and delivered when the doctor's phone reconnects.
 - [x] **FHIR R4 export (read-only)** following [`fhir-mapping.md`](../../contracts/fhir-mapping.md): `Patient`, `Encounter`, `Observation` (LOINC), `MedicationAdministration`. Access is audited.
-- [ ] **Explainer:** template sentences from the rule traces.
+- [x] **Explainer:** template sentences from the rule traces, in one bilingual (English/French) module, plus the NEWS2 trend and a priority rank with reasons per bed.
 
 ## Could (after P4): local LLM layer ([ADR 0013](../decisions/0013-local-llm-grounded.md))
 

@@ -77,4 +77,4 @@ def test_admissions_and_deterioration_add_work():
     busy = compare(state, [Disruption("admissions", at_min=30, count=2),
                            Disruption("patient_deteriorates", at_min=0, bed="B06")], CFG, 40, 240)
     assert busy["scenario"]["nurse_utilization"]["median"] > base
-    assert any("calibrated" in a for a in busy["assumptions"])
+    assert {"code": "whatif.illustrative", "params": {}} in busy["assumptionItems"]

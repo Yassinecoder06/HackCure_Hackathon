@@ -14,8 +14,8 @@ from datetime import datetime
 from typing import Any
 
 from .calls import CallConfig
+from .explain import Explainer
 from .meds import MedsConfig, timeline
-from .news2_labels import LABELS
 from .timeutil import format_ts
 from .twin.state import WardTwin
 from .twin.views import reading_status
@@ -38,9 +38,14 @@ class FirstSeen:
         return self._seen.setdefault(alert_id, format_ts(now))
 
 
+def _capital(text: str) -> str:
+    return text[:1].upper() + text[1:]
+
+
 def derive_alerts(twin: WardTwin, news2: dict[str, dict[str, Any] | None], now: datetime, cfg: CallConfig,
                   first_seen: FirstSeen, bed_ids: set[str] | None = None,
-                  meds_cfg: MedsConfig | None = None) -> list[dict[str, Any]]:
+                  meds_cfg: MedsConfig | None = None, ex: Explainer | None = None) -> list[dict[str, Any]]:
+    ex = ex or Explainer("en", meds_cfg.ward_tz if meds_cfg else Explainer().tz)
     alerts: list[dict[str, Any]] = []
 
     def add(alert_id: str, bed: str, kind: str, priority: str, explanation: list[str], confidence: dict[str, Any],
@@ -68,50 +73,49 @@ def derive_alerts(twin: WardTwin, news2: dict[str, dict[str, Any] | None], now: 
             if result is not None and result["band"] in cfg.news2_band_priority:
                 kind = "news2_single_param_3" if result["band"] == "low_medium" else "news2_high"
                 scored = [c for c in result["components"] if c.get("points")]
-                explanation = [f"NEWS2 {'at least ' if not result['complete'] else ''}{result['total']}: "
-                               f"{result['response']}"]
-                explanation += [f"{LABELS[c['param']].capitalize()} {c['value']} scores {c['points']}"
+                qualifier = "" if result["complete"] else ex.say("alert.news2.at_least")
+                explanation = [ex.say("alert.news2.headline", qualifier=qualifier, total=result["total"],
+                                      response=ex.say(f"news2.response.{result['band']}"))]
+                explanation += [ex.say("alert.news2.component", param=_capital(ex.param(c["param"])),
+                                       value=c["value"], points=c["points"])
                                 for c in sorted(scored, key=lambda c: -c["points"])]
                 if not result["complete"]:
-                    explanation.append(result["label"])
+                    explanation.append(ex.news2(result)["label"])
                 add(alert_id("news2", bed.bed, adm, result["band"]), bed.bed, kind,
                     cfg.news2_band_priority[result["band"]], explanation, result["confidence"])
 
             stale = sorted(p for p, r in bed.vitals.items() if reading_status(r, now) == "stale")
             if stale:
                 add(alert_id("stale", bed.bed, adm), bed.bed, "stale_data", cfg.stale_data_priority,
-                    [f"No fresh reading for: {', '.join(LABELS.get(p, p) for p in stale)}. Values are not used."],
-                    {"value": DETERMINISTIC, "basis": "reading age compared with each sensor's freshness limit"})
+                    [ex.say("alert.stale", params=ex.params(stale))],
+                    {"value": DETERMINISTIC, "basis": ex.say("alert.stale.basis")})
 
         for device in bed.devices.values():
             if device.status in ("offline", "error"):
                 add(alert_id("device", device.device_id, device.status, format_ts(device.last_seen)), bed.bed,
                     "device_offline", cfg.device_offline_priority,
-                    [f"{device.device_id} reported '{device.status}' at {format_ts(device.last_seen)}; "
-                     "its readings will go stale."],
-                    {"value": DETERMINISTIC, "basis": "device status message"})
+                    [ex.say("alert.device", device=device.device_id, status=device.status,
+                            time=ex.time(device.last_seen))],
+                    {"value": DETERMINISTIC, "basis": ex.say("alert.device.basis")})
 
     if meds_cfg is not None:
         for dose in timeline(twin, now, meds_cfg, hours=0)["doses"]:
             if dose["status"] == "overdue" and (bed_ids is None or dose["bed"] in bed_ids):
                 add(alert_id("dose", dose["doseId"]), dose["bed"], "dose_overdue", meds_cfg.overdue_priority,
-                    [f"{dose['label']} for {dose['bed']} was due at {dose['due']} and no nurse has recorded it."],
-                    {"value": DETERMINISTIC, "basis": "doctor prescription schedule and nurse records"})
+                    [ex.say("alert.dose", label=dose["label"], bed=dose["bed"], time=ex.time(dose["due"]))],
+                    {"value": DETERMINISTIC, "basis": ex.say("alert.dose.basis")})
 
     for call in twin.calls.values():
         if bed_ids is not None and call.bed not in bed_ids:
             continue
         if call.state == "escalated" and call.escalation_level >= 1:
-            reason = {
-                "unacknowledged_timeout": "not acknowledged in time",
-                "repeat_press": "the patient pressed again",
-                "high_news2": "the patient's NEWS2 is high",
-            }.get(call.escalation_reason or "", "escalated")
+            reason = ex.say(f"reason.{call.escalation_reason or 'unacknowledged_timeout'}")
+            pressed = "alert.call.pressed_late" if call.delivered_late else "alert.call.pressed"
             add(alert_id("call", call.call_id, str(call.escalation_level)), call.bed, "call_escalated",
                 cfg.call_level_priority.get(call.escalation_level, "critical"),
-                [f"{call.kind.capitalize()} call from {call.bed} escalated to level {call.escalation_level}: {reason}.",
-                 f"Pressed at {format_ts(call.pressed_at)}"
-                 + (" (delivered late after a link outage)" if call.delivered_late else "") + "."],
-                {"value": DETERMINISTIC, "basis": "deterministic rule on press time, presses and NEWS2"},
+                [ex.say("alert.call", kind=ex.kind(call.kind, capital=True), bed=call.bed,
+                        level=call.escalation_level, reason=reason),
+                 ex.say(pressed, time=ex.time(call.pressed_at))],
+                {"value": DETERMINISTIC, "basis": ex.say("alert.call.basis")},
                 escalated_to=cfg.escalated_to(call.kind, call.escalation_level))
     return alerts
