@@ -51,6 +51,10 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   - Suggestions are made automatically (debounced, off the MQTT thread) when staff presence or admissions
     change, and pushed on the stream as `assignment_suggestion`.
   - The snapshot shows `assignedNurse` per bed and `assignedBeds` per staff member.
+- P3: **what-if** `POST .../whatif/runs`. The server describes the live ward (nurses and care assistants on the ward,
+  each occupied bed's NEWS2 band) to the inference simulator, adds the disruptions, and returns baseline vs scenario
+  (median, p5–p95) with the assumptions. Beds without a complete NEWS2 are disclosed in the assumptions. Audited;
+  never touches live state.
 - Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
 
 ## Run

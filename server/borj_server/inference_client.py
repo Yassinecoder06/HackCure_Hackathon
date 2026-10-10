@@ -44,5 +44,15 @@ class InferenceClient:
             log.warning("inference unavailable for assignment: %s", exc)
             return None
 
+    def whatif(self, body: dict[str, Any], timeout_s: float = 60.0) -> dict[str, Any] | None:
+        """Many-seed simulation: seconds, not milliseconds. Never on the triage path."""
+        try:
+            resp = self.http.post("/v1/whatif", json=body, timeout=timeout_s)
+            resp.raise_for_status()
+            return resp.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            log.warning("inference unavailable for what-if: %s", exc)
+            return None
+
     def close(self) -> None:
         self.http.close()
