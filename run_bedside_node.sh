@@ -14,7 +14,12 @@ echo " Broker: ${BROKER:-10.42.0.1:1883}"
 echo " Physical: Green LED=25, Red LED=22, Buttons=17/27, Rotary=23/24"
 echo "=========================================================="
 
-exec python3 -m borj_node \
+PYTHON_BIN="python3"
+if [ -f ".venv/bin/python" ]; then
+    PYTHON_BIN=".venv/bin/python"
+fi
+
+exec "$PYTHON_BIN" -m borj_node \
     --ward "${WARD:-W1}" \
     --bed "${BED:-B06}" \
     --broker "${BROKER:-10.42.0.1:1883}" \

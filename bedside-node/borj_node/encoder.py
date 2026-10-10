@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import shutil
 import subprocess
-from typing import Callable
+from collections.abc import Callable
 
 log = logging.getLogger(__name__)
 

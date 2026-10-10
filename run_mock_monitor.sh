@@ -16,7 +16,12 @@ echo " Broker: ${BROKER:-10.42.0.1:1883}"
 echo " Profile: ${PROFILE:-normal}"
 echo "=========================================================="
 
-exec python3 -m borj_sim.mock_monitor \
+PYTHON_BIN="python3"
+if [ -f ".venv/bin/python" ]; then
+    PYTHON_BIN=".venv/bin/python"
+fi
+
+exec "$PYTHON_BIN" -m borj_sim.mock_monitor \
     --ward "${WARD:-W1}" \
     --bed "${BED:-B06}" \
     --broker "${BROKER:-10.42.0.1:1883}" \
