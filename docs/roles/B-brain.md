@@ -55,29 +55,36 @@ Read first:
 
 ## P2: calls, escalation, latency
 
-- [ ] A call state machine as in [`mqtt-topics.md`](../../contracts/mqtt-topics.md). Only the server publishes `call/state`.
-- [ ] Routing: `assist` to nurses, `comfort` to care assistants.
-- [ ] Escalation on: unacknowledged timeout (level 1 re-alert, level 2 charge nurse), repeated press, NEWS2 ≥ 5. Timers live in `server/config/calls.yaml`.
-- [ ] Alerts follow the escalation ladder (low/medium/critical), each with a confidence and an explanation.
-- [ ] Ack and resolve endpoints, which take **one tap**. All audited.
-- [ ] **Latency metric:** end-to-end from the event `ts` to delivery on the WebSocket, published as `metrics` (p50/p95) for the board. Budget: under 1 s.
-- [ ] Escalation to the **remote on-call doctor** (level 2+) through the same alert stream. The SMS fallback hook is a stub, behind config.
-- [ ] Tests: escalation on the demo clock, repeated press, replay is a no-op, latency is measured.
+- [x] A call state machine as in [`mqtt-topics.md`](../../contracts/mqtt-topics.md). Only the server publishes `call/state`.
+- [x] Routing: `assist` to nurses, `comfort` to care assistants.
+- [x] Escalation on: unacknowledged timeout (level 1 re-alert, level 2 charge nurse), repeated press, NEWS2 ≥ 5. Timers live in `server/config/calls.yaml`.
+- [x] Alerts follow the escalation ladder (low/medium/critical), each with a confidence and an explanation.
+- [x] Ack and resolve endpoints, which take **one tap**. All audited.
+- [x] **Latency metric:** end-to-end from the event `ts` to delivery on the WebSocket, published as `metrics` (p50/p95) for the board. Budget: under 1 s.
+- [x] Escalation to the **remote on-call doctor** (level 2+) through the same alert stream (`escalatedTo` includes `doctor`). The SMS fallback hook is a stub that only logs for now.
+- [x] Tests: escalation on the demo clock, repeated press, replay is a no-op, latency is measured.
 
 ## P3: decisions and telemedicine
 
-- [ ] **Assignment** (inference, OR-Tools CP-SAT):
+- [x] **Assignment** (inference, OR-Tools CP-SAT):
   - Inputs: acuity + NEWS2 workload, skills, proximity, continuity, locked assignments, breaks.
   - Output: a suggestion with reasons, workload before and after, and a confidence (solver status, data freshness).
   - **Never auto-applied**: only a charge nurse's decision changes assignments (invariant 1). Write a test for this.
-- [ ] **What-if** (inference, SimPy):
+- [x] **What-if** (inference, SimPy):
   - Clone the twin, apply the disruptions, simulate ahead over N seeds, using the same seeds for baseline and scenario.
   - Report the median and p5–p95, plus the assumptions list.
   - **Erlang-C oracle test**: 26 calls/h at 8 min each gives 3 nurses → unbounded, 4 → 10.8 min, 5 → 1.9 min; routed 40% to care assistants gives 4.2 / 0.8 / 0.2 min.
-- [ ] **Medications:** the doctor enters the prescription → the engine creates doses and flags overdue ones and clashes. Only a nurse's tap closes a dose; patient-reported entries are stored separately. Never choose drugs or doses.
+- [x] **Medications:** the doctor enters the prescription → the engine creates doses and flags overdue ones and clashes. Only a nurse's tap closes a dose; patient-reported entries are stored separately. Never choose drugs or doses.
 - [ ] **Remote doctor instructions:** a short note on an alert, audited and shown to the nurse. It works asynchronously: queued and delivered when the doctor's phone reconnects.
-- [ ] **FHIR R4 export (read-only)** following [`fhir-mapping.md`](../../contracts/fhir-mapping.md): `Patient`, `Encounter`, `Observation` (LOINC), `MedicationAdministration`. Access is audited.
+- [x] **FHIR R4 export (read-only)** following [`fhir-mapping.md`](../../contracts/fhir-mapping.md): `Patient`, `Encounter`, `Observation` (LOINC), `MedicationAdministration`. Access is audited.
 - [ ] **Explainer:** template sentences from the rule traces.
+
+## Could (after P4): local LLM layer ([ADR 0013](../decisions/0013-local-llm-grounded.md))
+
+- [ ] Intent router + fact builder (numbered facts from the twin and event log) + local model (Ollama) + verifier (every number, bed id, time and citation must match a fact; otherwise fall back to templates).
+- [ ] Handover summary per bed, and Q&A for a fixed set of intents; labelled and audited; abstains when facts are missing.
+- [ ] Evaluation set in CI reporting the verifier's rejection rate.
+- [ ] Later: document RAG over approved protocols, with quoted citations.
 
 ## P4: family privacy filter + outbound publisher
 

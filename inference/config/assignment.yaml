@@ -1,0 +1,19 @@
+# Nurse assignment suggestions (OR-Tools CP-SAT). Whitepaper 5.2: balance acuity-weighted workload,
+# respect continuity of care, skill mix, proximity and locked assignments. ALWAYS a suggestion:
+# only a charge nurse's approval changes assignments (safety invariant 1).
+# SAFETY INVARIANT 8: parameters, not code. Each block says who must validate it.
+
+workload:
+  validated_by: "TO BE CONFIRMED BY THE WARD (charge nurse / nursing direction)"
+  acuity_weight: 1.0          # per baseline acuity point (1-4, set by the nurse at admission)
+  news2_weight: 0.5           # per NEWS2 point (fresh total, or the partial minimum)
+  unknown_news2_points: 2     # assumed when NEWS2 is unavailable (conservative); lowers confidence
+  max_beds_per_nurse: 6       # raised automatically if there are too few nurses for the beds
+  charge_nurse_takes_beds: false
+
+objective:
+  validated_by: "Borj team (optimisation weights, not clinical parameters)"
+  balance_weight: 100         # per workload unit carried by the busiest nurse
+  change_weight: 15           # per bed moved away from its current nurse (continuity of care)
+  room_weight: 5              # per room a nurse has to cover (walking; staff are never tracked)
+  time_limit_s: 2.0

@@ -93,6 +93,8 @@ def make_event() -> Callable[..., tuple[str, dict[str, Any]]]:
         schema = name.split(".")[0]
         if schema in ("ack", "staff-presence"):
             topic = bc.topic(schema, payload["ward"], staff_id=payload["staffId"])
+        elif schema == "assignment":
+            topic = bc.topic(schema, payload["ward"])
         else:
             topic = bc.topic(schema, payload["ward"], bed=payload["bed"])
         return topic, payload

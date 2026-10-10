@@ -875,6 +875,9 @@ components:
           items: { type: string }
         acknowledgedBy: { $ref: "#/components/schemas/Id" }
         confidence: { $ref: "#/components/schemas/Confidence" }
+        active:
+          type: boolean
+          description: "false = the condition has cleared (sent once on the stream so clients can remove it)"
         escalatedTo:
           type: array
           description: Roles reached so far (e.g. nurse, charge_nurse, doctor)
@@ -1053,16 +1056,26 @@ components:
         isInfusion: { type: boolean, default: false }
 
     Prescription:
-      allOf:
-        - { $ref: "#/components/schemas/PrescriptionRequest" }
-        - type: object
-          required: [prescriptionId, prescribedBy, doses]
-          properties:
-            prescriptionId: { $ref: "#/components/schemas/Id" }
-            prescribedBy: { $ref: "#/components/schemas/Id" }
-            doses:
-              type: array
-              items: { $ref: "#/components/schemas/Dose" }
+      description: The request's fields plus what the server adds. (Not an allOf of PrescriptionRequest, whose additionalProperties false would reject the added fields.)
+      type: object
+      required: [prescriptionId, prescribedBy, doses, admissionId, drug, dose, route, times, startDate]
+      properties:
+        prescriptionId: { $ref: "#/components/schemas/Id" }
+        prescribedBy: { $ref: "#/components/schemas/Id" }
+        admissionId: { $ref: "#/components/schemas/Id" }
+        drug: { type: string }
+        dose: { type: string }
+        route: { enum: [oral, iv, im, sc, inhaled, topical, other] }
+        times:
+          type: array
+          items: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        isInfusion: { type: boolean }
+        doses:
+          type: array
+          description: Doses due in the next 24 hours
+          items: { $ref: "#/components/schemas/Dose" }
 
     Dose:
       type: object
@@ -1125,17 +1138,21 @@ components:
         givenBy: { enum: [patient, legal_representative] }
 
     Consent:
-      allOf:
-        - { $ref: "#/components/schemas/ConsentRequest" }
-        - type: object
-          required: [consentId, admissionId, recordedAt, recordedBy, active]
-          properties:
-            consentId: { $ref: "#/components/schemas/Id" }
-            admissionId: { $ref: "#/components/schemas/Id" }
-            recordedAt: { $ref: "#/components/schemas/Timestamp" }
-            recordedBy: { $ref: "#/components/schemas/Id" }
-            active: { type: boolean }
-            revokedAt: { $ref: "#/components/schemas/Timestamp" }
+      description: The request's fields plus what the server records (standalone, see Prescription).
+      type: object
+      required: [consentId, admissionId, recordedAt, recordedBy, active, relativeLabel, allowedKinds, givenBy]
+      properties:
+        consentId: { $ref: "#/components/schemas/Id" }
+        admissionId: { $ref: "#/components/schemas/Id" }
+        recordedAt: { $ref: "#/components/schemas/Timestamp" }
+        recordedBy: { $ref: "#/components/schemas/Id" }
+        active: { type: boolean }
+        revokedAt: { $ref: "#/components/schemas/Timestamp" }
+        relativeLabel: { type: string, maxLength: 40 }
+        allowedKinds:
+          type: array
+          items: { $ref: "#/components/schemas/FamilyKind" }
+        givenBy: { enum: [patient, legal_representative] }
 
     InviteCreated:
       type: object

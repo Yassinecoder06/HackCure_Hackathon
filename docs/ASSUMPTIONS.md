@@ -40,7 +40,7 @@ Inputs:
 - **Security is real in the demo**: TLS 1.3, AES-256 at rest, real login, access audit ([ADR 0010](decisions/0010-security-baseline.md)). Hospital SSO is out of scope.
 - **Storage is PostgreSQL**, with inference in its own service ([ADR 0009](decisions/0009-layers-and-postgres.md)).
 - **Hosting:** a cloud VM for the "active web URL", plus a fully local Docker setup for the live demo. Neither is an INPDP-approved national host, so real deployment would need one.
-- **The optional local LLM explainer is out.** Explanations are template-based. Confidence indices are deterministic ([ADR 0011](decisions/0011-interop-and-confidence.md)).
+- **Explanations are template-based** and confidence indices are deterministic ([ADR 0011](decisions/0011-interop-and-confidence.md)). An optional local LLM may later phrase handover summaries and answer ward questions, grounded on selected facts and checked by a verifier, never on alerts ([ADR 0013](decisions/0013-local-llm-grounded.md)).
 - **FHIR:** read-only R4 export only. No writing into a real hospital information system.
 
 ## Contract additions beyond the kickoff plan

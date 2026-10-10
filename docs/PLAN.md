@@ -41,8 +41,8 @@ Shared by everyone:
 |---|---|
 | **Must** | Simulator → gateway → MQTT (TLS) → twin → NEWS2 with confidence → board; call state machine with escalation; staff view alert and 1-tap ack; real login and access audit; encryption in transit and at rest; offline/degraded behaviour; latency measured on the board; Docker + hosted URL |
 | **Should** | Remote on-call doctor view (telemedicine); OR-Tools assignment with human approval; SimPy what-if; medication timeline; Pi bedside node; FHIR export; real sensor on the Pi (if the team agrees) |
-| **Could** | Family Care Link thin slice (needed for the business story, so aim for it); 3D twin; Web Push; SMS fallback |
-| **Won't (now)** | Real device integrations beyond one optional sensor, real patient data, hospital SSO, anything that picks drugs or doses, equipment maintenance, local LLM, Omniverse/Unreal, writing into a real hospital information system |
+| **Could** | Family Care Link thin slice (needed for the business story, so aim for it); 3D twin; Web Push; SMS fallback; local LLM handover summaries and Q&A, grounded and verified ([ADR 0013](decisions/0013-local-llm-grounded.md)) |
+| **Won't (now)** | Real device integrations beyond one optional sensor, real patient data, hospital SSO, anything that picks drugs or doses, equipment maintenance, LLM-written alert explanations or clinical advice, Omniverse/Unreal, writing into a real hospital information system |
 
 ## Phases (no dates, done in order)
 

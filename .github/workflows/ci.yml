@@ -42,4 +42,15 @@ jobs:
       - if: always()
         run: docker compose -f infra/docker-compose.yml down -v
 
-  # apps:            # C adds this in the P0 task: npm ci + build + lint for apps/ward and apps/family
+  apps:
+    name: Apps lint, isolation, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

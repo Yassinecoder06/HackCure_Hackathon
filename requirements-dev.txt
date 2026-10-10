@@ -6,3 +6,4 @@ PyYAML==6.0.3
 openapi-spec-validator==0.9.0
 pytest==9.1.1
 ruff==0.17.0
+fhir.resources==8.3.0       # tests only: validates the FHIR export against the R4B models

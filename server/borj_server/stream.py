@@ -21,7 +21,7 @@ from typing import Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from .auth import AuthError
-from .live import build_beds, build_snapshot, build_staff
+from .live import build_beds, build_calls, build_snapshot, build_staff
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +42,8 @@ def _token_from_subprotocols(websocket: WebSocket) -> str:
 class Change:
     beds: set[str] = field(default_factory=set)
     staff: set[str] = field(default_factory=set)
+    calls: set[str] = field(default_factory=set)
+    suggestions: list[dict[str, Any]] = field(default_factory=list)
     all_beds: bool = False
     clock: dict[str, Any] | None = None
     received: float = field(default_factory=time.monotonic)
@@ -79,12 +81,28 @@ class StreamHub:
             return
         if schema == "clock":
             change = Change(all_beds=True, clock={k: payload[k] for k in ("simTs", "speed", "running")})
+        elif schema in ("call", "call-state"):
+            change = Change(beds={payload["bed"]}, calls={payload["callId"]})
+        elif schema == "ack" and payload["target"] == "alert":
+            change = Change(all_beds=True)  # rare: refresh alerts everywhere rather than parse alert ids
         elif "bed" in payload:
             change = Change(beds={payload["bed"]})
         elif schema == "staff-presence":
             change = Change(staff={payload["staffId"]})
+        elif schema == "assignment":
+            moved = {c["bed"] for c in payload["changes"]}
+            people = {c["toStaffId"] for c in payload["changes"]} | {
+                c["fromStaffId"] for c in payload["changes"] if "fromStaffId" in c}
+            change = Change(beds=moved, staff=people)
         else:
             return
+        self._broadcast(change)
+
+    def on_suggestion(self, suggestion: dict[str, Any]) -> None:
+        if self.loop is not None and self.queues:
+            self._broadcast(Change(suggestions=[dict(suggestion)]))
+
+    def _broadcast(self, change: Change) -> None:
         for queue in list(self.queues):
             self.loop.call_soon_threadsafe(queue.put_nowait, change)
 
@@ -107,9 +125,11 @@ async def serve(websocket: WebSocket, app: FastAPI, ward: str, metrics_interval_
     app.state.ingestor.store.audit(who.staff_id, "stream.open", ward)
     hub.queues.add(queue)
     try:
-        await websocket.send_json({"type": "snapshot", "data": await asyncio.to_thread(build_snapshot, app)})
+        snapshot = await asyncio.to_thread(build_snapshot, app)
+        await websocket.send_json({"type": "snapshot", "data": snapshot})
+        known_alerts = {a["alertId"]: a for a in snapshot["alerts"]}
         tasks = [
-            asyncio.create_task(_push_changes(websocket, app, queue, hub)),
+            asyncio.create_task(_push_changes(websocket, app, queue, hub, known_alerts)),
             asyncio.create_task(_tick(queue, websocket, hub, metrics_interval_s, refresh_interval_s)),
             asyncio.create_task(_drain_client(websocket)),
         ]
@@ -123,27 +143,51 @@ async def serve(websocket: WebSocket, app: FastAPI, ward: str, metrics_interval_
         hub.queues.discard(queue)
 
 
-async def _push_changes(websocket: WebSocket, app: FastAPI, queue: asyncio.Queue[Change], hub: StreamHub) -> None:
+async def _push_changes(websocket: WebSocket, app: FastAPI, queue: asyncio.Queue[Change], hub: StreamHub,
+                        known_alerts: dict[str, dict[str, Any]]) -> None:
     while True:
         merged = await queue.get()
         while not queue.empty():  # coalesce a burst into one update per bed
             nxt = queue.get_nowait()
             merged.beds |= nxt.beds
             merged.staff |= nxt.staff
+            merged.calls |= nxt.calls
+            merged.suggestions += nxt.suggestions
             merged.all_beds |= nxt.all_beds
             merged.clock = nxt.clock or merged.clock
             merged.received = min(merged.received, nxt.received)
         if merged.clock:
             await websocket.send_json({"type": "clock", "data": merged.clock})
+        for suggestion in merged.suggestions:
+            await websocket.send_json({"type": "assignment_suggestion", "data": suggestion})
+        if merged.calls:
+            for call in await asyncio.to_thread(build_calls, app, merged.calls):
+                await websocket.send_json({"type": "call", "data": call})
         if merged.all_beds or merged.beds:
-            beds = await asyncio.to_thread(build_beds, app, None if merged.all_beds else merged.beds)
+            scope = None if merged.all_beds else merged.beds
+            beds, alerts = await asyncio.to_thread(build_beds, app, scope)
             for bed in beds:
                 await websocket.send_json({"type": "bed", "data": bed})
+            await _send_alerts(websocket, known_alerts, alerts, scope)
         if merged.staff:
             for member in await asyncio.to_thread(build_staff, app, merged.staff):
                 await websocket.send_json({"type": "staff", "data": member})
         if merged.beds and not merged.all_beds:
             hub.latency.add((time.monotonic() - merged.received) * 1000)
+
+
+async def _send_alerts(websocket: WebSocket, known: dict[str, dict[str, Any]], current: list[dict[str, Any]],
+                       scope: set[str] | None) -> None:
+    """Send new or changed alerts, and `active: false` for alerts in scope whose condition has cleared."""
+    current_ids = {a["alertId"] for a in current}
+    for alert_id, alert in list(known.items()):
+        if alert_id not in current_ids and (scope is None or alert.get("bed") in scope):
+            await websocket.send_json({"type": "alert", "data": {**alert, "active": False}})
+            del known[alert_id]
+    for alert in current:
+        if known.get(alert["alertId"]) != alert:
+            await websocket.send_json({"type": "alert", "data": alert})
+            known[alert["alertId"]] = alert
 
 
 async def _tick(queue: asyncio.Queue[Change], websocket: WebSocket, hub: StreamHub, metrics_interval_s: float,

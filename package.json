@@ -1,0 +1,26 @@
+{
+  "name": "borj-picare-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Borj-PiCare Ward Control Tower & Family Care Link apps",
+  "workspaces": [
+    "apps/ward",
+    "apps/family",
+    "apps/mock-server"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/mock-server & npm run dev --workspace=apps/ward & npm run dev --workspace=apps/family",
+    "dev:server": "npm run dev --workspace=apps/mock-server",
+    "dev:ward": "npm run dev --workspace=apps/ward",
+    "dev:family": "npm run dev --workspace=apps/family",
+    "build": "npm run build --workspace=apps/ward && npm run build --workspace=apps/family",
+    "lint": "npm run lint --workspace=apps/ward && npm run lint --workspace=apps/family && npm run test:isolation",
+    "test:isolation": "node tests/test_family_isolation.js",
+    "typegen": "npx openapi-typescript ./contracts/openapi.yaml -o ./apps/ward/src/contracts/ward-api.d.ts && npx openapi-typescript ./contracts/family-gateway.openapi.yaml -o ./apps/family/src/contracts/family-api.d.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "openapi-typescript": "^7.6.1"
+  }
+}

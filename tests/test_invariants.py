@@ -13,9 +13,50 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 
 
-@pytest.mark.skip(reason="P3, B: no code path applies an assignment/prescription without a logged human decision")
 def test_1_advisory_only():
-    pass
+    """Suggestions change nothing; only a recorded human approval does, and both are audited.
+    Prescriptions are created only by a doctor and never by the system."""
+    import re
+
+    from borj_server.assignment import AssignmentService
+    from borj_server.clock import Clock
+    from borj_server.crypto import DataCipher
+    from borj_server.ingest import Ingestor
+    from borj_server.store import EventStore
+    from borj_server.twin.layout import WardLayout
+
+    store = EventStore("sqlite://", DataCipher({"k1": b"K" * 32}, "k1"))
+    ingestor = Ingestor(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"), store, Clock("wall"))
+    plan = {"status": "optimal", "changes": [{"bed": "B01", "toStaffId": "N1"}], "reasons": ["test"],
+            "confidence": {"value": 1.0, "basis": "test"}, "loadBefore": {}, "loadAfter": {}}
+    service = AssignmentService(ingestor, solve=lambda nurses, beds: plan, news2_by_bed=dict)
+
+    suggestion = service.suggest("test")
+    assert ingestor.twin.assignments == {}, "a suggestion must never change assignments"
+    service.decide(suggestion["suggestionId"], "approve", "CN1", None)
+    assert ingestor.twin.assignments == {"B01": "N1"}
+    actions = [(e["actor"], e["action"]) for e in store.audit_entries()]
+    assert ("system", "suggestion.created") in actions and ("CN1", "suggestion.approved") in actions
+
+    # Statically: the only code that emits an `assignment` event is the approval path.
+    emitters = [p.relative_to(ROOT).as_posix() for p in (ROOT / "server" / "borj_server").rglob("*.py")
+                if re.search(r"topic\(\s*\"assignment\"", p.read_text(encoding="utf-8"))]
+    assert emitters == ["server/borj_server/assignment.py"]
+    assert "def _apply" in (ROOT / "server" / "borj_server" / "assignment.py").read_text(encoding="utf-8")
+    service.close()
+
+    # Prescriptions: only a doctor's REST entry creates one; nothing in the system writes or changes one,
+    # and none is ever published on MQTT (drug names stay in the encrypted log and on staff screens).
+    sources = {p.relative_to(ROOT).as_posix(): p.read_text(encoding="utf-8")
+               for p in (ROOT / "server" / "borj_server").rglob("*.py")}
+    rx_emitters = [name for name, code in sources.items() if re.search(r'topic\(\s*"prescription"', code)]
+    assert rx_emitters == ["server/borj_server/api/routes.py"]
+    routes = sources["server/borj_server/api/routes.py"]
+    create = routes[routes.index("def create_prescription"):routes.index("def meds_timeline")]
+    assert 'require_role(who, "doctor")' in create
+    publishers = [name for name, code in sources.items() if "publish_retained" in code]
+    assert sorted(publishers) == ["server/borj_server/main.py", "server/borj_server/mqtt.py"]
+    assert "prescription" not in sources["server/borj_server/calls.py"]
 
 
 @pytest.mark.skip(reason="P4, B: privacy filter output from a twin full of vitals/scores/drugs passes only allow-list")
@@ -74,6 +115,8 @@ def test_6_idempotency():
         schema = path.name.split(".")[0]
         if schema in ("ack", "staff-presence"):
             topic = bc.topic(schema, payload["ward"], staff_id=payload["staffId"])
+        elif schema == "assignment":
+            topic = bc.topic(schema, payload["ward"])
         else:
             topic = bc.topic(schema, payload["ward"], bed=payload["bed"])
         messages.append((topic, payload))
@@ -124,8 +167,9 @@ def test_10a_encrypted_at_rest():
     payload = json.loads((ROOT / "contracts" / "examples" / "vitals.device.json").read_text(encoding="utf-8"))
     store.append("borj/W1/B04/vitals", "vitals", payload)
     with store.engine.connect() as conn:
-        raw = repr(conn.execute(select(events)).all()).encode()
-    assert b"pulse" not in raw and b"112" not in raw
+        rows = conn.execute(select(events)).all()
+    raw = b"".join(v if isinstance(v, bytes) else str(v).encode() for row in rows for v in row)
+    assert b'"pulse":112' not in raw and b'"params"' not in raw
     assert next(store.events()).payload == payload
 
 
@@ -150,9 +194,32 @@ def test_11_non_repudiation():
     assert store.verify_audit_chain()["valid"] is False
 
 
-@pytest.mark.skip(reason="P1-P3, B: every score/alert/suggestion carries confidence + explanation")
 def test_12_explainable_and_advisory():
-    pass
+    """Every NEWS2 result and every alert carries a confidence index and an explanation.
+    (Assignment suggestions and what-if join this test in P3.)"""
+    from borj_inference.news2 import News2Config, Reading, score
+    from borj_server.alerts import FirstSeen, derive_alerts
+    from borj_server.calls import CallConfig
+    from borj_server.timeutil import parse_ts
+    from borj_server.twin.layout import WardLayout
+    from borj_server.twin.state import Admission, Call, Device, WardTwin
+
+    result = score({"pulse": Reading(135, "fresh", 10, 900), "consciousness": Reading("C", "fresh", 10, 14400)},
+                   News2Config.load())
+    assert 0 <= result["confidence"]["value"] <= 1 and result["confidence"]["basis"]
+    assert result["components"] and result["label"]
+
+    now = parse_ts("2026-10-10T23:00:00Z")
+    twin = WardTwin(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"))
+    twin.beds["B04"].admission = Admission("ADM-0004", "Patient 04", 2, now)
+    twin.beds["B07"].devices["MON-B07"] = Device("MON-B07", "bedside_monitor", "offline", now)
+    twin.calls["C1"] = Call("C1", "B06", "assist", now, state="escalated", escalation_level=2,
+                            escalation_reason="unacknowledged_timeout")
+    alerts = derive_alerts(twin, {"B04": {**result, "computedAt": "x"}}, now, CallConfig.load(), FirstSeen())
+    assert {a["type"] for a in alerts} >= {"news2_high", "device_offline", "call_escalated"}
+    for alert in alerts:
+        assert alert["explanation"] and alert["confidence"]["basis"]
+        assert 0 <= alert["confidence"]["value"] <= 1
 
 
 @pytest.mark.skip(reason="P1, A+B: messages with a bad or missing HMAC are rejected in demo mode")

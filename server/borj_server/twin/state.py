@@ -62,6 +62,63 @@ class StaffMember:
     presence_ts: datetime | None = None
 
 
+@dataclass
+class Call:
+    """A bedside call. Press facts come from the node; state comes only from server call/state events."""
+
+    call_id: str
+    bed: str
+    kind: str
+    pressed_at: datetime
+    press_count: int = 1
+    delivered_late: bool = False
+    state: str | None = None  # None until the server has published a call/state for it
+    state_ts: datetime | None = None
+    escalation_level: int = 0
+    escalation_reason: str | None = None
+    routed_to_role: str | None = None
+    acknowledged_by: str | None = None
+    acknowledged_at: datetime | None = None
+
+    @property
+    def open(self) -> bool:
+        return self.state != "resolved"
+
+
+@dataclass
+class Prescription:
+    """Entered by a doctor. The system never creates or changes one (safety invariant 1)."""
+
+    prescription_id: str
+    admission_id: str
+    bed: str
+    drug: str
+    dose: str
+    route: str
+    times: tuple[str, ...]
+    start_date: str
+    end_date: str | None
+    is_infusion: bool
+    prescribed_by: str
+
+
+@dataclass
+class Administration:
+    """A nurse's record: the only thing that closes a dose."""
+
+    action: str  # given | not_given
+    staff_id: str
+    ts: datetime
+    presence: str | None = None
+    reason: str | None = None
+
+
+@dataclass
+class AlertAck:
+    staff_id: str
+    ts: datetime
+
+
 class WardTwin:
     def __init__(self, layout: WardLayout) -> None:
         self.ward = layout.ward
@@ -70,3 +127,10 @@ class WardTwin:
         self.staff: dict[str, StaffMember] = {
             s.staff_id: StaffMember(s.staff_id, s.name, s.role, s.skills) for s in layout.staff
         }
+        self.calls: dict[str, Call] = {}
+        # bed -> nurse. Changes ONLY through approved `assignment` events (safety invariant 1).
+        self.assignments: dict[str, str] = {}
+        self.alert_acks: dict[str, AlertAck] = {}
+        self.prescriptions: dict[str, Prescription] = {}
+        self.administrations: dict[str, Administration] = {}  # doseId -> nurse record
+        self.patient_reported: dict[str, datetime] = {}        # doseId -> "I took my pills" (never closes a dose)
