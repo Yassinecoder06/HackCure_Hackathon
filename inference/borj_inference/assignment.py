@@ -7,6 +7,7 @@ Objective (weights in config/assignment.yaml), in decreasing weight:
   2. as few beds as possible moved away from their current nurse -> continuity of care,
   3. as few rooms per nurse as possible -> less walking (rooms only: staff are never tracked).
 The result is a SUGGESTION with reasons and a confidence index. This module never applies anything.
+Reasons are language-neutral items {code, params}; the server renders them (server/borj_server/explain.py).
 The solver runs single-threaded with a fixed seed, so the same inputs always give the same answer.
 """
 
@@ -78,7 +79,8 @@ def suggest(nurses: list[Nurse], beds: list[BedNeed], cfg: AssignmentConfig) -> 
     before = {b.bed: b.current_nurse for b in beds}
     load_before = _loads(before, by_bed, cfg, nurse_ids)
 
-    def result(status: str, assignment: dict[str, str], reasons: list[str], solver_factor: float) -> dict[str, Any]:
+    def result(status: str, assignment: dict[str, str], reasons: list[dict[str, Any]],
+               solver_factor: float) -> dict[str, Any]:
         changes = [
             {"bed": b, "toStaffId": n, **({"fromStaffId": before[b]} if before[b] else {})}
             for b, n in sorted(assignment.items()) if before[b] != n
@@ -91,17 +93,17 @@ def suggest(nurses: list[Nurse], beds: list[BedNeed], cfg: AssignmentConfig) -> 
             "changes": changes,
             "loadBefore": load_before,
             "loadAfter": _loads(assignment, by_bed, cfg, nurse_ids) if assignment else load_before,
-            "reasons": reasons,
+            "reasonItems": reasons,
             "confidence": {
                 "value": round(solver_factor * (0.5 + 0.5 * share), 3),
-                "basis": f"solver {status}; NEWS2 fresh for {fresh} of {len(beds)} occupied beds",
+                "basisItem": {"code": "assign.basis", "params": {"status": status, "fresh": fresh, "total": len(beds)}},
             },
         }
 
     if not beds:
-        return result("optimal", {}, ["No occupied beds."], 1.0)
+        return result("optimal", {}, [_item("assign.no_beds")], 1.0)
     if not nurses:
-        return result("infeasible", {}, ["No nurse is on the ward: nothing can be assigned."], 0.0)
+        return result("infeasible", {}, [_item("assign.no_nurses")], 0.0)
 
     model = cp_model.CpModel()
     x: dict[tuple[str, str], cp_model.IntVar] = {}
@@ -112,8 +114,7 @@ def suggest(nurses: list[Nurse], beds: list[BedNeed], cfg: AssignmentConfig) -> 
 
     uncovered_skill = [b.bed for b in beds if not any((n, b.bed) in x for n in nurse_ids)]
     if uncovered_skill:
-        needed = ", ".join(uncovered_skill)
-        return result("infeasible", {}, [f"No nurse on the ward has the skills needed for: {needed}."], 0.0)
+        return result("infeasible", {}, [_item("assign.missing_skill", beds=", ".join(uncovered_skill))], 0.0)
 
     cap = max(cfg.max_beds_per_nurse, math.ceil(len(beds) / len(nurses)))
     weights = {b.bed: round(cfg.workload(b) * SCALE) for b in beds}
@@ -145,8 +146,7 @@ def suggest(nurses: list[Nurse], beds: list[BedNeed], cfg: AssignmentConfig) -> 
     solver.parameters.random_seed = 7
     status = solver.solve(model)
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        return result("infeasible", {}, ["No assignment satisfies the constraints (locked beds, skills, bed cap)."],
-                      0.0)
+        return result("infeasible", {}, [_item("assign.infeasible")], 0.0)
 
     assignment = {b.bed: next(n for n in nurse_ids if (n, b.bed) in x and solver.value(x[n, b.bed])) for b in beds}
     status_name = "optimal" if status == cp_model.OPTIMAL else "feasible"
@@ -154,25 +154,29 @@ def suggest(nurses: list[Nurse], beds: list[BedNeed], cfg: AssignmentConfig) -> 
                   1.0 if status == cp_model.OPTIMAL else 0.8)
 
 
+def _item(code: str, **params: Any) -> dict[str, Any]:
+    return {"code": code, "params": params}
+
+
 def _reasons(beds: list[BedNeed], before: dict[str, str | None], after: dict[str, str], nurse_ids: list[str],
-             cfg: AssignmentConfig, by_bed: dict[str, BedNeed]) -> list[str]:
+             cfg: AssignmentConfig, by_bed: dict[str, BedNeed]) -> list[dict[str, Any]]:
     reasons = []
     uncovered = sorted(b.bed for b in beds if b.current_nurse not in nurse_ids)
     if uncovered:
-        reasons.append(f"{len(uncovered)} bed(s) had no available nurse and are now covered: {', '.join(uncovered)}.")
+        reasons.append(_item("assign.uncovered", count=len(uncovered), beds=", ".join(uncovered)))
     load_before = _loads(before, by_bed, cfg, nurse_ids)
     load_after = _loads(after, by_bed, cfg, nurse_ids)
     busiest_before = max((v for k, v in load_before.items() if k != "unassigned"), default=0.0)
     busiest_after = max(load_after.values(), default=0.0)
-    reasons.append(f"Busiest nurse's workload (acuity + NEWS2): {busiest_before:.1f} -> {busiest_after:.1f}.")
+    reasons.append(_item("assign.busiest", before=float(busiest_before), after=float(busiest_after)))
     kept = sum(1 for b in beds if before[b.bed] == after[b.bed])
     with_nurse = sum(1 for b in beds if before[b.bed] in nurse_ids)
     if with_nurse:
-        reasons.append(f"Continuity of care: {kept} of {with_nurse} covered beds keep their nurse.")
+        reasons.append(_item("assign.continuity", kept=kept, total=with_nurse))
     for b in sorted(beds, key=lambda b: -cfg.workload(b)):
         if before[b.bed] != after[b.bed] and (b.news2_total or 0) >= 5:
-            reasons.append(f"{b.bed} (NEWS2 {b.news2_total}) goes to {after[b.bed]}, "
-                           f"who then carries {load_after[after[b.bed]]:.1f}.")
+            reasons.append(_item("assign.high_news2_moved", bed=b.bed, news2=b.news2_total, nurse=after[b.bed],
+                                 load=float(load_after[after[b.bed]])))
     rooms = {n: len({by_bed[b].room for b, m in after.items() if m == n}) for n in nurse_ids}
-    reasons.append(f"Rooms per nurse: at most {max(rooms.values(), default=0)}.")
+    reasons.append(_item("assign.rooms", max=max(rooms.values(), default=0)))
     return reasons

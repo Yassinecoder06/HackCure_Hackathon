@@ -27,8 +27,11 @@ def test_1_advisory_only():
 
     store = EventStore("sqlite://", DataCipher({"k1": b"K" * 32}, "k1"))
     ingestor = Ingestor(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"), store, Clock("wall"))
-    plan = {"status": "optimal", "changes": [{"bed": "B01", "toStaffId": "N1"}], "reasons": ["test"],
-            "confidence": {"value": 1.0, "basis": "test"}, "loadBefore": {}, "loadAfter": {}}
+    plan = {"status": "optimal", "changes": [{"bed": "B01", "toStaffId": "N1"}],
+            "reasonItems": [{"code": "assign.rooms", "params": {"max": 1}}],
+            "confidence": {"value": 1.0, "basisItem": {"code": "assign.basis",
+                                                       "params": {"status": "optimal", "fresh": 1, "total": 1}}},
+            "loadBefore": {}, "loadAfter": {}}
     service = AssignmentService(ingestor, solve=lambda nurses, beds: plan, news2_by_bed=dict)
 
     suggestion = service.suggest("test")

@@ -72,16 +72,17 @@ class WhatIfConfig:
     def load(cls, path: Path = DEFAULT_CONFIG) -> WhatIfConfig:
         return cls(yaml.safe_load(path.read_text(encoding="utf-8")))
 
-    def assumptions(self) -> list[str]:
+    def assumptions(self) -> list[dict[str, Any]]:
+        """Language-neutral items {code, params}; the server renders them (explain.py)."""
         return [
-            f"Calls: {self.calls_per_hour:g}/h for the ward, {self.comfort_share:.0%} non-clinical, "
-            f"{self.call_service_min:g} min each on average.",
-            "Observation rounds every " + ", ".join(f"{v:g} min ({k})" for k, v in self.obs_interval.items())
-            + f", {self.obs_service_min:g} min each.",
-            f"Medication doses: {self.doses_per_bed_per_hour:g} per bed per hour, {self.med_service_min:g} min each.",
-            f"Admission assessment: {self.admission_work_min:g} min of nurse time per new patient.",
-            "Illustrative values, to be calibrated with timings measured in a shadow-mode pilot.",
-            "Moving beds between the same nurses does not change capacity: only who is available does.",
+            {"code": "whatif.calls", "params": {"rate": self.calls_per_hour, "share": round(self.comfort_share * 100),
+                                                "minutes": self.call_service_min}},
+            {"code": "whatif.obs", "params": {"intervals": list(self.obs_interval.items()),
+                                              "minutes": self.obs_service_min}},
+            {"code": "whatif.meds", "params": {"rate": self.doses_per_bed_per_hour, "minutes": self.med_service_min}},
+            {"code": "whatif.admission", "params": {"minutes": self.admission_work_min}},
+            {"code": "whatif.illustrative", "params": {}},
+            {"code": "whatif.capacity", "params": {}},
         ]
 
 
@@ -260,5 +261,5 @@ def compare(state: WardState, disruptions: list[Disruption], cfg: WhatIfConfig, 
         "horizonMin": int(horizon_min),
         "baseline": {m: _dist([r[m] for r in baseline]) for m in METRICS},
         "scenario": {m: _dist([r[m] for r in scenario]) for m in METRICS},
-        "assumptions": cfg.assumptions(),
+        "assumptionItems": cfg.assumptions(),
     }

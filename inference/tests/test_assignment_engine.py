@@ -27,7 +27,7 @@ def test_nurse_called_away_beds_are_covered_and_rest_stays_put():
     assert set(moved) == {"B05", "B06"}  # only N3's beds move: continuity for everyone else
     assert all(c["fromStaffId"] == "N3" for c in moved.values())
     assert result["loadBefore"]["unassigned"] > 0 and "unassigned" not in result["loadAfter"]
-    assert result["reasons"][0].startswith("2 bed(s) had no available nurse")
+    assert result["reasonItems"][0] == {"code": "assign.uncovered", "params": {"count": 2, "beds": "B05, B06"}}
     # Balance outweighs one extra room of walking: the two uncovered beds are split, 3 beds each.
     assert result["loadAfter"] == {"N1": 7.5, "N2": 7.5}
 
@@ -39,7 +39,7 @@ def test_deteriorating_patient_rebalances_load():
     result = suggest(NURSES, beds, CFG)
     after = result["loadAfter"]
     assert max(after.values()) < max(v for k, v in result["loadBefore"].items() if k != "unassigned")
-    assert any("NEWS2 9" in r or "NEWS2 7" in r for r in result["reasons"])
+    assert any(r["code"] == "assign.high_news2_moved" for r in result["reasonItems"])
 
 
 def test_locked_beds_and_skills_are_hard_constraints():
@@ -57,7 +57,7 @@ def test_impossible_skill_is_reported_not_guessed():
     beds[0] = BedNeed("B01", "R1", acuity=2, required_skills=frozenset({"dialysis"}), current_nurse="N1")
     result = suggest(NURSES, beds, CFG)
     assert result["status"] == "infeasible" and result["changes"] == []
-    assert "B01" in result["reasons"][0]
+    assert result["reasonItems"][0] == {"code": "assign.missing_skill", "params": {"beds": "B01"}}
     assert result["confidence"]["value"] == 0.0
 
 

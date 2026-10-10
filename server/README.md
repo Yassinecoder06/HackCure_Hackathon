@@ -77,6 +77,14 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
 - P3: **remote doctor instructions** (`POST .../alerts/{id}/instructions`, doctor only): the on-call doctor answers an
   escalation with a short instruction, stored as a staff `ack` event (`action: instruct`) and shown on the alert as
   `instructions` for the nurses. Audited; survives replays.
+- P3: **explainer, English and French** (`explain.py`): every user-facing sentence lives in one bilingual
+  module, so a clinician reviews all wording in one sitting and the jury sees it in French. The language comes from
+  `?lang=en|fr`, then `Accept-Language`, then `BORJ_LANG`, and applies per stream connection too. Times are shown
+  in ward local time. The inference layer returns language-neutral reason codes, and the server renders them.
+  - **NEWS2 trend:** each bed's score 30 and 60 minutes ago, recomputed from its reading history (`news2Trend`).
+  - **Priority:** every admitted bed is ranked (band, escalated or open calls, score, overdue doses) with reasons,
+    e.g. "NEWS2 rose from 0 to 8 in the last 60 min." / "Le NEWS2 est passé de 0 à 8 en 60 min."
+  - Style rule: say what the data shows, never what the patient has.
 - Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
 
 ## Run

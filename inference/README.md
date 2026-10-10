@@ -9,7 +9,10 @@ The **inference layer** ([ADR 0009](../docs/decisions/0009-layers-and-postgres.m
 | `whatif` | ✅ | SimPy results over N seeds: median and p5–p95, plus the assumptions list |
 | `explain` | P3 | Template sentences from rule traces |
 
-Deterministic by design, with no black-box model (HackCure section 6).
+Deterministic by design, with no black-box model (HackCure section 6). Outputs are **language-neutral**: assignment
+reasons and what-if assumptions are `{code, params}` items (`reasonItems`, `assumptionItems`,
+`confidence.basisItem`), rendered in English or French by the server (`server/borj_server/explain.py`). NEWS2 still
+returns English `label`/`response`/`basis` defaults for direct use; the server re-renders them per viewer.
 
 ## NEWS2: how it works
 

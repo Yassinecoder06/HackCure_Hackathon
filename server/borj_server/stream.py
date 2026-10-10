@@ -20,7 +20,9 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
+from .assignment import render as render_suggestion
 from .auth import AuthError
+from .explain import Explainer, pick_lang
 from .live import build_beds, build_calls, build_snapshot, build_staff
 
 log = logging.getLogger(__name__)
@@ -125,11 +127,14 @@ async def serve(websocket: WebSocket, app: FastAPI, ward: str, metrics_interval_
     app.state.ingestor.store.audit(who.staff_id, "stream.open", ward)
     hub.queues.add(queue)
     try:
-        snapshot = await asyncio.to_thread(build_snapshot, app)
+        lang = pick_lang(websocket.query_params.get("lang"), websocket.headers.get("accept-language"),
+                         default=app.state.settings.default_lang)
+        ex = Explainer(lang, app.state.meds_config.ward_tz)
+        snapshot = await asyncio.to_thread(build_snapshot, app, ex)
         await websocket.send_json({"type": "snapshot", "data": snapshot})
         known_alerts = {a["alertId"]: a for a in snapshot["alerts"]}
         tasks = [
-            asyncio.create_task(_push_changes(websocket, app, queue, hub, known_alerts)),
+            asyncio.create_task(_push_changes(websocket, app, queue, hub, known_alerts, ex)),
             asyncio.create_task(_tick(queue, websocket, hub, metrics_interval_s, refresh_interval_s)),
             asyncio.create_task(_drain_client(websocket)),
         ]
@@ -144,7 +149,7 @@ async def serve(websocket: WebSocket, app: FastAPI, ward: str, metrics_interval_
 
 
 async def _push_changes(websocket: WebSocket, app: FastAPI, queue: asyncio.Queue[Change], hub: StreamHub,
-                        known_alerts: dict[str, dict[str, Any]]) -> None:
+                        known_alerts: dict[str, dict[str, Any]], ex: Explainer) -> None:
     while True:
         merged = await queue.get()
         while not queue.empty():  # coalesce a burst into one update per bed
@@ -159,13 +164,13 @@ async def _push_changes(websocket: WebSocket, app: FastAPI, queue: asyncio.Queue
         if merged.clock:
             await websocket.send_json({"type": "clock", "data": merged.clock})
         for suggestion in merged.suggestions:
-            await websocket.send_json({"type": "assignment_suggestion", "data": suggestion})
+            await websocket.send_json({"type": "assignment_suggestion", "data": render_suggestion(suggestion, ex)})
         if merged.calls:
             for call in await asyncio.to_thread(build_calls, app, merged.calls):
                 await websocket.send_json({"type": "call", "data": call})
         if merged.all_beds or merged.beds:
             scope = None if merged.all_beds else merged.beds
-            beds, alerts = await asyncio.to_thread(build_beds, app, scope)
+            beds, alerts = await asyncio.to_thread(build_beds, app, scope, ex)
             for bed in beds:
                 await websocket.send_json({"type": "bed", "data": bed})
             await _send_alerts(websocket, known_alerts, alerts, scope)

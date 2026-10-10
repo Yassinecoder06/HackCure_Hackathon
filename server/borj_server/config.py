@@ -41,6 +41,8 @@ class Settings:
     calls_config_path: Path = REPO_ROOT / "server" / "config" / "calls.yaml"
     meds_config_path: Path = REPO_ROOT / "server" / "config" / "meds.yaml"
     escalation_tick_s: float = 1.0
+    # Language of explanations when a request does not ask (?lang= or Accept-Language): en | fr.
+    default_lang: str = "en"
     # Suggest a new assignment automatically when staff presence or admissions change.
     auto_suggest: bool = True
 
@@ -60,4 +62,5 @@ class Settings:
             staff_pins=os.environ.get("BORJ_STAFF_PINS", ""),
             token_ttl_s=int(os.environ.get("BORJ_TOKEN_TTL_S", str(cls.token_ttl_s))),
             calls_config_path=Path(os.environ.get("BORJ_CALLS_CONFIG", str(cls.calls_config_path))),
+            default_lang=os.environ.get("BORJ_LANG", cls.default_lang),
         )

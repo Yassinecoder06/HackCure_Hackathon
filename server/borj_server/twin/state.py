@@ -48,6 +48,8 @@ class Bed:
     admission: Admission | None = None
     binding_ts: datetime | None = None
     vitals: dict[str, Reading] = field(default_factory=dict)
+    # Every reading of the current admission (param, reading), for trends and "as of" views.
+    history: list[tuple[str, Reading]] = field(default_factory=list)
     devices: dict[str, Device] = field(default_factory=dict)
 
 
