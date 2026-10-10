@@ -132,6 +132,9 @@ class BedsideNode:
                 self.active_press_count += 1
                 call_id = self.active_call_id
                 log.info("Repeat press on call %s (count: %d)", call_id, self.active_press_count)
+                # If patient taps multiple times on emergency button, play reassurance cue
+                if kind == "assist" and self.active_press_count >= 2:
+                    self.audio.play_ack_reassurance()
             else:
                 call_id = f"C-{self.bed}-{int(time.time() * 1000) % 10000000:07d}"
                 self.active_call_id = call_id
@@ -184,9 +187,8 @@ class BedsideNode:
     def _trigger_not_sent(self) -> None:
         self.current_state = "not_sent"
         self.leds.show_not_sent()
-        self.audio.play_buzzer()
-        # Voice prompt: "Please use emergency bell"
-        self.audio.play_emergency_bell()
+        # Requirement A: Buzzer alert + voice prompt ("Veuillez utiliser la sonnette d'urgence")
+        self.audio.play_outage_alert()
         log.warning("🚨 [NOT_SENT] Alerting patient via red blink, buzzer and emergency bell voice prompt")
 
     def _on_call_state(self, payload: dict[str, Any]) -> None:
@@ -217,7 +219,8 @@ class BedsideNode:
                 ack_by = payload.get("acknowledgedBy", "staff")
                 log.info("Call %s acknowledged by %s (ACKNOWLEDGED)", call_id, ack_by)
                 self.leds.show_acknowledged()
-                self.audio.play_chime()
+                # Requirement C: Double-chime + spoken "Votre appel a été pris en compte, un soignant arrive."
+                self.audio.play_ack_reassurance()
 
             elif state == "escalated":
                 level = payload.get("escalationLevel", 1)

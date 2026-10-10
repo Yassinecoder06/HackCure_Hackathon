@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import time
-
 import borj_contracts as bc
 from borj_node.node import BedsideNode
 

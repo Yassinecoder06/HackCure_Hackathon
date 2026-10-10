@@ -46,21 +46,18 @@ def main() -> None:
     if args.test_audio:
         from .audio import AudioManager
 
-        log.info("Testing audio cues...")
+        log.info("Testing audio cues for Requirements A, B, C...")
         audio = AudioManager(enabled=True)
-        log.info("1. Playing Beep...")
+        log.info("1. Button Press Feedback (B): Playing Short Beep...")
         audio.play_beep()
         time.sleep(1.0)
-        log.info("2. Playing Chime...")
-        audio.play_chime()
-        time.sleep(1.5)
-        log.info("3. Playing Buzzer...")
-        audio.play_buzzer()
-        time.sleep(1.5)
-        log.info("4. Playing Emergency Voice Prompt...")
-        audio.play_emergency_bell()
-        time.sleep(3.0)
-        log.info("Audio test finished.")
+        log.info("2. Nurse Acknowledgment (C): Playing Reassurance Chime + Voice Phrase...")
+        audio.play_ack_reassurance()
+        time.sleep(4.5)
+        log.info("3. Outage Fail-Safe (A): Playing Buzzer + Emergency Bell Voice Prompt...")
+        audio.play_outage_alert()
+        time.sleep(5.0)
+        log.info("Audio test finished successfully.")
         sys.exit(0)
 
     if ":" in args.broker:
