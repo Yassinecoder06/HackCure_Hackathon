@@ -12,8 +12,9 @@ How it works (kept simple on purpose, so it can be explained):
    from Room A do not (Cylinder.405...), so for them we use size: thin and long =
    chrome pole, everything else = white plastic.
 3. If a material has a `tex` slug AND its image maps exist in
-   <BORJ_ASSETS>/textures/<slug>/ (Poly Haven naming: <slug>_diff_2k.jpg,
-   <slug>_rough_2k.jpg, <slug>_nor_gl_2k.jpg) they are wired in. Tiled surfaces
+   <BORJ_ASSETS>/textures/<slug>/ (made by prepare_textures.py from the Poly Haven
+   downloads: <slug>_diff_*.jpg, <slug>_rough_*, <slug>_nor_gl_*.png) they are wired in.
+   Tiled surfaces
    (floor, walls) get UVs measured in real metres so a texture repeats every `tile` m.
    Without the files, the plain colour is used, so the script always works.
 
@@ -34,19 +35,23 @@ TEX_DIR = os.path.join(ASSETS, "textures")
 
 # Colours are linear RGB. `tex`: Poly Haven / ambientCG slug (see ASSETS.md); `tile`: metres per repeat.
 MATERIALS = {
-    "floor_vinyl":      dict(color=(0.35, 0.40, 0.42), rough=0.30, tex=None, tile=1.0),
-    "wall_paint":       dict(color=(0.70, 0.74, 0.72), rough=0.85, tex=None, tile=2.0),
-    "ceiling_tile":     dict(color=(0.80, 0.80, 0.78), rough=0.90, tex=None, tile=1.2),
+    # `tint` multiplies the texture's colour (lighten, or recolour a white fabric).
+    "floor_vinyl":      dict(color=(0.35, 0.40, 0.42), rough=0.30, tex="floor_tiles_06", tile=2.4,
+                             tint=(1.7, 1.7, 1.7)),
+    "wall_paint":       dict(color=(0.70, 0.74, 0.72), rough=0.85, tex="white_stucco", tile=2.0),
+    "ceiling_tile":     dict(color=(0.80, 0.80, 0.78), rough=0.90, tile=1.2),
     "paint_white":      dict(color=(0.75, 0.75, 0.73), rough=0.50),
     "laminate_white":   dict(color=(0.72, 0.72, 0.68), rough=0.45),
-    "wood_door":        dict(color=(0.25, 0.12, 0.06), rough=0.55, tex=None, tile=1.0),
+    "wood_door":        dict(color=(0.25, 0.12, 0.06), rough=0.55, tex="oak_veneer_01", tile=1.0),
     "metal_painted":    dict(color=(0.55, 0.58, 0.60), rough=0.35, metal=0.8),
     "chrome":           dict(color=(0.80, 0.80, 0.82), rough=0.15, metal=1.0),
     "steel_brushed":    dict(color=(0.60, 0.62, 0.65), rough=0.35, metal=1.0),
-    "mattress_vinyl":   dict(color=(0.15, 0.30, 0.38), rough=0.45),
-    "sheet_cotton":     dict(color=(0.85, 0.85, 0.88), rough=0.90),
-    "upholstery_blue":  dict(color=(0.03, 0.10, 0.22), rough=0.75),
-    "curtain_fabric":   dict(color=(0.25, 0.50, 0.58), rough=0.95),
+    "mattress_vinyl":   dict(color=(0.15, 0.30, 0.38), rough=0.45, tex="leather_white", tile=0.6,
+                             tint=(0.25, 0.5, 0.65)),
+    "sheet_cotton":     dict(color=(0.85, 0.85, 0.88), rough=0.90, tex="rough_linen", tile=0.5),   # pale blue linen
+    "upholstery_fabric": dict(color=(0.45, 0.30, 0.02), rough=0.80, tex="waffle_pique_cotton",
+                              tile=0.4),                                         # mustard accent
+    "curtain_fabric":   dict(color=(0.25, 0.50, 0.58), rough=0.95, tex="fabric_pattern_05", tile=0.6),
     "rubber_black":     dict(color=(0.02, 0.02, 0.02), rough=0.80),
     "cable_black":      dict(color=(0.02, 0.02, 0.02), rough=0.60),
     "plastic_white":    dict(color=(0.80, 0.80, 0.82), rough=0.40),
@@ -95,7 +100,16 @@ def build_material(name, spec):
     if slug:
         diff, rough, nor = (find_map(slug, k) for k in ("diff", "rough", "nor_gl"))
         if diff:
-            links.new(image_node(nodes, diff, "sRGB").outputs["Color"], bsdf.inputs["Base Color"])
+            colour = image_node(nodes, diff, "sRGB").outputs["Color"]
+            if "tint" in spec:                     # colour x tint (Mix node, Multiply)
+                mix = nodes.new("ShaderNodeMix")
+                mix.data_type, mix.blend_type = "RGBA", "MULTIPLY"
+                mix.inputs["Factor"].default_value = 1.0
+                a, b = [s for s in mix.inputs if s.type == "RGBA"]
+                b.default_value = (*spec["tint"], 1)
+                links.new(colour, a)
+                colour = [s for s in mix.outputs if s.type == "RGBA"][0]
+            links.new(colour, bsdf.inputs["Base Color"])
         if rough:
             links.new(image_node(nodes, rough, "Non-Color").outputs["Color"], bsdf.inputs["Roughness"])
         if nor:
@@ -175,7 +189,7 @@ def pick(o):
             return "metal_painted"
         return "mattress_vinyl" if "pcube" in me else "sheet_cotton"
     if under("chair", "sofa"):
-        return "chrome" if (rod or "pcylinder" in me) else "upholstery_blue"
+        return "chrome" if (rod or "pcylinder" in me) else "upholstery_fabric"
     if under("cabinet", "shelf"):
         return "laminate_white"
     if under("screen_with_curtain"):

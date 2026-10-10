@@ -7,31 +7,40 @@ a `SOURCE.txt` next to it; they are copied into [CREDITS.md](CREDITS.md). No bra
 ```
 borj-assets/
   backup/    rooms-original.blend          (made already, do not overwrite)
-  work/      rooms-step4-materials.blend   (made already, my progress copy)
-  textures/  <slug>/<slug>_diff_2k.jpg, <slug>_rough_2k.jpg, <slug>_nor_gl_2k.jpg
+  work/      rooms-step4b-textures.blend   (my latest progress copy)
+  Imports/   your downloads (untouched)
+  textures/  <slug>/<slug>_diff_<res>.jpg, <slug>_rough_<res>.png|jpg, <slug>_nor_gl_<res>.png
   hdri/      childrens_hospital_2k.hdr
   models/    <name>/ (+ SOURCE.txt)
   characters/ (Mixamo .fbx, + SOURCE.txt)
 ```
 
-## 1. Textures (Poly Haven, CC0). Slugs checked against the Poly Haven API
+## 1. Textures (Poly Haven, CC0): DONE, downloaded and converted
 
-On `https://polyhaven.com/a/<slug>` choose **2K**, **JPG**, and download Diffuse, Rough and
-**nor_gl** (OpenGL normal, the one Blender and glTF expect). 2K is the maximum (ADR 0012).
+You downloaded the seven bundles (1K, oak at 2K) into `Imports\`; `prepare_textures.py` made the
+plain maps in `textures\<slug>\` and the HDRI is in `hdri\`. What each one turned out to look like:
+`floor_tiles_06` dark/light stone checker, `white_stucco` pale grey, `oak_veneer_01` vertical oak,
+`leather_white` grey-green taupe (not white; tinted teal for mattresses), `rough_linen` pale blue,
+`waffle_pique_cotton` mustard, `fabric_pattern_05` sage check with blue lines. Used as: floor,
+walls, door, mattress, bed linen, armchair and stools, curtains. Easy swaps if you dislike one:
+another slug from the list below, then re-run `04_materials.py`.
 
-| Used for | Slug | Notes |
-|---|---|---|
-| Floor (rooms and corridor) | `floor_tiles_06` | tagged clean, indoor. Alternative: `anti_skid_tiles` |
-| Walls | `white_stucco` | tagged indoor. Alternatives: `plastered_wall`, `beige_wall_001` |
-| Door and cabinet wood | `oak_veneer_01` | alternatives `ash_veneer`, `okoume_veneer` (lighter) |
-| Mattress / vinyl | `leather_white` | |
-| Bed sheets / blanket | `waffle_pique_cotton` | alternative `rough_linen` |
-| Privacy curtains | `rough_linen` | alternative `stretch_poplin` |
-| Chair / armchair upholstery | `fabric_pattern_05` | check the look on the page; any plain fabric works |
-| Ceiling | none confirmed | plain paint is fine. Optional: on ambientcg.com search "office ceiling" and check the page says CC0 |
+As used now (change a slug in `04_materials.py`, re-run it):
 
-After you download, tell me and I set the `tex=` slugs in `blender/04_materials.py`; the script
-wires the maps in and re-measures the tiling in metres.
+| Surface | Slug | Looks like | Alternatives (all checked on the Poly Haven API) |
+|---|---|---|---|
+| Floor | `floor_tiles_06` (tile 2.4 m, lightened) | stone checker | `anti_skid_tiles`, `brown_floor_tiles`, `dirty_tiles` |
+| Walls | `white_stucco` | pale grey plaster | `plastered_wall`, `beige_wall_001`, `beige_wall_002` |
+| Door | `oak_veneer_01` | oak, vertical grain | `ash_veneer`, `okoume_veneer`, `washed_grey_oak_veneer` |
+| Mattress | `leather_white` (tinted teal) | taupe leather | `fabric_leather_01`, `fabric_leather_02` |
+| Bed linen | `rough_linen` | pale blue linen | `cotton_jersey`, `stretch_poplin` |
+| Curtains | `fabric_pattern_05` | sage check | `gingham_check`, `book_pattern` |
+| Armchair, stools | `waffle_pique_cotton` | mustard waffle | `velour_velvet`, `wool_boucle` |
+| Ceiling | none (plain paint) | | no confirmed CC0 ceiling tile; optionally ambientcg.com "office ceiling", check it says CC0 |
+
+To add another: download the **.blend.zip** bundle (any resolution up to 2K) from
+`https://polyhaven.com/a/<slug>`, put it in `Imports\`, unzip each into its own folder, then run
+`prepare_textures.py` (command in the README).
 
 ## 2. HDRI (lighting and reflections in the web view)
 

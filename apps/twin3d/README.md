@@ -13,7 +13,8 @@ the server's WebSocket (`/api/v1/wards/W1/stream`) already says, and stale data 
 | Corridor, nurse station, 6 rooms placed from the seed, call lights, station TV | planned, see "Layout" |
 | Lighting bake (Cycles + OptiX) and `.glb` export (Draco + KTX2) | not started |
 | React Three Fiber app (`src/`) | not started |
-| Real textures, HDRI, nurses, patients | waiting on downloads, see [ASSETS.md](ASSETS.md) |
+| Poly Haven textures (7 materials) and the hospital HDRI | **done**, wired into `04_materials.py` |
+| Nurses, patients, station and corridor props | waiting on downloads, see [ASSETS.md](ASSETS.md) |
 
 ## How the pipeline works (the part to explain to the judges)
 
@@ -30,6 +31,8 @@ Blender scene  --bpy scripts-->  ward .blend  --bake lighting-->  ward.glb  --> 
 4. **Why the screens are separate meshes.** The monitor body is static geometry; the screen is a
    flat quad named `screen_monitor` whose texture the web app replaces with live values.
 
+![Room B with textures, rendered with Cycles and the childrens_hospital HDRI](docs/room-textured-preview.png)
+
 ## The Blender scripts (`blender/`)
 
 Run them in order inside Blender (Scripting tab or the Blender MCP), or all at once on a
@@ -40,12 +43,20 @@ Run them in order inside Blender (Scripting tab or the Blender MCP), or all at o
   --python apps/twin3d/blender/build_ward.py
 ```
 
+Textures (once, after downloading Poly Haven `.blend.zip` bundles and unzipping each into its own
+folder under `<unzipped>`):
+
+```bash
+"C:/Program Files/Blender Foundation/Blender 5.1/blender.exe" --background   --python apps/twin3d/blender/prepare_textures.py -- <unzipped> <borj-assets>/textures
+```
+
 | Script | What it does | Why |
 |---|---|---|
 | `01_fix_scale_and_archive.py` | Scales room "Hospital" ×7 to real metres (bed 2.05 m, door 0.8 × 2.0 m, ceiling 2.56 m). Moves `lab_tools` (700k triangles of syringes, an apple...) and `dead_body1` (a covered figure on a stretcher) into a hidden collection. | The file was 1/7 of real size. A figure under a sheet reads as a corpse; it must not be in a patient room. Nothing is deleted. |
 | `02_second_bed_and_shell.py` | Adds a second bed (linked copy: same mesh, no extra size) where the stretcher was; adds the missing east wall, south wall and ceiling as separate boxes tagged `twin_cutaway`. | Every seed room has 2 beds. The room had 1 bed and no walls on two sides. The web view hides walls facing the camera. |
 | `03_bedside_kit.py` | Copies a monitor cart, IV pole and headwall unit out of room "Sketchfab_model" (room A, untouched), decimates them (200k to ~65k triangles per bed), builds a `screen_monitor` quad on the real display face, and places one kit beside each bed. | Room B has no monitor at all, and the twin needs one per bed. |
-| `04_materials.py` | Replaces the single flat grey with a table of PBR materials (colour, roughness, metallic, glass, emission) assigned by part name or size. Image maps from `borj-assets/textures/` are used automatically when present. | glTF is PBR; flat grey would bake into a dull model. |
+| `04_materials.py` | Replaces the single flat grey with a table of PBR materials (colour, roughness, metallic, glass, emission) assigned by part name or size. Image maps from `borj-assets/textures/` are used when present (floor, walls, door, mattress, linen, curtains, armchair); a `tint` multiplies a map's colour. | glTF is PBR; flat grey would bake into a dull model. |
+| `prepare_textures.py` (tool, not a scene step) | Turns the Poly Haven `.blend.zip` bundles into 3 plain 8-bit maps per material (colour jpg, roughness, OpenGL normal png) and checks each conversion by reading it back. | The bundles mix `.exr` and `.png`, and carry maps glTF cannot use (displacement, AO). KTX2 compression later wants plain images. |
 
 `common.py` holds three small helpers (subtree, bounding box, linked copy). Each script is
 re-runnable. Original materials and objects are kept in the file; the original two rooms are
