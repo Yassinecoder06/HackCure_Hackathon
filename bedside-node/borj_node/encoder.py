@@ -28,7 +28,7 @@ class RotaryEncoderController:
         pin_clk: int = 23,
         pin_dt: int = 24,
         max_steps: int = 20,
-        initial_percent: int = 80,
+        initial_percent: int = 50,
         mock: bool = False,
         on_change: Callable[[int], None] | None = None,
     ) -> None:

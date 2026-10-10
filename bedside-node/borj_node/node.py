@@ -43,6 +43,7 @@ class BedsideNode:
         key: bytes | None = None,
         key_id: str | None = None,
         receipt_timeout_s: float = 4.0,
+        volume: int = 50,
         mock_gpio: bool = False,
         audio_enabled: bool = True,
     ) -> None:
@@ -63,6 +64,7 @@ class BedsideNode:
             self.encoder = RotaryEncoderController(
                 pin_clk=pin_clk,
                 pin_dt=pin_dt,
+                initial_percent=volume,
                 mock=mock_gpio,
             )
         self.outbox = NodeOutbox(db_path=db_path)

@@ -29,6 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pin-led-amber", type=int, default=None, help="GPIO pin for Amber LED (optional)")
     parser.add_argument("--pin-clk", type=int, default=23, help="GPIO pin for Rotary Encoder CLK (default: 23)")
     parser.add_argument("--pin-dt", type=int, default=24, help="GPIO pin for Rotary Encoder DT (default: 24)")
+    parser.add_argument("--volume", type=int, default=50, help="Initial speaker volume percent (default: 50)")
     parser.add_argument("--db", default="node_outbox.db", help="SQLite outbox database path (default: node_outbox.db)")
     parser.add_argument("--timeout", type=float, default=4.0, help="Receipt timeout in seconds (default: 4.0)")
     parser.add_argument("--mock", action="store_true", help="Force mock GPIO mode (for laptops / tests)")
@@ -88,6 +89,7 @@ def main() -> None:
         pin_led_amber=args.pin_led_amber,
         pin_clk=args.pin_clk,
         pin_dt=args.pin_dt,
+        volume=args.volume,
         db_path=args.db,
         receipt_timeout_s=args.timeout,
         mock_gpio=args.mock,
