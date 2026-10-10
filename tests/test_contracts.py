@@ -51,6 +51,7 @@ def test_openapi_is_valid(spec):
         ("borj/W1/staff/N1/presence", "staff-presence"),
         ("borj/W1/sim/clock", "clock"),
         ("borj/W1/assignment", "assignment"),
+        ("borj/W1/B04/prescription", "prescription"),
     ],
 )
 def test_topic_routing(topic, schema):

@@ -28,7 +28,7 @@ def build_snapshot(app: FastAPI) -> dict[str, Any]:
     attach_news2(snap, inference.news2_batch(snap["asOf"], inputs) if inference else None)
     with ingestor.lock:
         snap["alerts"] = derive_alerts(ingestor.twin, _news2_by_bed(snap["beds"]), now, app.state.call_config,
-                                       app.state.first_seen)
+                                       app.state.first_seen, meds_cfg=app.state.meds_config)
     return snap
 
 
@@ -45,7 +45,7 @@ def build_beds(app: FastAPI, bed_ids: set[str] | None) -> tuple[list[dict[str, A
     attach_news2(views, inference.news2_batch(as_of, inputs) if inference else None)
     with ingestor.lock:
         alerts = derive_alerts(ingestor.twin, _news2_by_bed(views["beds"]), now, app.state.call_config,
-                               app.state.first_seen, bed_ids)
+                               app.state.first_seen, bed_ids, meds_cfg=app.state.meds_config)
     return views["beds"], alerts
 
 

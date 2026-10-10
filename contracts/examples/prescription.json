@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T29",
+  "ts": "2026-10-10T21:30:00Z",
+  "ward": "W1",
+  "bed": "B04",
+  "source": "staff-app",
+  "sourceType": "staff_app",
+  "admissionId": "ADM-0004",
+  "prescriptionId": "RX-0004-1",
+  "drug": "Paracetamol",
+  "dose": "1 g",
+  "route": "oral",
+  "times": ["06:00", "12:00", "18:00", "23:00"],
+  "startDate": "2026-10-10",
+  "isInfusion": false,
+  "prescribedBy": "DR1"
+}

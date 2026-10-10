@@ -1,0 +1,19 @@
+# Medication timeline rules (whitepaper 4.3 and 5.2). The system schedules and reminds from a
+# doctor's prescription; it NEVER selects drugs or doses (safety invariant 1).
+# SAFETY INVARIANT 8: parameters, not code. Each block says who must validate it.
+
+schedule:
+  validated_by: "TO BE CONFIRMED BY THE WARD (medication round policy)"
+  ward_utc_offset_min: 60       # Africa/Tunis (UTC+1, no daylight saving); prescription times are ward time
+  overdue_after_min: 30         # a dose not recorded this long after its due time is overdue
+  timeline_past_hours: 2        # the timeline also shows recent doses
+
+clashes:
+  validated_by: "TO BE CONFIRMED BY THE WARD (nursing direction)"
+  window_min: 15                # doses due within this window count as "at the same time"
+  max_doses_per_nurse: 3        # more than this for one nurse in one window is a clash
+  max_infusions_per_nurse: 1    # more than one infusion for one nurse in one window is a clash
+
+alerts:
+  validated_by: "TO BE CONFIRMED BY THE WARD (alert-fatigue review with nurses)"
+  dose_overdue_priority: medium
