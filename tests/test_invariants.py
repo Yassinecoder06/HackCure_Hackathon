@@ -38,9 +38,40 @@ def test_5_missing_or_stale_is_labelled():
     pass
 
 
-@pytest.mark.skip(reason="P0, B: ingesting the same eventId twice leaves the twin unchanged")
 def test_6_idempotency():
-    pass
+    """Replaying every contract example twice leaves the event log and the twin unchanged."""
+    import json
+
+    import borj_contracts as bc
+    from borj_server.clock import Clock
+    from borj_server.ingest import Ingestor
+    from borj_server.store import EventStore
+    from borj_server.timeutil import parse_ts
+    from borj_server.twin.layout import WardLayout
+    from borj_server.twin.views import snapshot_view
+
+    ingestor = Ingestor(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"), EventStore(":memory:"), Clock("wall"))
+    messages = []
+    for path in sorted((ROOT / "contracts" / "examples").glob("*.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if "eventId" not in payload:
+            continue  # clock and family payloads are not ward events
+        schema = path.name.split(".")[0]
+        if schema in ("ack", "staff-presence"):
+            topic = bc.topic(schema, payload["ward"], staff_id=payload["staffId"])
+        else:
+            topic = bc.topic(schema, payload["ward"], bed=payload["bed"])
+        messages.append((topic, payload))
+
+    for topic, payload in messages:
+        ingestor.handle(topic, payload)
+    now = parse_ts("2026-10-11T01:00:00Z")
+    count, twin = ingestor.store.count(), snapshot_view(ingestor.twin, now, "wall")
+
+    for topic, payload in messages:
+        assert ingestor.handle(topic, payload).status == "duplicate"
+    assert ingestor.store.count() == count
+    assert snapshot_view(ingestor.twin, now, "wall") == twin
 
 
 def test_7_no_env_files_committed():
