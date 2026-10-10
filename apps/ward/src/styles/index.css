@@ -1216,6 +1216,136 @@ body.light-mode .doctor-card-title {
   color: #0f172a;
 }
 
+body.light-mode .triage-sidebar {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+body.light-mode .triage-header h3 {
+  color: #0f172a;
+}
+
+body.light-mode .triage-item {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+body.light-mode .triage-item:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+body.light-mode .staff-tabs {
+  border-color: #cbd5e1;
+}
+
+body.light-mode .tab-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+body.light-mode .tab-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+body.light-mode .tab-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+body.light-mode .radio-pill {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+body.light-mode .radio-pill:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+body.light-mode .radio-pill.selected {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+}
+
+body.light-mode .metric-card {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+}
+
+body.light-mode .metric-card h4 {
+  color: #334155;
+}
+
+body.light-mode .percentiles-band {
+  color: #64748b;
+}
+
+body.light-mode .badge-pill {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+body.light-mode .badge-pill.error {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+body.light-mode .param-chip {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+body.light-mode .param-chip .param-name {
+  color: #475569;
+}
+
+body.light-mode .param-chip .param-val {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+body.light-mode .param-chip.fresh {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+}
+
+body.light-mode .param-chip.stale {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+body.light-mode .param-chip.missing {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+body.light-mode .escalation-bar {
+  background: #ffffff;
+  border: 1px solid #fed7aa;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.1);
+}
+
+body.light-mode .critical-full-modal {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+body.light-mode .critical-modal-content {
+  background: #ffffff;
+  border-color: #fecaca;
+  color: #0f172a;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
 body.light-mode .order-item {
   background: #f8fafc;
   border-color: #e2e8f0;
@@ -1233,6 +1363,11 @@ body.light-mode textarea {
   border-color: #cbd5e1 !important;
 }
 
+body.light-mode input::placeholder,
+body.light-mode textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
 body.light-mode .median-val {
   color: #0f172a;
 }
@@ -1245,4 +1380,39 @@ body.light-mode .sim-stat-box {
 body.light-mode .dose-item {
   background: #ffffff;
   border-color: #cbd5e1;
+}
+
+/* Fail-safe overrides to prevent washed-out text on white surfaces in light mode */
+body.light-mode .room-box [style*="color: #fff"],
+body.light-mode .room-box [style*="color: white"],
+body.light-mode .modal-card [style*="color: #fff"],
+body.light-mode .modal-card [style*="color: white"],
+body.light-mode .tab-card [style*="color: #fff"],
+body.light-mode .tab-card [style*="color: white"] {
+  color: #0f172a !important;
+}
+
+body.light-mode .room-box [style*="color: #cbd5e1"],
+body.light-mode .room-box [style*="color: #e2e8f0"],
+body.light-mode .modal-card [style*="color: #cbd5e1"],
+body.light-mode .modal-card [style*="color: #e2e8f0"] {
+  color: #0f172a !important;
+}
+
+body.light-mode .room-box [style*="color: #94a3b8"],
+body.light-mode .modal-card [style*="color: #94a3b8"],
+body.light-mode .tab-card [style*="color: #94a3b8"] {
+  color: #334155 !important;
+}
+
+/* Ensure solid-colored action buttons retain crisp white text in both light and dark modes */
+body.light-mode .btn-primary,
+body.light-mode .btn-primary *,
+body.light-mode .btn-success,
+body.light-mode .btn-success *,
+body.light-mode .ack-critical-btn,
+body.light-mode .ack-critical-btn *,
+body.light-mode .score-badge,
+body.light-mode .brand-icon {
+  color: #ffffff !important;
 }

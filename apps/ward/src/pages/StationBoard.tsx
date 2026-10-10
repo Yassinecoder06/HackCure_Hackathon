@@ -204,7 +204,7 @@ export const StationBoard: React.FC<StationBoardProps> = ({
       <aside className="triage-sidebar">
         <div className="triage-header">
           <h3>{STRINGS.board.priorityListTitle}</h3>
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{prioritySortedBeds.length} Patients</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{prioritySortedBeds.length} Patients</span>
         </div>
 
         <div className="triage-list">
@@ -222,12 +222,12 @@ export const StationBoard: React.FC<StationBoardProps> = ({
               >
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <strong style={{ fontSize: '1rem', color: '#fff' }}>{bed.bed}</strong>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                    <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{bed.bed}</strong>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       ({bed.assignedNurse})
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
                     {bed.admission?.patientRef || 'Empty'}
                   </div>
                   {isPartial && (
@@ -253,7 +253,7 @@ export const StationBoard: React.FC<StationBoardProps> = ({
             <div className="modal-header">
               <div className="modal-title">
                 <h3>Bed {selectedBed.bed} — Clinical Inspection</h3>
-                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   {selectedBed.admission?.patientRef || 'Empty'} | Acuity {selectedBed.admission?.acuity || 1}
                 </span>
               </div>
@@ -276,15 +276,15 @@ export const StationBoard: React.FC<StationBoardProps> = ({
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8' }}>Total NEWS2 Early-Warning Score</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Total NEWS2 Early-Warning Score</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)' }}>
                     {selectedBed.news2?.total ?? '—'} ({selectedBed.news2?.band.toUpperCase()})
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#e2e8f0', marginTop: 4 }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: 4 }}>
                     {selectedBed.news2?.response}
                   </div>
                   {selectedBed.news2?.confidence && (
-                    <div style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: 6, fontWeight: 700 }}>
+                    <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: 6, fontWeight: 700 }}>
                       Algorithmic Confidence: {(selectedBed.news2.confidence.value * 100).toFixed(0)}% ({selectedBed.news2.confidence.basis})
                     </div>
                   )}
@@ -305,7 +305,7 @@ export const StationBoard: React.FC<StationBoardProps> = ({
 
               {/* Components Breakdown Table */}
               <div>
-                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: '#cbd5e1' }}>Deterministic Parameter Scoring</h4>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--text-main)' }}>Deterministic Parameter Scoring</h4>
                 <table className="explainer-table">
                   <thead>
                     <tr>
@@ -346,7 +346,7 @@ export const StationBoard: React.FC<StationBoardProps> = ({
               </div>
 
               {/* Data Invariant Note */}
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', display: 'flex', gap: 6, alignItems: 'center' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', display: 'flex', gap: 6, alignItems: 'center' }}>
                 <Info size={14} />
                 <span>Safety Invariant 5: Incomplete parameters are never treated as normal. Scores computed with missing inputs are labelled partial.</span>
               </div>

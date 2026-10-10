@@ -213,18 +213,18 @@ export const StaffView: React.FC<StaffViewProps> = ({
         <div className="critical-full-modal">
           <div className="critical-modal-content">
             <AlertTriangle size={56} color="#ef4444" />
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>{STRINGS.alerts.criticalTakeoverTitle}</h2>
-            <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: '1rem', borderRadius: 8, width: '100%' }}>
-              <div style={{ fontWeight: 700, fontSize: '1.2rem', color: '#fca5a5' }}>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>{STRINGS.alerts.criticalTakeoverTitle}</h2>
+            <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: '1rem', borderRadius: 8, width: '100%', border: '1px solid rgba(239,68,68,0.3)' }}>
+              <div style={{ fontWeight: 700, fontSize: '1.2rem', color: '#ef4444' }}>
                 Bed {criticalAlert.bed} — Critical Clinical Event
               </div>
-              <ul style={{ textAlign: 'left', marginTop: 8, fontSize: '0.9rem', color: '#f1f5f9' }}>
+              <ul style={{ textAlign: 'left', marginTop: 8, fontSize: '0.9rem', color: 'var(--text-main)' }}>
                 {criticalAlert.explanation.map((exp: string, idx: number) => (
                   <li key={idx}>• {exp}</li>
                 ))}
               </ul>
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Persistent audio alarm active. Continuous alert escalation until acknowledged by attending staff.
             </p>
             <button
@@ -245,17 +245,17 @@ export const StaffView: React.FC<StaffViewProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Bell size={24} color="#f97316" />
             <div>
-              <div style={{ fontWeight: 700, fontSize: '1rem' }}>
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>
                 {alerts.length} Active Escalation Alerts
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 {alerts[0].explanation[0]}
               </div>
             </div>
           </div>
           <button
             className="btn-outline"
-            style={{ borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
+            style={{ borderColor: 'rgba(239,68,68,0.4)', color: '#ef4444' }}
             onClick={() => handleAckAlert(alerts[0].alertId)}
           >
             Acknowledge Top Alert
@@ -320,8 +320,8 @@ export const StaffView: React.FC<StaffViewProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>{STRINGS.calls.title}</h3>
-              <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.calls.title}</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 Arrival feedback, multi-role routing (Assist → Nurse, Comfort → Care Assistant), and escalation ladder.
               </p>
             </div>
@@ -337,7 +337,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>Bed {call.bed}</span>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>Bed {call.bed}</span>
                   <span
                     style={{
                       fontSize: '0.75rem',
@@ -345,7 +345,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                       padding: '2px 8px',
                       borderRadius: 4,
                       backgroundColor: call.state === 'escalated' ? 'rgba(239,68,68,0.2)' : call.state === 'sent' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)',
-                      color: call.state === 'escalated' ? '#ef4444' : call.state === 'sent' ? '#f59e0b' : '#10b981',
+                      color: call.state === 'escalated' ? '#ef4444' : call.state === 'sent' ? '#b45309' : '#059669',
                       textTransform: 'uppercase'
                     }}
                   >
@@ -353,10 +353,10 @@ export const StaffView: React.FC<StaffViewProps> = ({
                   </span>
                 </div>
 
-                <div style={{ fontSize: '0.9rem', color: '#e2e8f0', marginTop: 6 }}>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginTop: 6 }}>
                   Type: <strong>{call.kind === 'assist' ? STRINGS.calls.assistCall : STRINGS.calls.comfortCall}</strong>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   Routed to: <strong>{call.routedToRole.replace('_', ' ').toUpperCase()}</strong>
                 </div>
 
@@ -384,7 +384,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
               </div>
             ))}
             {calls.length === 0 && (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', gridColumn: '1 / -1' }}>
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
                 {STRINGS.calls.noCalls}
               </div>
             )}
@@ -396,8 +396,8 @@ export const StaffView: React.FC<StaffViewProps> = ({
       {activeTab === 'fastentry' && (
         <div className="room-box" style={{ padding: '1.5rem' }}>
           <div style={{ marginBottom: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{STRINGS.fastEntry.title}</h3>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{STRINGS.fastEntry.subtitle}</p>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.fastEntry.title}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{STRINGS.fastEntry.subtitle}</p>
           </div>
 
           {obsSuccessMsg && (
@@ -409,13 +409,13 @@ export const StaffView: React.FC<StaffViewProps> = ({
           <form onSubmit={handleSubmitObservation} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className="fast-entry-grid">
               <div className="form-group">
-                <label>{STRINGS.fastEntry.selectBed}</label>
+                <label style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{STRINGS.fastEntry.selectBed}</label>
                 <select
                   value={selectedBedId}
                   onChange={e => setSelectedBedId(e.target.value)}
                   style={{
                     backgroundColor: 'var(--bg-surface)',
-                    color: 'white',
+                    color: 'var(--text-main)',
                     border: '1px solid var(--border-subtle)',
                     padding: '0.6rem',
                     borderRadius: 6,
@@ -433,7 +433,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
               {/* Consciousness ACVPU */}
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label>{STRINGS.fastEntry.consciousnessLabel}</label>
+                <label style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{STRINGS.fastEntry.consciousnessLabel}</label>
                 <div className="button-radio-group">
                   {[
                     { val: 'A', label: 'A — Alert (0 pts)' },
@@ -456,7 +456,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
               {/* Supplemental Oxygen */}
               <div className="form-group">
-                <label>{STRINGS.fastEntry.oxygenLabel}</label>
+                <label style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{STRINGS.fastEntry.oxygenLabel}</label>
                 <div className="button-radio-group">
                   <button
                     type="button"
@@ -477,14 +477,14 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
               {/* Resp Rate */}
               <div className="form-group">
-                <label>{STRINGS.fastEntry.respRateLabel}</label>
+                <label style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{STRINGS.fastEntry.respRateLabel}</label>
                 <input
                   type="number"
                   value={respRate}
                   onChange={e => setRespRate(e.target.value)}
                   style={{
                     backgroundColor: 'var(--bg-surface)',
-                    color: 'white',
+                    color: 'var(--text-main)',
                     border: '1px solid var(--border-subtle)',
                     padding: '0.6rem',
                     borderRadius: 6
@@ -494,14 +494,14 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
               {/* Pulse */}
               <div className="form-group">
-                <label>Heart Rate / Pulse (bpm)</label>
+                <label style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Heart Rate / Pulse (bpm)</label>
                 <input
                   type="number"
                   value={pulse}
                   onChange={e => setPulse(e.target.value)}
                   style={{
                     backgroundColor: 'var(--bg-surface)',
-                    color: 'white',
+                    color: 'var(--text-main)',
                     border: '1px solid var(--border-subtle)',
                     padding: '0.6rem',
                     borderRadius: 6
@@ -511,14 +511,14 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
               {/* Blood Pressure */}
               <div className="form-group">
-                <label>Systolic Blood Pressure (mmHg)</label>
+                <label style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Systolic Blood Pressure (mmHg)</label>
                 <input
                   type="number"
                   value={sysBp}
                   onChange={e => setSysBp(e.target.value)}
                   style={{
                     backgroundColor: 'var(--bg-surface)',
-                    color: 'white',
+                    color: 'var(--text-main)',
                     border: '1px solid var(--border-subtle)',
                     padding: '0.6rem',
                     borderRadius: 6
@@ -528,7 +528,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
               {/* Temperature */}
               <div className="form-group">
-                <label>Temperature (°C)</label>
+                <label style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Temperature (°C)</label>
                 <input
                   type="number"
                   step="0.1"
@@ -536,7 +536,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                   onChange={e => setTempC(e.target.value)}
                   style={{
                     backgroundColor: 'var(--bg-surface)',
-                    color: 'white',
+                    color: 'var(--text-main)',
                     border: '1px solid var(--border-subtle)',
                     padding: '0.6rem',
                     borderRadius: 6
@@ -562,8 +562,8 @@ export const StaffView: React.FC<StaffViewProps> = ({
       {activeTab === 'assignments' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{STRINGS.assignments.title}</h3>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.assignments.title}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Mathematical workload balancing respecting continuity of care, proximity, and skill mix.
             </p>
           </div>
@@ -572,31 +572,31 @@ export const StaffView: React.FC<StaffViewProps> = ({
             <div key={sug.suggestionId} className="room-box" style={{ padding: '1.5rem', border: '1px solid rgba(59,130,246,0.3)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="advisory-badge">{STRINGS.assignments.advisoryBadge}</span>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase' }}>Status: {sug.status}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Status: {sug.status}</span>
               </div>
 
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginTop: 12 }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', marginTop: 12 }}>
                 Trigger: {sug.trigger}
               </div>
 
-              <div style={{ marginTop: 12 }}>
-                <h4 style={{ fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase' }}>Proposed Bed Transfers</h4>
-                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <div style={{ marginTop: 14 }}>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>Proposed Bed Transfers</h4>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   {sug.changes.map((ch: any, idx: number) => (
-                    <div key={idx} style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 0.8rem', borderRadius: 6, fontSize: '0.85rem' }}>
-                      Bed <strong>{ch.bed}</strong>: {ch.fromStaffId} → <span style={{ color: '#38bdf8', fontWeight: 700 }}>{ch.toStaffId}</span>
+                    <div key={idx} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', padding: '0.5rem 0.85rem', borderRadius: 6, fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                      Bed <strong>{ch.bed}</strong>: {ch.fromStaffId} → <span style={{ color: '#0284c7', fontWeight: 700 }}>{ch.toStaffId}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div style={{ marginTop: 12 }}>
-                <h4 style={{ fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase' }}>Workload Rebalance (Acuity Weighted)</h4>
-                <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
+              <div style={{ marginTop: 14 }}>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>Workload Rebalance (Acuity Weighted)</h4>
+                <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
                   {sug.loadBefore && Object.keys(sug.loadBefore).map(stId => (
-                    <div key={stId} style={{ background: 'var(--bg-surface)', padding: '0.6rem 1rem', borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{stId} Load</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                    <div key={stId} style={{ background: 'var(--bg-surface)', padding: '0.6rem 1rem', borderRadius: 6, border: '1px solid var(--border-subtle)', minWidth: 100 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{stId} Load</div>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', marginTop: 2 }}>
                         {sug.loadBefore[stId]} → <span style={{ color: '#10b981' }}>{sug.loadAfter?.[stId] ?? '—'}</span>
                       </div>
                     </div>
@@ -604,11 +604,11 @@ export const StaffView: React.FC<StaffViewProps> = ({
                 </div>
               </div>
 
-              <div style={{ marginTop: 12 }}>
-                <h4 style={{ fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase' }}>{STRINGS.assignments.reasonsTitle}</h4>
-                <ul style={{ fontSize: '0.85rem', color: '#cbd5e1', paddingLeft: 18, marginTop: 4 }}>
+              <div style={{ marginTop: 14 }}>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>{STRINGS.assignments.reasonsTitle}</h4>
+                <ul style={{ fontSize: '0.85rem', color: 'var(--text-main)', paddingLeft: 18, marginTop: 6, lineHeight: 1.6 }}>
                   {sug.reasons.map((r: string, idx: number) => (
-                    <li key={idx}>{r}</li>
+                    <li key={idx} style={{ color: 'var(--text-main)' }}>{r}</li>
                   ))}
                 </ul>
               </div>
@@ -643,12 +643,12 @@ export const StaffView: React.FC<StaffViewProps> = ({
       {activeTab === 'whatif' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{STRINGS.whatIf.title}</h3>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{STRINGS.whatIf.subtitle}</p>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.whatIf.title}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{STRINGS.whatIf.subtitle}</p>
           </div>
 
           <div className="room-box" style={{ padding: '1.5rem' }}>
-            <h4 style={{ fontSize: '0.9rem', marginBottom: 8, color: '#e2e8f0' }}>Select Shift Disruptions to Inject:</h4>
+            <h4 style={{ fontSize: '0.9rem', marginBottom: 8, color: 'var(--text-main)' }}>Select Shift Disruptions to Inject:</h4>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {[
                 { id: 'staff_leaves', label: '1 Nurse Called Away (Mid-Shift)' },
@@ -689,8 +689,8 @@ export const StaffView: React.FC<StaffViewProps> = ({
           {whatIfResult && (
             <div className="room-box" style={{ padding: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Simulation Output (Baseline vs Scenario)</h4>
-                <span style={{ fontSize: '0.75rem', color: '#38bdf8' }}>{STRINGS.whatIf.percentiles}</span>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>Simulation Output (Baseline vs Scenario)</h4>
+                <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 700 }}>{STRINGS.whatIf.percentiles}</span>
               </div>
 
               <div className="whatif-grid">
@@ -704,52 +704,52 @@ export const StaffView: React.FC<StaffViewProps> = ({
                       [{whatIfResult.scenario.wait_for_nurse_min.p5}m – {whatIfResult.scenario.wait_for_nurse_min.p95}m]
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baseline: {whatIfResult.baseline.wait_for_nurse_min.median}m</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Baseline: {whatIfResult.baseline.wait_for_nurse_min.median}m</span>
                 </div>
 
                 <div className="metric-card">
                   <h4>{STRINGS.whatIf.metrics.queue}</h4>
                   <div className="metric-values">
-                    <span className="median-val">
+                    <span className="median-val" style={{ color: 'var(--text-main)' }}>
                       {whatIfResult.scenario.queue_length.median}
                     </span>
                     <span className="percentiles-band">
                       [{whatIfResult.scenario.queue_length.p5} – {whatIfResult.scenario.queue_length.p95}]
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baseline: {whatIfResult.baseline.queue_length.median}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Baseline: {whatIfResult.baseline.queue_length.median}</span>
                 </div>
 
                 <div className="metric-card">
                   <h4>{STRINGS.whatIf.metrics.utilization}</h4>
                   <div className="metric-values">
-                    <span className="median-val" style={{ color: whatIfResult.scenario.nurse_utilization.median > 85 ? '#f97316' : '#fff' }}>
+                    <span className="median-val" style={{ color: whatIfResult.scenario.nurse_utilization.median > 85 ? '#ea580c' : 'var(--text-main)' }}>
                       {whatIfResult.scenario.nurse_utilization.median}%
                     </span>
                     <span className="percentiles-band">
                       [{whatIfResult.scenario.nurse_utilization.p5}% – {whatIfResult.scenario.nurse_utilization.p95}%]
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baseline: {whatIfResult.baseline.nurse_utilization.median}%</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Baseline: {whatIfResult.baseline.nurse_utilization.median}%</span>
                 </div>
 
                 <div className="metric-card">
                   <h4>{STRINGS.whatIf.metrics.overdueMeds}</h4>
                   <div className="metric-values">
-                    <span className="median-val">
+                    <span className="median-val" style={{ color: 'var(--text-main)' }}>
                       {whatIfResult.scenario.overdue_meds.median}
                     </span>
                     <span className="percentiles-band">
                       [p5: {whatIfResult.scenario.overdue_meds.p5} – p95: {whatIfResult.scenario.overdue_meds.p95}]
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baseline: {whatIfResult.baseline.overdue_meds.median}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Baseline: {whatIfResult.baseline.overdue_meds.median}</span>
                 </div>
               </div>
 
               <div style={{ marginTop: 20 }}>
-                <h4 style={{ fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase' }}>{STRINGS.whatIf.assumptionsTitle}</h4>
-                <ul style={{ fontSize: '0.8rem', color: '#cbd5e1', paddingLeft: 18, marginTop: 6 }}>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>{STRINGS.whatIf.assumptionsTitle}</h4>
+                <ul style={{ fontSize: '0.85rem', color: 'var(--text-main)', paddingLeft: 18, marginTop: 6, lineHeight: 1.6 }}>
                   {whatIfResult.assumptions.map((asm: string, idx: number) => (
                     <li key={idx}>{asm}</li>
                   ))}
@@ -764,16 +764,16 @@ export const StaffView: React.FC<StaffViewProps> = ({
       {activeTab === 'meds' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{STRINGS.meds.title}</h3>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.meds.title}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Administration record logged with nurse presence. System schedules & reminds; never chooses drugs or doses.
             </p>
           </div>
 
           {medTimeline?.clashes?.length > 0 && (
             <div style={{ background: 'rgba(249,115,22,0.15)', border: '1px solid #f97316', padding: '0.85rem', borderRadius: 8 }}>
-              <div style={{ fontWeight: 700, color: '#f97316' }}>⚠️ {STRINGS.meds.clashWarning}</div>
-              <div style={{ fontSize: '0.85rem', color: '#fed7aa', marginTop: 4 }}>
+              <div style={{ fontWeight: 700, color: '#ea580c' }}>⚠️ {STRINGS.meds.clashWarning}</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', marginTop: 4 }}>
                 {medTimeline.clashes[0].reason}
               </div>
             </div>
@@ -793,19 +793,19 @@ export const StaffView: React.FC<StaffViewProps> = ({
               >
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontWeight: 800, color: '#fff', fontSize: '1.05rem' }}>Bed {dose.bed}</span>
-                    <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{dose.label}</span>
+                    <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1.05rem' }}>Bed {dose.bed}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{dose.label}</span>
                     {dose.status === 'overdue' && (
                       <span style={{ background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: 3 }}>
                         {STRINGS.meds.overdueWarning}
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 4 }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
                     Scheduled: {new Date(dose.due).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} | Status: <strong>{dose.status.toUpperCase()}</strong>
                   </div>
                   {dose.patientReportedAt && (
-                    <div style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: 4 }}>
+                    <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: 4, fontWeight: 600 }}>
                       ℹ {STRINGS.meds.patientReported}
                     </div>
                   )}
@@ -843,16 +843,16 @@ export const StaffView: React.FC<StaffViewProps> = ({
       {activeTab === 'family' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{STRINGS.family.title}</h3>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.family.title}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Consent-first window for relatives. Outbound push only. Invariant 2 strictly active: vitals, scores, and drugs never leave the ward.
             </p>
           </div>
 
           {/* Consent & Invite Generation */}
           <div className="room-box" style={{ padding: '1.5rem' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8 }}>{STRINGS.family.consentTitle} & Invite Generator</h4>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8, color: 'var(--text-main)' }}>{STRINGS.family.consentTitle} & Invite Generator</h4>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 type="text"
                 value={consentName}
@@ -860,11 +860,12 @@ export const StaffView: React.FC<StaffViewProps> = ({
                 placeholder="Relative Name & Relation"
                 style={{
                   backgroundColor: 'var(--bg-surface)',
-                  color: 'white',
+                  color: 'var(--text-main)',
                   border: '1px solid var(--border-subtle)',
                   padding: '0.6rem',
                   borderRadius: 6,
-                  flex: 1
+                  flex: 1,
+                  minWidth: 200
                 }}
               />
               <button className="btn-primary" onClick={handleCreateConsentAndInvite} id="btn-create-family-invite">
@@ -875,11 +876,11 @@ export const StaffView: React.FC<StaffViewProps> = ({
             {inviteResult && (
               <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', padding: '1rem', borderRadius: 8, marginTop: 16 }}>
                 <div style={{ fontWeight: 800, color: '#10b981' }}>✓ One-Time Relative Invite Created!</div>
-                <div style={{ marginTop: 6, fontSize: '0.9rem' }}>
-                  Hand this PIN code to the relative: <strong style={{ color: '#fff', fontSize: '1.2rem', letterSpacing: 2 }}>{inviteResult.code}</strong>
+                <div style={{ marginTop: 6, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                  Hand this PIN code to the relative: <strong style={{ color: '#0284c7', fontSize: '1.2rem', letterSpacing: 2 }}>{inviteResult.code}</strong>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: 4 }}>
-                  Invite URL: <a href="http://localhost:5174" target="_blank" rel="noreferrer" style={{ color: '#38bdf8' }}>http://localhost:5174</a>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Invite URL: <a href="http://localhost:5174" target="_blank" rel="noreferrer" style={{ color: '#0284c7', fontWeight: 600 }}>http://localhost:5174</a>
                 </div>
               </div>
             )}
@@ -887,8 +888,8 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
           {/* Nurse Approval Queue for Updates */}
           <div className="room-box" style={{ padding: '1.5rem' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8 }}>Draft Note for Relatives</h4>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8, color: 'var(--text-main)' }}>Draft Note for Relatives</h4>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <input
                 type="text"
                 value={draftNote}
@@ -896,11 +897,12 @@ export const StaffView: React.FC<StaffViewProps> = ({
                 placeholder="Draft reassuring nurse note (e.g. resting comfortably, appetite good)"
                 style={{
                   backgroundColor: 'var(--bg-surface)',
-                  color: 'white',
+                  color: 'var(--text-main)',
                   border: '1px solid var(--border-subtle)',
                   padding: '0.6rem',
                   borderRadius: 6,
-                  flex: 1
+                  flex: 1,
+                  minWidth: 240
                 }}
               />
               <button className="btn-primary" onClick={handleDraftFamilyNote}>
@@ -908,7 +910,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
               </button>
             </div>
 
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 20, marginBottom: 8 }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 20, marginBottom: 8, color: 'var(--text-main)' }}>
               {STRINGS.family.queueTitle}
             </h4>
 
@@ -927,13 +929,13 @@ export const StaffView: React.FC<StaffViewProps> = ({
                   }}
                 >
                   <div>
-                    <span style={{ fontSize: '0.75rem', color: '#38bdf8', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.75rem', color: '#0284c7', textTransform: 'uppercase', fontWeight: 700 }}>
                       {upd.kind.replace('_', ' ')}
                     </span>
-                    <div style={{ fontSize: '0.9rem', color: '#fff', marginTop: 2 }}>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginTop: 2 }}>
                       "{upd.text}"
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
                       Status: <strong>{upd.status}</strong>
                     </div>
                   </div>

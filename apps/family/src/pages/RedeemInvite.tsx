@@ -51,7 +51,7 @@ export const RedeemInvite: React.FC<RedeemInviteProps> = ({ onSuccess }) => {
           />
 
           {error && (
-            <div style={{ color: '#e11d48', fontSize: '0.85rem', fontWeight: 600 }}>
+            <div style={{ color: 'var(--emergency-tag)', fontSize: '0.85rem', fontWeight: 600 }}>
               {error}
             </div>
           )}
@@ -61,7 +61,7 @@ export const RedeemInvite: React.FC<RedeemInviteProps> = ({ onSuccess }) => {
           </button>
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.8rem', color: '#64748b', marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 8 }}>
           <QrCode size={16} />
           <span>Bedside QR codes automatically pre-fill this access key.</span>
         </div>

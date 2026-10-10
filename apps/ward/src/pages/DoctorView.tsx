@@ -68,26 +68,26 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Remote Doctor Header */}
-      <div className="room-box" style={{ padding: '1.25rem 1.5rem', borderLeft: '5px solid #38bdf8' }}>
+      <div className="room-box" style={{ padding: '1.25rem 1.5rem', borderLeft: '5px solid #0284c7' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ background: '#0284c7', color: 'white', padding: 8, borderRadius: 8 }}>
               <Stethoscope size={24} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>Remote On-Call Doctor Console</h2>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Dr. F (Senior Attending) · Ward W1 Internal Medicine</span>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>Remote On-Call Doctor Console</h2>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Dr. F (Senior Attending) · Ward W1 Internal Medicine</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', padding: '0.35rem 0.75rem', borderRadius: 999, fontSize: '0.75rem', color: '#38bdf8', fontWeight: 700 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(2,132,199,0.1)', border: '1px solid rgba(2,132,199,0.3)', padding: '0.35rem 0.75rem', borderRadius: 999, fontSize: '0.75rem', color: '#0284c7', fontWeight: 700 }}>
             <Signal size={14} />
             <span>Low-Bandwidth Optimized</span>
           </div>
         </div>
 
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: '#94a3b8' }}>
-          <ShieldCheck size={16} color="#38bdf8" />
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <ShieldCheck size={16} color="#0284c7" />
           <span>Hard UI Invariant: Orders and validations take ≤ 3 taps. Decisions are logged with doctor identity.</span>
         </div>
       </div>
@@ -95,11 +95,11 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
       {/* Urgent Clinical Escalations List */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-main)' }}>
             <AlertTriangle size={18} color="#f97316" />
             Urgent Clinical Escalations Requiring Attending Review
           </h3>
-          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{urgentBeds.length} Patients Monitored</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{urgentBeds.length} Patients Monitored</span>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -122,25 +122,25 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>Bed {bed.bed}</span>
-                      <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>({bed.admission?.patientRef || 'Patient'})</span>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>Bed {bed.bed}</span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>({bed.admission?.patientRef || 'Patient'})</span>
                       <span className={`score-badge ${band}`} style={{ width: 32, height: 32, fontSize: '1rem' }}>
                         {n2?.total ?? '—'}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: 6 }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 6 }}>
                       Assigned Nurse: <strong>{bed.assignedNurse}</strong> | Room: <strong>{bed.room}</strong>
                     </div>
                   </div>
 
                   {/* Algorithmic Confidence Badge (Invariant 12) */}
                   {n2?.confidence && (
-                    <div style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: 6, padding: '0.4rem 0.75rem', textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 800 }}>
+                    <div style={{ background: 'rgba(2,132,199,0.1)', border: '1px solid rgba(2,132,199,0.3)', borderRadius: 6, padding: '0.4rem 0.75rem', textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 800 }}>
                         Confidence: {(n2.confidence.value * 100).toFixed(0)}%
                       </div>
-                      <div style={{ fontSize: '0.65rem', color: '#94a3b8', maxWidth: 220 }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', maxWidth: 220 }}>
                         {n2.confidence.basis}
                       </div>
                     </div>
@@ -148,11 +148,11 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
                 </div>
 
                 {/* Clinical Explanations Trace */}
-                <div style={{ marginTop: 10, background: 'var(--bg-surface)', padding: '0.75rem', borderRadius: 6 }}>
-                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                <div style={{ marginTop: 10, background: 'var(--bg-surface)', padding: '0.75rem', borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
                     Automated Rule Trace Explanation:
                   </div>
-                  <ul style={{ fontSize: '0.8rem', color: '#e2e8f0', paddingLeft: 16 }}>
+                  <ul style={{ fontSize: '0.8rem', color: 'var(--text-main)', paddingLeft: 16 }}>
                     {bedAlert?.explanation ? (
                       bedAlert.explanation.map((e: string, i: number) => <li key={i}>{e}</li>)
                     ) : (
@@ -188,11 +188,11 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
       </div>
 
       {/* Doctor Remote Instruction Form (Step ≤ 3 Validation) */}
-      <div className="room-box" style={{ padding: '1.5rem', border: '1px solid rgba(56,189,248,0.3)' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 4 }}>
+      <div className="room-box" style={{ padding: '1.5rem', border: '1px solid var(--border-subtle)' }}>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 4, color: 'var(--text-main)' }}>
           Dispatch Doctor Clinical Instruction to Ward
         </h3>
-        <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: 12 }}>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12 }}>
           Step 1: Pick bed → Step 2: Choose template or type order → Step 3: Dispatch to attending nurses.
         </p>
 
@@ -203,16 +203,16 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
         )}
 
         <form onSubmit={handleSendOrder} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ minWidth: 160 }}>
-              <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>Target Bed</label>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>Target Bed</label>
               <select
                 value={selectedBed}
                 onChange={e => setSelectedBed(e.target.value)}
                 style={{
                   width: '100%',
                   background: 'var(--bg-surface)',
-                  color: 'white',
+                  color: 'var(--text-main)',
                   border: '1px solid var(--border-subtle)',
                   padding: '0.6rem',
                   borderRadius: 6,
@@ -228,7 +228,7 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
             </div>
 
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>Quick Presets (1-Tap Selection)</label>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>Quick Presets (1-Tap Selection)</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
                 {[
                   'Start O2 at 2L/min via nasal cannula',
@@ -244,10 +244,11 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
                     style={{
                       background: 'var(--bg-surface)',
                       border: '1px solid var(--border-subtle)',
-                      color: '#cbd5e1',
-                      padding: '4px 8px',
+                      color: 'var(--text-main)',
+                      padding: '5px 10px',
                       borderRadius: 4,
                       fontSize: '0.75rem',
+                      fontWeight: 500,
                       cursor: 'pointer'
                     }}
                   >
@@ -259,7 +260,7 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
           </div>
 
           <div>
-            <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>Instruction Order Text</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>Instruction Order Text</label>
             <textarea
               value={orderText}
               onChange={e => setOrderText(e.target.value)}
@@ -267,7 +268,7 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
               style={{
                 width: '100%',
                 background: 'var(--bg-surface)',
-                color: 'white',
+                color: 'var(--text-main)',
                 border: '1px solid var(--border-subtle)',
                 padding: '0.75rem',
                 borderRadius: 6,
@@ -293,7 +294,7 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
 
       {/* Dispatched Orders Log */}
       <div>
-        <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8, color: '#e2e8f0' }}>
+        <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8, color: 'var(--text-main)' }}>
           Attending Orders Dispatched This Shift
         </h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -312,10 +313,10 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
             >
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontWeight: 800, color: '#38bdf8' }}>Bed {ord.bed}</span>
-                  <span style={{ fontSize: '0.85rem', color: '#fff' }}>"{ord.orderText}"</span>
+                  <span style={{ fontWeight: 800, color: '#0284c7' }}>Bed {ord.bed}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>"{ord.orderText}"</span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 4 }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
                   Dispatched by {ord.doctorName} at {new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>

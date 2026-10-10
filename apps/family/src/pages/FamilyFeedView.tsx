@@ -111,8 +111,7 @@ export const FamilyFeedView: React.FC<FamilyFeedViewProps> = ({ onLogout }) => {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
-                color: '#64748b'
+                gap: 4
               }}
               title="Disconnect Session"
               id="btn-logout-family"
@@ -123,7 +122,7 @@ export const FamilyFeedView: React.FC<FamilyFeedViewProps> = ({ onLogout }) => {
         </div>
 
         {error && (
-          <div style={{ padding: '1rem', background: '#fee2e2', color: '#b91c1c', borderRadius: 8, fontSize: '0.85rem' }}>
+          <div className="feed-error-box">
             {error}
           </div>
         )}
@@ -149,7 +148,7 @@ export const FamilyFeedView: React.FC<FamilyFeedViewProps> = ({ onLogout }) => {
           </div>
         ) : (
           !loading && (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
               <p style={{ fontWeight: 600 }}>{STRINGS.feed.emptyTitle}</p>
               <p style={{ fontSize: '0.85rem', marginTop: 4 }}>{STRINGS.feed.emptyDesc}</p>
             </div>
