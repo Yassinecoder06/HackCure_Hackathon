@@ -41,6 +41,7 @@ _TOPIC_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/binding$"), "binding"),
     # Internal only: stored in the event log, never published on MQTT (contains drug names).
     (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/prescription$"), "prescription"),
+    (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/family$"), "family-event"),
 ]
 
 # Subscribe pattern covering every contract topic.
@@ -128,6 +129,7 @@ def topic(kind: str, ward: str, bed: str | None = None, staff_id: str | None = N
         "med": "med",
         "binding": "binding",
         "prescription": "prescription",
+        "family-event": "family",
     }[kind]
     if not bed or bed in RESERVED_BED_IDS:
         raise ContractError(f"invalid bed for {kind}: {bed!r}")

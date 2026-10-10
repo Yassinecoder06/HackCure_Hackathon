@@ -27,7 +27,7 @@
       "$ref": "common.schema.json#/$defs/utcTimestamp"
     },
     "codeHash": {
-      "description": "Salted hash of the one-time code (e.g. scrypt or argon2 encoded string).",
+      "description": "Salted hash of the one-time code: 'scrypt$N$r$p$<salt base64url>$<hash base64url>' (32-byte hash). Reference implementation: server/borj_server/family.py hash_code / verify_code.",
       "type": "string",
       "minLength": 16,
       "maxLength": 256

@@ -72,8 +72,22 @@ services:
       postgres: { condition: service_healthy }
     networks: [ward]
 
-  # family-publisher: # B, P4  (outbound only: no ports, no listening socket)
-  #   networks: [ward, dmz]
+  family-publisher:   # B, P4: outbound only. NO ports, NO listening socket (safety invariant 3).
+    # Forwards only the allow-listed payloads approved on the ward to family-gateway.
+    # Enable with: docker compose --profile family up   (needs A's family-gateway service)
+    profiles: [family]
+    build: { context: .., dockerfile: server/Dockerfile }
+    command: ["python", "-m", "borj_server.family_publisher"]
+    environment:
+      BORJ_DB_URL: postgresql+psycopg://borj:${POSTGRES_PASSWORD}@postgres:5432/borj
+      BORJ_DATA_KEY: ${BORJ_DATA_KEY:?missing - run python infra/gen_secrets.py}
+      BORJ_DATA_KEY_ID: ${BORJ_DATA_KEY_ID:-k1}
+      FAMILY_GATEWAY_URL: http://family-gateway:8100
+      FAMILY_PUBLISHER_TOKEN: ${FAMILY_PUBLISHER_TOKEN:?missing - run python infra/gen_secrets.py}
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck: { disable: true }   # it serves nothing, so there is nothing to probe
+    networks: [ward, dmz]
 
   # ward-app:         # C, P0  (/board and /staff on 5173)
   #   networks: [ward]

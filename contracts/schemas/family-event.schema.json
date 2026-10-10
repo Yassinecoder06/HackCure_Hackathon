@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/family-event.schema.json",
+  "title": "Family Care Link event (internal)",
+  "description": "Topic borj/{ward}/{bed}/family. INTERNAL: stored in the encrypted event log only and NEVER published on MQTT. Records consent (safety invariant 4), invites, update drafts and nurse decisions. When something must leave the ward, `outbound` holds the EXACT allow-listed payload (family-invite, family-update or family-revocation schema) that the family publisher forwards verbatim to family-gateway (invariants 2 and 3). Only a hash of an invite's one-time code is ever stored.",
+  "allOf": [
+    { "$ref": "common.schema.json#/$defs/envelope" },
+    { "if": { "properties": { "type": { "const": "consent_granted" } }, "required": ["type"] },
+      "then": { "required": ["consentId", "linkId", "relativeLabel", "allowedKinds", "givenBy", "staffId"] } },
+    { "if": { "properties": { "type": { "const": "consent_revoked" } }, "required": ["type"] },
+      "then": { "required": ["consentId", "linkId", "reason"] } },
+    { "if": { "properties": { "type": { "const": "link_revoked" } }, "required": ["type"] },
+      "then": { "required": ["linkId", "reason", "outbound"] } },
+    { "if": { "properties": { "type": { "const": "invite_created" } }, "required": ["type"] },
+      "then": { "required": ["consentId", "inviteId", "linkId", "staffId", "outbound"] } },
+    { "if": { "properties": { "type": { "const": "update_drafted" } }, "required": ["type"] },
+      "then": { "required": ["updateId", "kind", "staffId"] } },
+    { "if": { "properties": { "type": { "const": "update_approved" } }, "required": ["type"] },
+      "then": { "required": ["updateId", "linkId", "staffId", "outbound"] } },
+    { "if": { "properties": { "type": { "const": "update_rejected" } }, "required": ["type"] },
+      "then": { "required": ["updateId", "staffId"] } }
+  ],
+  "required": ["bed", "admissionId", "type"],
+  "properties": {
+    "bed": { "$ref": "common.schema.json#/$defs/id" },
+    "sourceType": { "enum": ["staff_app", "server"] },
+    "admissionId": { "$ref": "common.schema.json#/$defs/id" },
+    "type": { "enum": ["consent_granted", "consent_revoked", "link_revoked", "invite_created", "update_drafted",
+                       "update_approved", "update_rejected"] },
+    "linkId": { "$ref": "common.schema.json#/$defs/id" },
+    "consentId": { "$ref": "common.schema.json#/$defs/id" },
+    "inviteId": { "$ref": "common.schema.json#/$defs/eventId" },
+    "updateId": { "$ref": "common.schema.json#/$defs/eventId" },
+    "relativeLabel": { "type": "string", "maxLength": 40 },
+    "allowedKinds": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "enum": ["visiting_info", "meal_served", "medication_round_completed", "nurse_note", "ward_contact"] }
+    },
+    "givenBy": { "enum": ["patient", "legal_representative"] },
+    "kind": { "enum": ["visiting_info", "meal_served", "medication_round_completed", "nurse_note", "ward_contact"] },
+    "text": { "type": "string", "maxLength": 280 },
+    "reason": { "enum": ["consent_withdrawn", "discharge", "transfer", "staff_revoked", "rejected"] },
+    "note": { "type": "string", "maxLength": 200 },
+    "staffId": { "$ref": "common.schema.json#/$defs/id" },
+    "outbound": {
+      "type": "object",
+      "required": ["target", "payload"],
+      "properties": {
+        "target": { "enum": ["invites", "updates", "revocations"] },
+        "payload": { "type": "object" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "unevaluatedProperties": false
+}

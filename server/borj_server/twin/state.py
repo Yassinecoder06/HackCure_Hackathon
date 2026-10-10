@@ -116,6 +116,44 @@ class Administration:
 
 
 @dataclass
+class Consent:
+    """A patient's (or legal representative's) recorded consent for one relative (invariant 4)."""
+
+    consent_id: str
+    admission_id: str
+    link_id: str
+    relative_label: str
+    allowed_kinds: tuple[str, ...]
+    given_by: str
+    recorded_by: str
+    recorded_at: datetime
+    active: bool = True
+    revoked_at: datetime | None = None
+
+
+@dataclass
+class Invite:
+    invite_id: str
+    consent_id: str
+    link_id: str
+    expires_at: datetime
+    revoked: bool = False
+
+
+@dataclass
+class FamilyUpdate:
+    update_id: str
+    admission_id: str
+    kind: str
+    text: str | None
+    created_by: str
+    created_at: datetime
+    status: str = "pending_approval"  # -> published | rejected
+    decided_by: str | None = None
+    decided_at: datetime | None = None
+
+
+@dataclass
 class AlertAck:
     staff_id: str
     ts: datetime
@@ -138,3 +176,8 @@ class WardTwin:
         self.prescriptions: dict[str, Prescription] = {}
         self.administrations: dict[str, Administration] = {}  # doseId -> nurse record
         self.patient_reported: dict[str, datetime] = {}        # doseId -> "I took my pills" (never closes a dose)
+        # Family Care Link: everything here comes from internal `family` events (never MQTT).
+        self.family_links: dict[str, str] = {}                  # admissionId -> opaque linkId
+        self.consents: dict[str, Consent] = {}
+        self.invites: dict[str, Invite] = {}
+        self.family_updates: dict[str, FamilyUpdate] = {}

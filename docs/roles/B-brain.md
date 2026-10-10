@@ -88,11 +88,11 @@ Read first:
 
 ## P4: family privacy filter + outbound publisher
 
-- [ ] Consent records. Revocation is immediate, and discharge or transfer revokes everything (invariant 4).
-- [ ] Invites (409 without consent), with only a hash of the one-time code stored.
-- [ ] Draft → nurse decision → **privacy filter** (allow-list, then schema validation) → push.
-- [ ] The publisher has **no listening port** (invariant 3).
-- [ ] Invariant test: a twin full of vitals, scores and drugs leaks nothing outside the allow-list (invariant 2).
+- [x] Consent records. Revocation is immediate, and discharge or transfer revokes everything (invariant 4).
+- [x] Invites (409 without consent), with only a hash of the one-time code stored.
+- [x] Draft → nurse decision → **privacy filter** (allow-list, then schema validation, plus a clinical-text check) → push.
+- [x] The publisher has **no listening port** (invariant 3).
+- [x] Invariant test: a twin full of vitals, scores and drugs leaks nothing outside the allow-list (invariant 2).
 
 ## P5: 3D twin (polish, [ADR 0012](../decisions/0012-3d-twin.md)) and delivery
 
