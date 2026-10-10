@@ -38,7 +38,7 @@ def build_beds(app: FastAPI, bed_ids: set[str] | None) -> tuple[list[dict[str, A
     with ingestor.lock:
         now = ingestor.clock.now()
         beds = [b for b in ingestor.twin.beds.values() if bed_ids is None or b.bed in bed_ids]
-        views = {"beds": [bed_view(b, now) for b in beds]}
+        views = {"beds": [bed_view(b, now, ingestor.twin.assignments.get(b.bed)) for b in beds]}
         inputs = [i for i in news2_inputs(ingestor.twin, now) if bed_ids is None or i["bed"] in bed_ids]
         as_of = format_ts(now)
     inference = app.state.inference
@@ -58,7 +58,13 @@ def build_calls(app: FastAPI, call_ids: set[str]) -> list[dict[str, Any]]:
 def build_staff(app: FastAPI, staff_ids: set[str]) -> list[dict[str, Any]]:
     ingestor = app.state.ingestor
     with ingestor.lock:
-        return [staff_view(ingestor.twin.staff[s]) for s in staff_ids if s in ingestor.twin.staff]
+        return [staff_view(ingestor.twin.staff[s], ingestor.twin.assignments)
+                for s in staff_ids if s in ingestor.twin.staff]
+
+
+def news2_by_bed(app: FastAPI) -> dict[str, dict[str, Any] | None]:
+    beds, _ = build_beds(app, None)
+    return _news2_by_bed(beds)
 
 
 def news2_total(app: FastAPI, bed_id: str) -> int | None:

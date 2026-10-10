@@ -33,5 +33,16 @@ class InferenceClient:
             log.warning("inference unavailable: %s", exc)
             return None
 
+    def assignment(self, nurses: list[dict[str, Any]], beds: list[dict[str, Any]],
+                   timeout_s: float = 5.0) -> dict[str, Any] | None:
+        """Off the triage path: the solver may use up to its configured time limit."""
+        try:
+            resp = self.http.post("/v1/assignment", json={"nurses": nurses, "beds": beds}, timeout=timeout_s)
+            resp.raise_for_status()
+            return resp.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            log.warning("inference unavailable for assignment: %s", exc)
+            return None
+
     def close(self) -> None:
         self.http.close()

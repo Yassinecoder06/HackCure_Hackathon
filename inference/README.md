@@ -5,7 +5,7 @@ The **inference layer** ([ADR 0009](../docs/decisions/0009-layers-and-postgres.m
 | Engine | Status | What it returns |
 |---|---|---|
 | `news2` | ✅ | Total, band, points per component, missing/stale lists, a "partial" label, the response text, **confidence** |
-| `assignment` | P3 | OR-Tools suggestion with reasons, workload before/after, confidence. Never applied by itself |
+| `assignment` | ✅ | OR-Tools suggestion with reasons, workload before/after, confidence. Never applied by itself |
 | `whatif` | P3 | SimPy results over N seeds: median and p5–p95, plus the assumptions list |
 | `explain` | P3 | Template sentences from rule traces |
 
@@ -23,6 +23,17 @@ Deterministic by design, with no black-box model (HackCure section 6).
   - otherwise any single parameter scoring 3 → `low_medium`;
   - otherwise `low`.
 - **Confidence** (0–1): the average over the 7 parameters. A fresh reading counts 1 when new, decaying linearly to 0.5 at its stale threshold; missing, stale or invalid readings count 0. It measures **input quality, not certainty about the patient**.
+
+## Assignment: how it works
+
+- `POST /v1/assignment` with `{nurses: [{staffId, skills}], beds: [{bed, room, acuity, news2Total, news2Fresh, currentNurse, locked, requiredSkills}]}`.
+- **Hard constraints:** every occupied bed gets exactly one nurse on the ward; skills are respected; locked beds keep their nurse; at most N beds per nurse (raised automatically if there are too few nurses).
+- **Objective** (weights in [`config/assignment.yaml`](config/assignment.yaml)), in decreasing weight:
+  1. the busiest nurse's workload (acuity + 0.5 × NEWS2) → balance;
+  2. beds moved away from their current nurse → continuity of care;
+  3. rooms per nurse → walking. Staff are never tracked; only room membership is used.
+- It returns the changes, `loadBefore`/`loadAfter`, reason sentences and a confidence (1.0 if optimal, 0.8 if only feasible, scaled by the share of beds with a fresh NEWS2).
+- CP-SAT runs single-threaded with a fixed seed, so the same ward gives the same suggestion. It never applies anything: the server keeps it pending until a charge nurse decides.
 
 ## API
 

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/assignment.schema.json",
+  "title": "Approved nurse assignment change",
+  "description": "Topic borj/{ward}/assignment. Published ONLY by the server, and ONLY when a charge nurse approves a suggestion (safety invariant 1). The optimiser never produces this event itself. It carries the approved changes and who decided.",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "required": ["suggestionId", "decidedBy", "changes"],
+  "properties": {
+    "sourceType": { "const": "server" },
+    "suggestionId": { "$ref": "common.schema.json#/$defs/id" },
+    "decidedBy": { "description": "Staff id of the charge nurse who approved.", "$ref": "common.schema.json#/$defs/id" },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["bed", "toStaffId"],
+        "properties": {
+          "bed": { "$ref": "common.schema.json#/$defs/id" },
+          "fromStaffId": { "$ref": "common.schema.json#/$defs/id" },
+          "toStaffId": { "$ref": "common.schema.json#/$defs/id" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

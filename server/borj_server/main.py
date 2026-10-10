@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 
 from .alerts import FirstSeen
 from .api.routes import router
+from .assignment import AssignmentService
 from .auth import Auth, AuthError, parse_pins
 from .calls import CallConfig, CallEngine
 from .clock import Clock
@@ -23,7 +24,7 @@ from .config import Settings
 from .crypto import DataCipher
 from .inference_client import InferenceClient
 from .ingest import Ingestor
-from .live import news2_total
+from .live import news2_by_bed, news2_total
 from .mqtt import MqttListener
 from .store import EventStore
 from .stream import StreamHub
@@ -75,6 +76,14 @@ def create_app(
             publish=listener.publish_retained if listener else None,
         )
         ingestor.listeners.append(app.state.calls.on_event)
+        app.state.assignment = AssignmentService(
+            ingestor,
+            solve=lambda nurses, beds: app.state.inference.assignment(nurses, beds) if app.state.inference else None,
+            news2_by_bed=lambda: news2_by_bed(app),
+            on_suggestion=app.state.hub.on_suggestion,
+        )
+        if settings.auto_suggest:
+            ingestor.listeners.append(app.state.assignment.on_event)
 
         async def escalation_timer() -> None:
             # Wall-clock mode needs a timer; in demo mode clock messages also trigger tick().
@@ -93,6 +102,7 @@ def create_app(
             yield
         finally:
             timer.cancel()
+            app.state.assignment.close()
             if listener is not None:
                 listener.stop()
             if app.state.inference is not None and inference_http is None:

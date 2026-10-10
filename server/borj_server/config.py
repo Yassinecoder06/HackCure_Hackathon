@@ -40,6 +40,8 @@ class Settings:
     stream_refresh_interval_s: float = 30.0
     calls_config_path: Path = REPO_ROOT / "server" / "config" / "calls.yaml"
     escalation_tick_s: float = 1.0
+    # Suggest a new assignment automatically when staff presence or admissions change.
+    auto_suggest: bool = True
 
     @classmethod
     def from_env(cls) -> Settings:

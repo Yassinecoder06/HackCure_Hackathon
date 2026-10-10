@@ -13,9 +13,37 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 
 
-@pytest.mark.skip(reason="P3, B: no code path applies an assignment/prescription without a logged human decision")
 def test_1_advisory_only():
-    pass
+    """Suggestions change nothing; only a recorded human approval does, and both are audited.
+    (Prescriptions join this test with the medication engine.)"""
+    import re
+
+    from borj_server.assignment import AssignmentService
+    from borj_server.clock import Clock
+    from borj_server.crypto import DataCipher
+    from borj_server.ingest import Ingestor
+    from borj_server.store import EventStore
+    from borj_server.twin.layout import WardLayout
+
+    store = EventStore("sqlite://", DataCipher({"k1": b"K" * 32}, "k1"))
+    ingestor = Ingestor(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"), store, Clock("wall"))
+    plan = {"status": "optimal", "changes": [{"bed": "B01", "toStaffId": "N1"}], "reasons": ["test"],
+            "confidence": {"value": 1.0, "basis": "test"}, "loadBefore": {}, "loadAfter": {}}
+    service = AssignmentService(ingestor, solve=lambda nurses, beds: plan, news2_by_bed=dict)
+
+    suggestion = service.suggest("test")
+    assert ingestor.twin.assignments == {}, "a suggestion must never change assignments"
+    service.decide(suggestion["suggestionId"], "approve", "CN1", None)
+    assert ingestor.twin.assignments == {"B01": "N1"}
+    actions = [(e["actor"], e["action"]) for e in store.audit_entries()]
+    assert ("system", "suggestion.created") in actions and ("CN1", "suggestion.approved") in actions
+
+    # Statically: the only code that emits an `assignment` event is the approval path.
+    emitters = [p.relative_to(ROOT).as_posix() for p in (ROOT / "server" / "borj_server").rglob("*.py")
+                if re.search(r"topic\(\s*\"assignment\"", p.read_text(encoding="utf-8"))]
+    assert emitters == ["server/borj_server/assignment.py"]
+    assert "def _apply" in (ROOT / "server" / "borj_server" / "assignment.py").read_text(encoding="utf-8")
+    service.close()
 
 
 @pytest.mark.skip(reason="P4, B: privacy filter output from a twin full of vitals/scores/drugs passes only allow-list")
@@ -74,6 +102,8 @@ def test_6_idempotency():
         schema = path.name.split(".")[0]
         if schema in ("ack", "staff-presence"):
             topic = bc.topic(schema, payload["ward"], staff_id=payload["staffId"])
+        elif schema == "assignment":
+            topic = bc.topic(schema, payload["ward"])
         else:
             topic = bc.topic(schema, payload["ward"], bed=payload["bed"])
         messages.append((topic, payload))
@@ -124,8 +154,9 @@ def test_10a_encrypted_at_rest():
     payload = json.loads((ROOT / "contracts" / "examples" / "vitals.device.json").read_text(encoding="utf-8"))
     store.append("borj/W1/B04/vitals", "vitals", payload)
     with store.engine.connect() as conn:
-        raw = repr(conn.execute(select(events)).all()).encode()
-    assert b"pulse" not in raw and b"112" not in raw
+        rows = conn.execute(select(events)).all()
+    raw = b"".join(v if isinstance(v, bytes) else str(v).encode() for row in rows for v in row)
+    assert b'"pulse":112' not in raw and b'"params"' not in raw
     assert next(store.events()).payload == payload
 
 

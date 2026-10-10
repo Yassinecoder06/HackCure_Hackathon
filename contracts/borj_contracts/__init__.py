@@ -28,6 +28,7 @@ RESERVED_BED_IDS = {"staff", "sim"}
 _ID = r"[A-Za-z0-9_-]{1,40}"
 _TOPIC_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(rf"^borj/(?P<ward>{_ID})/sim/clock$"), "clock"),
+    (re.compile(rf"^borj/(?P<ward>{_ID})/assignment$"), "assignment"),
     (re.compile(rf"^borj/(?P<ward>{_ID})/staff/(?P<staffId>{_ID})/ack$"), "ack"),
     (re.compile(rf"^borj/(?P<ward>{_ID})/staff/(?P<staffId>{_ID})/presence$"), "staff-presence"),
     (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/vitals$"), "vitals"),
@@ -109,6 +110,8 @@ def topic(kind: str, ward: str, bed: str | None = None, staff_id: str | None = N
     """Build a contract topic. kind is a schema name."""
     if kind == "clock":
         return f"borj/{ward}/sim/clock"
+    if kind == "assignment":
+        return f"borj/{ward}/assignment"
     if kind in ("ack", "staff-presence"):
         if not staff_id:
             raise ContractError(f"{kind} needs a staff id")

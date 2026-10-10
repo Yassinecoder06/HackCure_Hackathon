@@ -41,6 +41,16 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   critical), a **confidence** and **explanation** sentences. `POST .../alerts/{id}/ack` silences an alert while
   its condition lasts. The stream sends `call` and `alert` messages; a cleared alert is sent once with
   `active: false`.
+- P3: **assignment suggestions** (`assignment.py`). The server sends the live twin to the inference
+  optimiser and keeps the result as a **pending** suggestion. It is audited when created and changes nothing.
+  - Only `POST .../suggestions/{id}/decision` by a **charge nurse** applies it, as a server-only `assignment`
+    event (stored, replayable, audited with the decider). Safety invariant 1 is enforced in code, with a static
+    check in `tests/test_invariants.py`.
+  - A newer suggestion expires older pending ones. Approving a plan the ward has moved past is refused as
+    `stale_suggestion`.
+  - Suggestions are made automatically (debounced, off the MQTT thread) when staff presence or admissions
+    change, and pushed on the stream as `assignment_suggestion`.
+  - The snapshot shows `assignedNurse` per bed and `assignedBeds` per staff member.
 - Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
 
 ## Run
