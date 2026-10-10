@@ -63,7 +63,7 @@ def snapshot(ward: str, request: Request, who: Staff) -> dict:
 
 @router.websocket("/api/v1/wards/{ward}/stream")
 async def live_stream(websocket: WebSocket, ward: str) -> None:
-    """Token in the `token` query parameter (browsers cannot set headers on WebSockets)."""
+    """Token offered as subprotocols ["bearer", "<token>"] (see stream.py)."""
     settings = websocket.app.state.settings
     await stream.serve(websocket, websocket.app, ward, settings.stream_metrics_interval_s,
                        settings.stream_refresh_interval_s)

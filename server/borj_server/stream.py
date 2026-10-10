@@ -26,6 +26,16 @@ from .live import build_beds, build_snapshot, build_staff
 log = logging.getLogger(__name__)
 
 POLICY_VIOLATION = 4401  # application close code: missing or invalid token
+SUBPROTOCOL = "bearer"
+
+
+def _token_from_subprotocols(websocket: WebSocket) -> str:
+    """The client offers subprotocols ["bearer", "<token>"] (browsers cannot set an Authorization
+    header on WebSockets). Unlike a ?token= query string, this never lands in access logs."""
+    offered = [p.strip() for p in websocket.headers.get("sec-websocket-protocol", "").split(",")]
+    if len(offered) == 2 and offered[0] == SUBPROTOCOL:
+        return offered[1]
+    return ""
 
 
 @dataclass
@@ -81,7 +91,7 @@ class StreamHub:
 
 async def serve(websocket: WebSocket, app: FastAPI, ward: str, metrics_interval_s: float,
                 refresh_interval_s: float) -> None:
-    token = websocket.query_params.get("token", "")
+    token = _token_from_subprotocols(websocket)
     try:
         who = app.state.auth.verify(token)
     except AuthError:
@@ -93,7 +103,7 @@ async def serve(websocket: WebSocket, app: FastAPI, ward: str, metrics_interval_
 
     hub: StreamHub = app.state.hub
     queue: asyncio.Queue[Change] = asyncio.Queue()
-    await websocket.accept()
+    await websocket.accept(subprotocol=SUBPROTOCOL)
     app.state.ingestor.store.audit(who.staff_id, "stream.open", ward)
     hub.queues.add(queue)
     try:
