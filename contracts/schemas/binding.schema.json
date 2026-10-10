@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/binding.schema.json",
+  "title": "Bed / device / admission binding",
+  "description": "Topic borj/{ward}/{bed}/binding. Devices report by bed; this event tells the twin which admission occupies the bed and which devices are attached. Confirmed by a nurse wristband scan at admission, transfer and device swap. Family invites are bound to the admission, never the bed.",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "required": ["bed", "action", "admissionId", "method"],
+  "properties": {
+    "bed": { "$ref": "common.schema.json#/$defs/id" },
+    "sourceType": { "enum": ["staff_app", "manual", "server"] },
+    "action": {
+      "description": "admit/discharge/transfer_in/transfer_out move the admission; attach_device/detach_device change which devices feed this bed. discharge and transfer_out expire family invites (safety invariant 4).",
+      "enum": ["admit", "discharge", "transfer_in", "transfer_out", "attach_device", "detach_device"]
+    },
+    "admissionId": { "$ref": "common.schema.json#/$defs/id" },
+    "patientRef": {
+      "description": "Pseudonymous synthetic display label, e.g. 'Patient 04'. Never a real name or national id.",
+      "type": "string",
+      "maxLength": 40
+    },
+    "acuity": {
+      "description": "Baseline nursing acuity 1 (low) to 4 (high), set by the nurse at admission. Input to assignment.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "deviceId": { "$ref": "common.schema.json#/$defs/id" },
+    "method": { "enum": ["wristband_scan", "manual", "simulator"] },
+    "staffId": { "$ref": "common.schema.json#/$defs/id" }
+  },
+  "unevaluatedProperties": false
+}

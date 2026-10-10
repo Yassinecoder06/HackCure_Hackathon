@@ -1,0 +1,17 @@
+[project]
+name = "borj-picare"
+version = "0.0.0"
+description = "Ward Control Tower (hackathon). Tooling config only; components have their own requirements."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["contracts"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = [".venv", "node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]

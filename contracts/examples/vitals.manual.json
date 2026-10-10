@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T1W",
+  "ts": "2026-10-10T22:05:00Z",
+  "tsSource": "server",
+  "ward": "W1",
+  "bed": "B04",
+  "source": "staff-app",
+  "sourceType": "manual",
+  "staffId": "N1",
+  "params": {
+    "consciousness": "A",
+    "on_oxygen": false,
+    "spo2_scale": 1
+  },
+  "quality": { "valid": true, "stale_after_s": 14400 }
+}

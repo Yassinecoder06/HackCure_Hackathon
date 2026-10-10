@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/family-invite.schema.json",
+  "title": "Family invite (ward -> family-gateway)",
+  "description": "Pushed outbound when a nurse creates an invite after the patient (or legal representative) has given recorded consent (safety invariant 4). The relative redeems it with the QR code AND a one-time code. Only a hash of the one-time code leaves the ward.",
+  "type": "object",
+  "required": ["schemaVersion", "inviteId", "linkId", "relativeLabel", "allowedKinds", "consentRecordedAt", "expiresAt", "codeHash"],
+  "properties": {
+    "schemaVersion": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "inviteId": { "$ref": "common.schema.json#/$defs/eventId" },
+    "linkId": { "$ref": "common.schema.json#/$defs/id" },
+    "relativeLabel": {
+      "description": "How the relative is shown to staff, e.g. 'Daughter'. Synthetic in the demo.",
+      "type": "string",
+      "maxLength": 40
+    },
+    "allowedKinds": {
+      "description": "Subset of family-update kinds the patient consented to share with this relative.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["visiting_info", "meal_served", "medication_round_completed", "nurse_note", "ward_contact"] }
+    },
+    "consentRecordedAt": { "$ref": "common.schema.json#/$defs/utcTimestamp" },
+    "expiresAt": {
+      "description": "Hard upper bound. Discharge or transfer revokes earlier via family-revocation.",
+      "$ref": "common.schema.json#/$defs/utcTimestamp"
+    },
+    "codeHash": {
+      "description": "Salted hash of the one-time code (e.g. scrypt or argon2 encoded string).",
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 256
+    }
+  },
+  "additionalProperties": false
+}

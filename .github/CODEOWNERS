@@ -1,0 +1,20 @@
+# Fill in once people have picked roles (docs/PLAN.md), then uncomment.
+# Replace @ROLE_A / @ROLE_B / @ROLE_C with GitHub usernames.
+# GitHub requires approval from ONE listed owner; contracts/ additionally needs the
+# "all three acknowledged" checkbox in the PR template (docs/decisions/0007-review-rules.md).
+
+# /simulator/        @ROLE_A
+# /gateway/          @ROLE_A
+# /bedside-node/     @ROLE_A
+# /family-gateway/   @ROLE_A
+# /infra/            @ROLE_A
+# /seed/             @ROLE_A
+
+# /server/           @ROLE_B
+
+# /apps/             @ROLE_C
+# /docs/demo-script.md @ROLE_C
+
+# /contracts/        @ROLE_A @ROLE_B @ROLE_C
+# /tests/            @ROLE_A @ROLE_B @ROLE_C
+# /CLAUDE.md         @ROLE_A @ROLE_B @ROLE_C

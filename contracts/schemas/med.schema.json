@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/med.schema.json",
+  "title": "Medication administration event",
+  "description": "Topic borj/{ward}/{bed}/med. References a scheduled dose created from a doctor's prescription (REST). No drug names or doses travel on MQTT. Only recordedBy=nurse closes a dose; patient_reported is stored separately and never closes one. The system never selects drugs or doses (safety invariant 1).",
+  "allOf": [
+    { "$ref": "common.schema.json#/$defs/envelope" },
+    {
+      "if": { "properties": { "recordedBy": { "const": "nurse" } }, "required": ["recordedBy"] },
+      "then": {
+        "required": ["staffId"],
+        "properties": { "action": { "enum": ["given", "not_given"] }, "sourceType": { "const": "staff_app" } }
+      },
+      "else": {
+        "properties": { "action": { "const": "patient_reported_taken" } }
+      }
+    },
+    {
+      "if": { "properties": { "action": { "const": "not_given" } }, "required": ["action"] },
+      "then": { "required": ["reason"] }
+    }
+  ],
+  "required": ["bed", "admissionId", "doseId", "action", "recordedBy"],
+  "properties": {
+    "bed": { "$ref": "common.schema.json#/$defs/id" },
+    "sourceType": { "enum": ["staff_app", "bedside_node"] },
+    "admissionId": { "$ref": "common.schema.json#/$defs/id" },
+    "doseId": { "$ref": "common.schema.json#/$defs/id" },
+    "action": { "enum": ["given", "not_given", "patient_reported_taken"] },
+    "recordedBy": { "enum": ["nurse", "patient_reported"] },
+    "staffId": { "$ref": "common.schema.json#/$defs/id" },
+    "presence": {
+      "description": "How the nurse's presence at the bed was confirmed.",
+      "enum": ["badge_tap", "wristband_scan", "none"]
+    },
+    "reason": { "description": "Required for not_given.", "type": "string", "maxLength": 200 }
+  },
+  "unevaluatedProperties": false
+}

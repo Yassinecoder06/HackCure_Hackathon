@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/clock.schema.json",
+  "title": "Demo clock",
+  "description": "Topic borj/{ward}/sim/clock (retained). DEMO ONLY. The simulator can run faster than real time; consumers in demo mode use simTs as 'now' for staleness and escalation timers. Absent in a real deployment, where wall-clock UTC is used.",
+  "type": "object",
+  "required": ["schemaVersion", "ward", "simTs", "speed", "scenario", "running"],
+  "properties": {
+    "schemaVersion": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "ward": { "$ref": "common.schema.json#/$defs/id" },
+    "simTs": { "$ref": "common.schema.json#/$defs/utcTimestamp" },
+    "speed": { "description": "Sim seconds per wall second. 0 means as fast as possible.", "type": "number", "minimum": 0 },
+    "scenario": { "type": "string" },
+    "running": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

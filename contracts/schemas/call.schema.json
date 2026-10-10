@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/call.schema.json",
+  "title": "Call button press",
+  "description": "Topic borj/{ward}/{bed}/call. Published by the bedside node (or simulator) when a patient presses a button. A NON-AUTHORITATIVE signal: it never closes a task by itself. State transitions are owned by the server and published on call/state.",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "required": ["bed", "callId", "kind", "pressCount"],
+  "properties": {
+    "bed": { "$ref": "common.schema.json#/$defs/id" },
+    "sourceType": { "const": "bedside_node" },
+    "callId": {
+      "description": "Stable id for this call across repeated presses and state changes. A repeated press reuses the open callId and increments pressCount.",
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "description": "assist = clinical help, routed to nurses. comfort = non-clinical (water, blanket), routed first to care assistants but visible to nurses.",
+      "enum": ["assist", "comfort"]
+    },
+    "pressCount": { "type": "integer", "minimum": 1 },
+    "deliveredLate": {
+      "description": "True when the node could not deliver in time (the patient saw not_sent) and this is the store-and-forward replay. `ts` is still the original press time.",
+      "type": "boolean"
+    }
+  },
+  "unevaluatedProperties": false
+}

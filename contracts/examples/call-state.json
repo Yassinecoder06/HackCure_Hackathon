@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T1Z",
+  "ts": "2026-10-10T22:17:41Z",
+  "ward": "W1",
+  "bed": "B06",
+  "source": "borj-server",
+  "sourceType": "server",
+  "callId": "C-B06-0001",
+  "kind": "assist",
+  "state": "escalated",
+  "escalationLevel": 2,
+  "escalationReason": "unacknowledged_timeout",
+  "routedToRole": "charge_nurse",
+  "pressedAt": "2026-10-10T22:12:40Z"
+}

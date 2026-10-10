@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T27",
+  "ts": "2026-10-11T00:50:00Z",
+  "ward": "W1",
+  "source": "staff-app",
+  "sourceType": "staff_app",
+  "staffId": "N3",
+  "onWard": false,
+  "reason": "called_away",
+  "expectedBackMin": 60
+}
