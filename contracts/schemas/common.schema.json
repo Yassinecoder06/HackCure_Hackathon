@@ -4,7 +4,9 @@
   "title": "Borj common definitions",
   "description": "Shared building blocks. Every MQTT message (except the demo clock) starts from `envelope`.",
   "$defs": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": {
+      "const": 1
+    },
     "eventId": {
       "description": "ULID (26 chars, Crockford base32). Unique per message; replaying the same eventId must change nothing (safety invariant 6).",
       "type": "string",
@@ -22,29 +24,85 @@
     },
     "sourceType": {
       "description": "Where the data originated. device = ward machine via gateway; manual = nurse fast entry; bedside_node = patient call node; staff_app = staff phone/board; server = ward server.",
-      "enum": ["device", "manual", "bedside_node", "staff_app", "server"]
+      "enum": [
+        "device",
+        "manual",
+        "bedside_node",
+        "staff_app",
+        "server"
+      ]
     },
     "tsSource": {
       "description": "Which clock produced `ts`. device_rtc is preferred; gateway/server are fallbacks when a device has no clock.",
-      "enum": ["device_rtc", "gateway", "server", "simulator"]
+      "enum": [
+        "device_rtc",
+        "gateway",
+        "server",
+        "simulator"
+      ]
     },
     "envelope": {
       "type": "object",
-      "required": ["schemaVersion", "eventId", "ts", "ward", "source", "sourceType"],
+      "required": [
+        "schemaVersion",
+        "eventId",
+        "ts",
+        "ward",
+        "source",
+        "sourceType"
+      ],
       "properties": {
-        "schemaVersion": { "$ref": "#/$defs/schemaVersion" },
-        "eventId": { "$ref": "#/$defs/eventId" },
-        "ts": { "$ref": "#/$defs/utcTimestamp" },
-        "tsSource": { "$ref": "#/$defs/tsSource" },
-        "ward": { "$ref": "#/$defs/id" },
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "eventId": {
+          "$ref": "#/$defs/eventId"
+        },
+        "ts": {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        "tsSource": {
+          "$ref": "#/$defs/tsSource"
+        },
+        "ward": {
+          "$ref": "#/$defs/id"
+        },
         "source": {
           "description": "Name of the emitting component instance, e.g. gateway-sim, gateway-pi-1, node-B04, staff-app.",
           "type": "string",
           "minLength": 1,
           "maxLength": 64
         },
-        "sourceType": { "$ref": "#/$defs/sourceType" }
+        "sourceType": {
+          "$ref": "#/$defs/sourceType"
+        },
+        "integrity": {
+          "$ref": "#/$defs/integrity"
+        }
       }
+    },
+    "integrity": {
+      "description": "HMAC-SHA256 over the canonical JSON of the message WITHOUT this field (keys sorted, separators ',' and ':', UTF-8), using the per-device key `keyId`. Required in the demo (safety invariant 13); optional in unit tests and local development.",
+      "type": "object",
+      "required": [
+        "alg",
+        "keyId",
+        "sig"
+      ],
+      "properties": {
+        "alg": {
+          "const": "HMAC-SHA256"
+        },
+        "keyId": {
+          "$ref": "#/$defs/id"
+        },
+        "sig": {
+          "description": "base64url without padding",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

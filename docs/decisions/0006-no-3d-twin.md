@@ -1,6 +1,6 @@
 # 0006. No NVIDIA Omniverse / OpenUSD; 2D floor plan instead
 
-Status: accepted (kickoff)
+Status: **superseded by [0012](0012-3d-twin.md)**. The dev PC does have an RTX 4060 (it was disabled), and a browser 3D view was chosen instead of Omniverse.
 
 ## Context
 

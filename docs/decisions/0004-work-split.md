@@ -13,4 +13,10 @@ In the kickoff plan, Person C (interfaces) owned three apps, family-gateway, the
 - **C (interfaces)** owns `apps/ward`, `apps/family` and the demo script.
 - The **deck and BMC are shared**. C leads, and everyone contributes their part.
 
+## Update (2026-10-10, HackCure Track 2)
+
+- **A** also owns the TLS broker, the cloud deployment (the active web URL) and the backup network kit.
+- **B** also owns the `inference/` service ([0009](0009-layers-and-postgres.md)), the security work in the server ([0010](0010-security-baseline.md)), and the 3D twin `apps/twin3d` ([0012](0012-3d-twin.md)).
+- **C** also leads the deployment dossier (deliverable L3) and the technical-defence preparation.
+
 See [`../roles/`](../roles/) for each role's task list.

@@ -28,6 +28,10 @@ data/
 infra/mosquitto/data/
 infra/mosquitto/log/
 
+# Local MCP setup (paths are machine-specific) and installer bundles
+.mcp.json
+*.mcpb
+
 # Editors / OS
 .vscode/
 .idea/

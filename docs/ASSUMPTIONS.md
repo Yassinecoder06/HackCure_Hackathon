@@ -1,45 +1,61 @@
 # Assumptions
 
-Answers from the team at kickoff (2026-10-10), plus defaults where no answer was given. Change this file when an answer changes.
+Team answers and decisions, plus defaults where no answer was given. Change this file when an answer changes.
 
-## Team answers
+Inputs:
+- The idea: [`Borj_PiCare_Whitepaper_v2.pdf`](Borj_PiCare_Whitepaper_v2.pdf).
+- The competition rules: [`HackCure_Cahier_des_Charges.pdf`](HackCure_Cahier_des_Charges.pdf). When the two disagree, **the HackCure specification wins** for everything it requires (security, layers, deliverables, demo rules). The whitepaper wins on the product idea.
 
-| Question | Answer |
+## Team answers and decisions
+
+| Topic | Answer |
 |---|---|
-| Deadline / demo format | **No fixed deadline.** Phases are ordered by priority, not dated. The demo format is decided later (live demo with a recorded backup is the plan). |
-| Hardware | **One Raspberry Pi, push buttons, LEDs and a speaker.** No ESP32 and no real vitals monitor. |
-| Team skills and hours | Not given yet. Roles are **A / B / C placeholders**: each person picks a role from [`roles/`](roles/). |
-| Languages | **English** for UI, code and docs. |
-| GitHub | Commits are pushed with the `llamauser` account. The repo owner (`Yassinecoder06`) holds admin rights (branch protection). |
+| Competition track | **Track 2, Web & Mobile** ([ADR 0008](decisions/0008-track-2.md)) |
+| Deadline | No fixed deadline. Phases are done in order. |
+| Demo format | **Live demo is mandatory.** HackCure accepts no pre-recorded video or static mockup as the MVP. A recording may exist only as a private safety net. |
+| Hardware | One Raspberry Pi, push buttons, LEDs, a speaker. No ESP32. The dev PC has an NVIDIA RTX 4060 Laptop GPU. |
+| Roles | **B is taken by @llamauser.** A and C are open: pick one in [`PLAN.md`](PLAN.md). |
+| Languages | English for UI, code and docs (see "Open decisions"). |
+| Equipment maintenance | **Out of scope.** Off-topic for Track 2. A device going offline still shows as stale data and a "device offline" alert, which is patient safety, not maintenance. |
+| 3D twin | In, as polish after the core works: Blender bake + three.js ([ADR 0012](decisions/0012-3d-twin.md)). No Omniverse. |
 
-## Consequences
+## Open decisions (defaults apply until the team decides)
 
-- **Hardware is no longer "Could".** The Pi plays the **bedside node** (buttons, LEDs, speaker) for the live showpiece, and can also run the gateway. The whitepaper's production design (ESP32 per bed, Pi per ward) is unchanged. See [ADR 0003](decisions/0003-pi-bedside-node.md).
-- **No `firmware/` folder.** The node is Python on the Pi (`bedside-node/`).
-- **English-only UI.** The whitepaper mentions French and Tunisian Arabic, so UI strings stay in one place per app so that a translation layer can be added later without a rewrite. Arabic right-to-left support is deferred. Audio phrases are recorded in English for the demo.
-- **No dates.** Integration checkpoints happen at the end of each phase instead of on a calendar.
+| Question | Default | Why it matters |
+|---|---|---|
+| Add a real **PPG + temperature sensor** (e.g. MAX30102 + DS18B20) to the Pi? | **Recommended, not yet decided** | Turns one bedside channel from simulated to real. It ticks HackCure's "biometric sensors" box and makes the live demo more convincing. It costs a few dinars. |
+| UI language | English | The specification and jury are francophone, so a French UI may land better. Strings are kept in one module per app, which makes switching cheap. |
+
+## Consequences of the answers
+
+- The Pi plays the **bedside node** in the demo ([ADR 0003](decisions/0003-pi-bedside-node.md)). Production uses an ESP32 per bed.
+- **No `firmware/` folder.** The node is Python on the Pi.
+- **Phases have no dates.** Integration checkpoints happen at the end of each phase.
 
 ## Defaults and scope
 
-- **Synthetic data only.** No real patients, staff or devices. Ward `W1` has 12 beds in 6 rooms ([`seed/ward-W1.yaml`](../seed/ward-W1.yaml)).
-- **Device protocols are simulated.** The gateway replays simulator streams through the same adapter interface a real device would use.
+- **Synthetic data only.** No real patients, staff or devices. Ward `W1` has 12 beds in 6 rooms ([`seed/ward-W1.yaml`](../seed/ward-W1.yaml)). The data must look medically realistic (HackCure L2).
+- **Device protocols are simulated**, except an optional real sensor on the Pi.
 - **Clinical parameters are illustrative.** The NEWS2 thresholds follow the RCP chart and must be confirmed by a clinician. Escalation timers and what-if rates are placeholders.
-- **Auth is a stub** (`X-Staff-Id` header). Hospital SSO is out of scope.
-- **Storage is SQLite** ([ADR 0001](decisions/0001-stack.md)).
-- **Family-gateway hosting** is a plain container in the demo, not an approved national host.
-- **Equipment reminders** (whitepaper 5.2) are **out of scope for now**.
-- **Optional local LLM explainer**: out of scope. Explanations are template-based.
-- **3D / Omniverse**: not used ([ADR 0006](decisions/0006-no-3d-twin.md)). The board uses a 2D floor plan.
+- **Security is real in the demo**: TLS 1.3, AES-256 at rest, real login, access audit ([ADR 0010](decisions/0010-security-baseline.md)). Hospital SSO is out of scope.
+- **Storage is PostgreSQL**, with inference in its own service ([ADR 0009](decisions/0009-layers-and-postgres.md)).
+- **Hosting:** a cloud VM for the "active web URL", plus a fully local Docker setup for the live demo. Neither is an INPDP-approved national host, so real deployment would need one.
+- **The optional local LLM explainer is out.** Explanations are template-based. Confidence indices are deterministic ([ADR 0011](decisions/0011-interop-and-confidence.md)).
+- **FHIR:** read-only R4 export only. No writing into a real hospital information system.
 
-## Contract additions beyond the kickoff plan (from the whitepaper)
+## Contract additions beyond the kickoff plan
 
-These were added because the whitepaper requires them. The whitepaper wins over the kickoff plan.
+From the whitepaper:
+- Call `kind` (`assist` or `comfort`). Comfort calls route to care assistants first. Calls auto-escalate on a repeated press or when NEWS2 is 5 or more.
+- `binding` topic (bed to admission to devices). Medication events carry `recordedBy`.
+- `staff/{id}/presence` topic, `call/state` (published by the server only), `sim/clock` (demo only).
+- What-if reports the median and p5–p95 over many seeds, with the same seeds for baseline and scenario.
+- Family: QR code plus one-time code, rate limits, "not an emergency channel" notice.
 
-- Call `kind`: `assist` or `comfort`. Comfort calls route to care assistants first. Calls auto-escalate on a repeated press or when NEWS2 is 5 or more (whitepaper 4.2).
-- `binding` topic: bed to admission to devices, confirmed by a wristband scan (4.1). Family invites are tied to the admission.
-- Medication events carry `recordedBy`. A patient-reported event never closes a dose (4.3).
-- `staff/{id}/presence` topic: shift start/end and "called away", needed for the "nurse leaves" scenario.
-- `call/state` topic published only by the server, so bedside LEDs show delivery state (4.2).
-- `sim/clock` topic: demo-only accelerated clock.
-- What-if reports the median and the 5th to 95th percentile over many seeds, with baseline and scenario on the same seeds (5.3).
-- Family: QR code plus one-time code, rate limits, "not an emergency channel" notice (7.3, 7.4).
+From the HackCure specification:
+- An optional HMAC `integrity` field on every MQTT envelope.
+- Real login (bearer tokens) instead of the `X-Staff-Id` stub.
+- A `confidence` field on NEWS2 results, alerts and assignment suggestions.
+- A read-only FHIR R4 export.
+- Remote-doctor instructions on alerts.
+- A latency metric on the stream.

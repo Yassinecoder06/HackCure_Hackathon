@@ -9,7 +9,8 @@ The only thing all three roles depend on. Everything else is built against these
 | [`examples/`](examples/) | One valid example per message. Used by tests, docs and app mocks |
 | [`openapi.yaml`](openapi.yaml) | Ward server REST + WebSocket API (used by `apps/ward`) |
 | [`family-gateway.openapi.yaml`](family-gateway.openapi.yaml) | DMZ API: ingest from the ward (outbound push) + relatives' app |
-| [`borj_contracts/`](borj_contracts/) | Python helper: `validate_message(topic, payload)`, `route(topic)`, `topic(...)` |
+| [`fhir-mapping.md`](fhir-mapping.md) | FHIR R4 mapping for the read-only export (LOINC codes, resources) |
+| [`borj_contracts/`](borj_contracts/) | Python helper: `validate_message(topic, payload)`, `route(topic)`, `topic(...)`, and `sign()` / `verify()` for HMAC frame integrity |
 
 Python usage (add `contracts` to `PYTHONPATH`, or `pip install -r requirements-dev.txt` and run from the repo root, since pytest is configured for it):
 

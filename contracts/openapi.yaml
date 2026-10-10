@@ -11,14 +11,19 @@ info:
     - Advisory only. Endpoints that change care (assignment decisions, administrations)
       require a human staff id and are written to the audit log (safety invariant 1).
     - Missing or stale data is returned as missing/stale, never as a normal value (invariant 5).
-    - Auth is a DEMO STUB: the `X-Staff-Id` header names a seeded synthetic staff member.
-      Real deployment needs hospital SSO (out of scope).
+    - Every algorithmic output carries a `confidence` and an explanation, and is advisory (invariant 12).
+    - Auth: `POST /api/v1/auth/login` returns a short-lived bearer token. Every access to patient data
+      is written to the hash-chained audit log (invariants 10, 11). Hospital SSO is out of scope.
+    - Served only over HTTPS/WSS (TLS 1.3, via Caddy) in the demo.
 servers:
+  - url: https://localhost
+    description: Local docker compose behind Caddy (TLS 1.3)
   - url: http://localhost:8000
-    description: Local docker compose
+    description: Direct to the server, local development and tests only
 security:
-  - staffHeader: []
+  - bearerAuth: []
 tags:
+  - name: auth
   - name: ward
   - name: vitals
   - name: calls
@@ -27,6 +32,7 @@ tags:
   - name: meds
   - name: family
   - name: audit
+  - name: fhir
 
 paths:
   /health:
@@ -44,6 +50,37 @@ paths:
                 required: [status]
                 properties:
                   status: { const: ok }
+
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      security: []
+      summary: Log in with a staff id and PIN/password (synthetic staff from the seed)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [staffId, secret]
+              additionalProperties: false
+              properties:
+                staffId: { $ref: "#/components/schemas/Id" }
+                secret: { type: string, minLength: 4, maxLength: 128 }
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expiresAt, staff]
+                properties:
+                  token: { type: string }
+                  expiresAt: { $ref: "#/components/schemas/Timestamp" }
+                  staff: { $ref: "#/components/schemas/Staff" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { description: Too many attempts }
 
   /api/v1/wards/{ward}/snapshot:
     get:
@@ -193,6 +230,33 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Alert" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/wards/{ward}/alerts/{alertId}/instructions:
+    post:
+      tags: [calls]
+      summary: Remote on-call doctor adds a short instruction to an alert (telemedicine)
+      description: Audited. Shown to the nurse on the alert. Works asynchronously (the doctor's app queues it while offline).
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { $ref: "#/components/parameters/alertId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              additionalProperties: false
+              properties:
+                text: { type: string, minLength: 1, maxLength: 280 }
+      responses:
+        "200":
+          description: Updated alert
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Alert" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/wards/{ward}/assignments/suggestions:
@@ -457,6 +521,80 @@ paths:
               schema: { $ref: "#/components/schemas/FamilyUpdate" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/wards/{ward}/audit/verify:
+    get:
+      tags: [audit]
+      summary: Verify the audit log hash chain (non-repudiation)
+      parameters: [{ $ref: "#/components/parameters/ward" }]
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [valid, entries]
+                properties:
+                  valid: { type: boolean }
+                  entries: { type: integer }
+                  firstBrokenAuditId: { type: string }
+
+  /fhir/r4/Patient/{id}:
+    get:
+      tags: [fhir]
+      summary: FHIR R4 Patient (pseudonymised), read-only
+      description: See contracts/fhir-mapping.md. Access is audited.
+      parameters:
+        - { name: id, in: path, required: true, schema: { $ref: "#/components/schemas/Id" } }
+      responses:
+        "200":
+          description: FHIR Patient resource
+          content:
+            application/fhir+json:
+              schema: { $ref: "#/components/schemas/FhirResource" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /fhir/r4/Encounter:
+    get:
+      tags: [fhir]
+      summary: FHIR R4 Encounters (admissions) as a searchset Bundle
+      parameters:
+        - { name: patient, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Bundle
+          content:
+            application/fhir+json:
+              schema: { $ref: "#/components/schemas/FhirBundle" }
+
+  /fhir/r4/Observation:
+    get:
+      tags: [fhir]
+      summary: FHIR R4 vital-sign Observations (LOINC-coded) and NEWS2 scores as a searchset Bundle
+      parameters:
+        - { name: encounter, in: query, schema: { type: string } }
+        - { name: code, in: query, schema: { type: string }, description: "LOINC code, e.g. 8867-4" }
+        - { name: date, in: query, schema: { type: string }, description: "FHIR date search, e.g. ge2026-10-10" }
+      responses:
+        "200":
+          description: Bundle
+          content:
+            application/fhir+json:
+              schema: { $ref: "#/components/schemas/FhirBundle" }
+
+  /fhir/r4/MedicationAdministration:
+    get:
+      tags: [fhir]
+      summary: FHIR R4 MedicationAdministrations (nurse-recorded only) as a searchset Bundle
+      parameters:
+        - { name: encounter, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Bundle
+          content:
+            application/fhir+json:
+              schema: { $ref: "#/components/schemas/FhirBundle" }
+
   /api/v1/wards/{ward}/audit:
     get:
       tags: [audit]
@@ -477,11 +615,10 @@ paths:
 
 components:
   securitySchemes:
-    staffHeader:
-      type: apiKey
-      in: header
-      name: X-Staff-Id
-      description: DEMO ONLY. Synthetic staff id from the seed data. No real authentication.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Short-lived signed token from /api/v1/auth/login. Roles come from the staff roster.
 
   parameters:
     ward:
@@ -526,6 +663,11 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing, invalid or expired credentials
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     Forbidden:
       description: Role not allowed (e.g. only a charge nurse decides assignments)
       content:
@@ -546,6 +688,16 @@ components:
       properties:
         error: { type: string }
         detail: { type: string }
+    Confidence:
+      type: object
+      description: |
+        Measurable confidence of an algorithmic output (HackCure section 6, invariant 12). Engines are
+        deterministic, so this measures how trustworthy the INPUTS are (completeness, freshness, solver
+        status), not a probability about the patient.
+      required: [value, basis]
+      properties:
+        value: { type: number, minimum: 0, maximum: 1 }
+        basis: { type: string, description: "Human-readable, e.g. '6 of 7 parameters fresh; consciousness missing'" }
     Accepted:
       type: object
       required: [eventId]
@@ -625,7 +777,7 @@ components:
       description: |
         Deterministic NEWS2. Thresholds come from config (to be confirmed by a clinician).
         If any parameter is missing/stale/invalid the score is PARTIAL and labelled as such.
-      required: [total, complete, band, anySingleParam3, components, missing, stale, label, computedAt]
+      required: [total, complete, band, anySingleParam3, components, missing, stale, label, confidence, computedAt]
       properties:
         total: { type: integer, minimum: 0, description: "Sum over fresh, valid parameters only" }
         complete: { type: boolean }
@@ -650,6 +802,7 @@ components:
           items: { type: string }
         label: { type: string, description: "e.g. 'Partial score: consciousness missing'" }
         spo2Scale: { enum: [1, 2] }
+        confidence: { $ref: "#/components/schemas/Confidence" }
         computedAt: { $ref: "#/components/schemas/Timestamp" }
 
     DeviceState:
@@ -667,7 +820,7 @@ components:
       properties:
         staffId: { $ref: "#/components/schemas/Id" }
         displayName: { type: string, description: Synthetic }
-        role: { enum: [nurse, charge_nurse, care_assistant, doctor, biomed_tech] }
+        role: { enum: [nurse, charge_nurse, care_assistant, doctor] }
         skills:
           type: array
           items: { type: string }
@@ -697,11 +850,11 @@ components:
 
     Alert:
       type: object
-      required: [alertId, type, priority, createdAt, explanation]
+      required: [alertId, type, priority, createdAt, explanation, confidence]
       properties:
         alertId: { $ref: "#/components/schemas/Id" }
         bed: { $ref: "#/components/schemas/Id" }
-        type: { enum: [news2_rise, news2_high, stale_data, device_offline, call_escalated, dose_overdue, assignment_suggested] }
+        type: { enum: [news2_rise, news2_high, news2_single_param_3, stale_data, device_offline, call_escalated, dose_overdue, assignment_suggested] }
         priority:
           enum: [low, medium, critical]
           description: "Escalation ladder: low = silent badge, medium = normal notification, critical = persistent alarm until acknowledged"
@@ -711,15 +864,44 @@ components:
           description: Template sentences built from the rule trace (no clinical authority)
           items: { type: string }
         acknowledgedBy: { $ref: "#/components/schemas/Id" }
+        confidence: { $ref: "#/components/schemas/Confidence" }
+        escalatedTo:
+          type: array
+          description: Roles reached so far (e.g. nurse, charge_nurse, doctor)
+          items: { enum: [nurse, care_assistant, charge_nurse, doctor] }
+        instructions:
+          type: array
+          description: Remote on-call doctor notes (telemedicine)
+          items:
+            type: object
+            required: [text, by, at]
+            properties:
+              text: { type: string }
+              by: { $ref: "#/components/schemas/Id" }
+              at: { $ref: "#/components/schemas/Timestamp" }
+
+    Metrics:
+      type: object
+      description: Live triage latency (Track 2 "zero latency" priority). Budget under 1000 ms.
+      required: [triageLatencyMs, windowS]
+      properties:
+        windowS: { type: integer, description: Rolling window length }
+        triageLatencyMs:
+          type: object
+          required: [p50, p95, n]
+          properties:
+            p50: { type: number }
+            p95: { type: number }
+            n: { type: integer }
 
     StreamMessage:
       type: object
       required: [type, data]
       properties:
-        type: { enum: [snapshot, bed, call, alert, staff, assignment_suggestion, clock] }
+        type: { enum: [snapshot, bed, call, alert, staff, assignment_suggestion, clock, metrics] }
         data:
           type: object
-          description: "WardSnapshot for snapshot, Bed for bed, Call for call, Alert for alert, Staff for staff, AssignmentSuggestion for assignment_suggestion, {simTs, speed, running} for clock"
+          description: "WardSnapshot for snapshot, Bed for bed, Call for call, Alert for alert, Staff for staff, AssignmentSuggestion for assignment_suggestion, {simTs, speed, running} for clock, Metrics for metrics"
 
     ManualObservation:
       type: object
@@ -748,7 +930,7 @@ components:
 
     AssignmentSuggestion:
       type: object
-      required: [suggestionId, createdAt, trigger, status, changes, reasons]
+      required: [suggestionId, createdAt, trigger, status, changes, reasons, confidence]
       properties:
         suggestionId: { $ref: "#/components/schemas/Id" }
         createdAt: { $ref: "#/components/schemas/Timestamp" }
@@ -766,6 +948,7 @@ components:
         reasons:
           type: array
           items: { type: string }
+        confidence: { $ref: "#/components/schemas/Confidence" }
         loadBefore:
           type: object
           additionalProperties: { type: number }
@@ -976,7 +1159,7 @@ components:
 
     AuditEntry:
       type: object
-      required: [auditId, ts, actor, action, target]
+      required: [auditId, ts, actor, action, target, prevHash, hash]
       properties:
         auditId: { type: string }
         ts: { $ref: "#/components/schemas/Timestamp" }
@@ -984,3 +1167,26 @@ components:
         action: { type: string, description: "e.g. suggestion.created, suggestion.approved, call.acknowledged, dose.given" }
         target: { type: string }
         detail: { type: object }
+        prevHash: { type: string, description: "Hash of the previous entry (hash chain)" }
+        hash: { type: string, description: "SHA-256 over prevHash + this entry's canonical content" }
+
+    FhirResource:
+      type: object
+      description: A FHIR R4 resource (see contracts/fhir-mapping.md)
+      required: [resourceType]
+      properties:
+        resourceType: { type: string }
+
+    FhirBundle:
+      type: object
+      required: [resourceType, type, entry]
+      properties:
+        resourceType: { const: Bundle }
+        type: { const: searchset }
+        entry:
+          type: array
+          items:
+            type: object
+            required: [resource]
+            properties:
+              resource: { $ref: "#/components/schemas/FhirResource" }

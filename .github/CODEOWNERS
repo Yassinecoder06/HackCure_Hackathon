@@ -1,4 +1,4 @@
-# Fill in once people have picked roles (docs/PLAN.md), then uncomment.
+# Fill in once people have picked roles (docs/PLAN.md), then uncomment. Role B = @llamauser.
 # Replace @ROLE_A / @ROLE_B / @ROLE_C with GitHub usernames.
 # GitHub requires approval from ONE listed owner; contracts/ additionally needs the
 # "all three acknowledged" checkbox in the PR template (docs/decisions/0007-review-rules.md).
@@ -10,9 +10,13 @@
 # /infra/            @ROLE_A
 # /seed/             @ROLE_A
 
-# /server/           @ROLE_B
+/server/            @llamauser
+/inference/         @llamauser
+/apps/twin3d/       @llamauser
 
-# /apps/             @ROLE_C
+# /apps/ward/        @ROLE_C
+# /apps/family/      @ROLE_C
+# /docs/deployment-dossier.md @ROLE_C
 # /docs/demo-script.md @ROLE_C
 
 # /contracts/        @ROLE_A @ROLE_B @ROLE_C

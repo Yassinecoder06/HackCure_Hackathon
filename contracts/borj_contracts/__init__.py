@@ -6,6 +6,9 @@ against exactly the same files in contracts/schemas/.
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import json
 import re
 from dataclasses import dataclass
@@ -121,3 +124,31 @@ def topic(kind: str, ward: str, bed: str | None = None, staff_id: str | None = N
     if not bed or bed in RESERVED_BED_IDS:
         raise ContractError(f"invalid bed for {kind}: {bed!r}")
     return f"borj/{ward}/{bed}/{suffix}"
+
+
+# --- Frame integrity (safety invariant 13): HMAC-SHA256 over canonical JSON -------------------
+
+
+def canonical_bytes(payload: dict[str, Any]) -> bytes:
+    """The bytes that get signed: the message without `integrity`, keys sorted, compact, UTF-8."""
+    body = {k: v for k, v in payload.items() if k != "integrity"}
+    return json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+
+def sign(payload: dict[str, Any], key: bytes, key_id: str) -> dict[str, Any]:
+    """Return a copy of payload with an `integrity` field added."""
+    digest = hmac.new(key, canonical_bytes(payload), hashlib.sha256).digest()
+    sig = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    return {**payload, "integrity": {"alg": "HMAC-SHA256", "keyId": key_id, "sig": sig}}
+
+
+def verify(payload: dict[str, Any], keys: dict[str, bytes]) -> bool:
+    """True if `integrity` is present, its keyId is known, and the signature matches."""
+    integrity = payload.get("integrity")
+    if not isinstance(integrity, dict) or integrity.get("alg") != "HMAC-SHA256":
+        return False
+    key = keys.get(integrity.get("keyId", ""))
+    if key is None:
+        return False
+    expected = sign(payload, key, integrity["keyId"])["integrity"]["sig"]
+    return hmac.compare_digest(expected, str(integrity.get("sig", "")))

@@ -2,7 +2,7 @@
 
 Shared contract. Changes need a PR acknowledged by all three owners and must update, in the same PR: the schema, this file, the simulator, and every affected consumer (see `CLAUDE.md`).
 
-Broker: Mosquitto. Local dev uses plain TCP on 1883 with anonymous access. **Anything beyond local dev uses TLS on 8883 with per-device credentials** (whitepaper 4.5).
+Broker: Mosquitto. **The demo uses TLS 1.3 on 8883 with per-device credentials and topic ACLs** (a device may only publish to its own bed), as HackCure requires and per [ADR 0010](../docs/decisions/0010-security-baseline.md). Plain TCP on 1883 with anonymous access is allowed only for unit tests and local development.
 
 ## Topics
 
@@ -29,6 +29,7 @@ Apps (board, staff view, family) never talk MQTT. They use the REST/WebSocket AP
 - **Time**: `ts` is when the thing happened, from the device RTC if possible (`tsSource`). Late events (store-and-forward) keep their original `ts`; consumers must handle out-of-order arrival.
 - **Absent, not zero**: a parameter a source cannot provide is left out. Never `0`, `null` or `""` as a placeholder (invariant 5).
 - **No real patient data**, ever. Ids are synthetic (invariant 7).
+- **Integrity** (invariant 13): in the demo, every measurement and call message carries `integrity` = HMAC-SHA256 over the canonical JSON without that field, using a per-device key (`keyId`). Use `borj_contracts.sign()` / `verify()`. Consumers reject and log bad signatures. Gateway adapters additionally verify the device-level checksum or CRC of raw frames.
 
 ## Call state machine
 

@@ -1,77 +1,80 @@
-# Role A: Edge and data ("how reality gets in")
+# Role A: Edge, transport and deployment ("how reality gets in, safely")
 
-**Owns:** `simulator/`, `gateway/`, `bedside-node/`, `infra/`, `seed/`, `family-gateway/`, `contracts/schemas/` and `contracts/mqtt-topics.md`. Shared contract reviews with B and C.
+**Owns:**
+- `simulator/`, `gateway/`, `bedside-node/`.
+- `infra/`: compose, the TLS broker, the Caddy proxy, the cloud VM.
+- `seed/`, `family-gateway/`.
+- `contracts/schemas/` and `contracts/mqtt-topics.md`.
 
-**Good fit if you like:** Python, networking/MQTT, Docker, Raspberry Pi and hardware, test data.
+Shared contract reviews with B and C.
 
-Read first: [whitepaper](../Borj_PiCare_Whitepaper_v2.pdf) sections 4 and 7.3–7.4, [ARCHITECTURE](../ARCHITECTURE.md), [`contracts/mqtt-topics.md`](../../contracts/mqtt-topics.md), [ADR 0003](../decisions/0003-pi-bedside-node.md).
+**Good fit if you like:** Python, networking/MQTT, Docker, security plumbing, Raspberry Pi and hardware.
+
+Read first:
+- [Whitepaper](../Borj_PiCare_Whitepaper_v2.pdf), sections 4 and 7.3–7.4.
+- [HackCure specification](../HackCure_Cahier_des_Charges.pdf), sections 5 and 9.
+- [ARCHITECTURE](../ARCHITECTURE.md).
+- [`contracts/mqtt-topics.md`](../../contracts/mqtt-topics.md).
+- ADRs [0003](../decisions/0003-pi-bedside-node.md) and [0010](../decisions/0010-security-baseline.md).
 
 ---
 
 ## First task (P0): simulator v0 + compose
 
-Build `simulator/` as a Python package (`python -m borj_sim`) that reads a scenario from `simulator/scenarios/` and the ward from `seed/ward-W1.yaml`.
+- [ ] `simulator/` as a Python package (`python -m borj_sim`) that reads a scenario from `simulator/scenarios/` and the ward from `seed/ward-W1.yaml`.
+- [ ] It emits `binding`, `vitals` (device params per the bed's profile, so absent really is absent), `device/status`, `call` (Poisson, assist/comfort, repeat presses), background `ack`s, `staff/{id}/presence` and `sim/clock`.
+- [ ] Every message passes `borj_contracts.validate_message(topic, payload)`.
+- [ ] Seeded and reproducible, including deterministic ULIDs.
+- [ ] `--speed N`, `--dry-run` (JSON lines to stdout), `--broker host:port`.
+- [ ] Scripted events: `deteriorate`, `set_manual`, `call` (`no_ack`), `call_rate`, `admit`, `staff_leaves`, `device_offline`, `node_outage_call`.
+- [ ] A `simulator` service in `infra/docker-compose.yml`. The server service already exists (PR #1).
+- [ ] Tests: every scenario only produces valid messages, with unique ids and no null/zero placeholders.
 
-Acceptance criteria:
-- [ ] Emits `binding` (admit each occupied bed), `vitals` (device params per the bed's device profile, so absent params really are absent), `device/status` heartbeats, `call` presses (Poisson, assist/comfort share, repeat presses), background `ack`s, `staff/{id}/presence`, and `sim/clock`.
-- [ ] Every message validates with `borj_contracts.validate_message(topic, payload)`.
-- [ ] Seeded and reproducible: the same seed gives identical output, including `eventId`s (deterministic ULIDs).
-- [ ] `--speed N` (sim seconds per wall second, 0 = as fast as possible), `--dry-run` (JSON lines to stdout), `--broker host:port`.
-- [ ] Scripted events from the scenario files: `deteriorate`, `set_manual`, `call` (with `no_ack`), `call_rate`, `admit`, `staff_leaves`, `device_offline`, `node_outage_call`.
-- [ ] `infra/docker-compose.yml` runs `mosquitto` + `simulator`. `docker compose up` shows events (e.g. `mosquitto_sub -t 'borj/#' -v`).
-- [ ] Tests in `simulator/tests/`: every scenario in dry-run mode yields only schema-valid messages, unique eventIds, and no `null`/zero placeholders.
-- [ ] CI runs those tests.
+## P1: gateway + secure transport
 
-In v0 the simulator may publish `vitals` directly. In P1 it switches to emitting device streams that the gateway parses.
+- [ ] **Gateway adapters** (read-only): an adapter interface, and a replay adapter that reads a line-based device stream over TCP from the simulator, **with a per-frame checksum/CRC that the adapter verifies**.
+- [ ] **Validity and freshness:** ranges in `gateway/config/quality.yaml` (commented "to be validated by biomedical/clinical staff"); `sensor_off`/`artifact`/`implausible` flags; `stale_after_s` per device type.
+- [ ] **Bed binding**, and **store-and-forward** in a local SQLite outbox that keeps the original `eventId`/`ts` and adds `late_delivery`. Outbox payloads are encrypted with AES-256-GCM, like every patient payload at rest (invariant 10). Write a test that kills the broker mid-run.
+- [ ] **TLS 1.3 broker** ([ADR 0010](../decisions/0010-security-baseline.md)): Mosquitto on 8883 with `tls_version tlsv1.3`, per-device credentials and ACLs (a device can only publish to its own bed's topics), and a local CA via mkcert. Plain 1883 only for unit tests.
+- [ ] **HMAC-SHA256 signing** of every message in the envelope's `integrity` field (per-device keys in `.env`/secrets). Applies to the simulator, gateway and node.
+- [ ] **Caddy** reverse proxy in compose: TLS 1.3 only, in front of the server (HTTPS + WSS) and the apps.
 
-## P1: Gateway (vertical slice)
+## P2: Pi bedside node + resilience drills
 
-- **Adapter interface** in `gateway/adapters/`: `connect()`, `read() -> RawReading`, `close()`. Adapters are **read-only** and never write to a device.
-- **Replay adapter**: reads a line-based device stream over TCP from the simulator. This simulator-to-gateway format is internal to A and does not need to go in `contracts/`. Mimic what a monitor's serial/HL7 output looks like.
-- **Validity and freshness**: plausibility ranges in a config file (`gateway/config/quality.yaml`, commented "to be validated by biomedical/clinical staff"), flags `sensor_off` / `artifact` / `implausible`, and `stale_after_s` per device type.
-- **Bed binding**: device → bed map, updated by `binding` attach/detach events.
-- **Store-and-forward**: a SQLite outbox. If the broker is down, queue the events and replay them with their original `ts` and `eventId`, adding `late_delivery`. Write a test that kills the broker mid-run.
-- Acceptance: the simulator in device-stream mode → gateway → MQTT gives schema-valid `vitals` with correct flags. B's server shows them.
+- [ ] `bedside-node/` (Python + `gpiozero`): an assist and a comfort button, LEDs driven by the retained `call/state`, and pre-recorded phrases on the speaker.
+- [ ] Store-and-forward with `not_sent` behaviour (red blink, buzzer, "please use the emergency bell"), then replay with `deliveredLate: true`.
+- [ ] Mock GPIO mode for laptops and CI. Wiring diagram in the README.
+- [ ] **Optional real sensor (if the team agrees, see [ASSUMPTIONS](../ASSUMPTIONS.md)):** a MAX30102 (PPG: SpO2 and pulse) and a DS18B20 (temperature) on the Pi, publishing real `vitals` for one bed with frame-integrity checks.
+- [ ] **Network-cut drill:** a script and checklist for cutting the Wi-Fi or internet live and showing that everything catches up afterwards.
+- [ ] **Backup access point:** a travel router or phone hotspot configuration that the laptop, Pi and phones join, documented in `infra/README.md`.
+- [ ] Tune `night-shift-peak.yaml` to the demo script (coordinate with C).
 
-## P2: Pi bedside node + peak scenario
+## P3: data for decisions
 
-- `bedside-node/` uses Python and `gpiozero`: an assist button, a comfort button, LEDs and the speaker.
-- It publishes `call` (repeat press = same `callId`, `pressCount` + 1) and subscribes to the retained `borj/{ward}/{bed}/call/state`.
-- LED states:
-  - `pressed`: short beep and pulse.
-  - `sent`: steady amber.
-  - `acknowledged`: green pulse.
-  - No `call/state` within N seconds: `not_sent`, which means fast red blink, buzzer and the recorded phrase "please use the emergency bell". Queue the press locally and replay it with `deliveredLate: true`.
-- Mock GPIO mode (`MockFactory`) so the node runs on a laptop and in CI.
-- Audio: a small fixed set of pre-recorded English phrases. Drug names are never spoken. Volume limit.
-- Wiring diagram and setup in `bedside-node/README.md`.
-- Tune `night-shift-peak.yaml` so the storyline is visible at demo speed (coordinate with C's demo script).
-
-## P3: Data for decisions
-
-- Ward layout distances (from `seed/` positions) for B's assignment proximity.
-- Seed prescriptions (synthetic) in `seed/`, so B can build the medication timeline, and simulator `med` events (nurse taps, plus some `patient_reported_taken`).
+- [ ] Ward walking distances from the `seed/` positions, for assignment proximity.
+- [ ] Seed prescriptions (synthetic, realistic) and simulator `med` events, including some `patient_reported_taken`.
 
 ## P4: family-gateway (DMZ)
 
-Implement [`contracts/family-gateway.openapi.yaml`](../../contracts/family-gateway.openapi.yaml) as FastAPI with SQLite:
-- [ ] `/ingest/v1/*` validates against the allow-list schemas and rejects anything else (invariant 2). A bearer token from env.
-- [ ] Revocation takes effect immediately: kill sessions and delete stored updates (invariant 4).
-- [ ] Redeem with QR + one-time code (hash compare), sessions, rate limits (429), and an audit log of every view.
-- [ ] Serves the `apps/family` build.
-- [ ] **Network isolation**: in compose, family-gateway sits only on the `dmz` network. Add a test that it cannot resolve or reach `mosquitto` or `server` (invariant 3).
+Implement [`contracts/family-gateway.openapi.yaml`](../../contracts/family-gateway.openapi.yaml):
+- [ ] Allow-list ingest; anything else is rejected (invariant 2).
+- [ ] Immediate revocation (invariant 4).
+- [ ] QR + one-time code redeem, rate limits, view audit.
+- [ ] Serves `apps/family` over TLS.
+- [ ] **Network isolation:** family-gateway sits only on the `dmz` network. Write a test that it cannot reach `mosquitto`, `server` or `postgres` (invariant 3).
 
-## P5
+## P5: deployment (HackCure deliverable L2)
 
-- Clean-machine install test of `docker compose up`.
-- `docs/integration-survey.md`: a per-device-model template (port, protocol, read-only?, parameters, vendor/biomed approval, binding method) for the real-world story.
+- [ ] **Hosted demo:** a small cloud VM, a domain and a real TLS certificate (Caddy handles this automatically), deployed from `main`. This is the "active web URL".
+- [ ] **Clean-machine test** of the local `docker compose up`.
+- [ ] Server and hardware cost figures for the deployment dossier: VM, Pi gateway, nodes, backup power.
 
 ## You give / you need
 
-- **Give B:** valid events on MQTT early (P0), gateway quality flags (P1), the family-gateway ingest API (P4).
-- **Give C:** a running stack to point the apps at, and a scenario timed to the demo script.
-- **Need from B:** `call/state` publishing (P2), the outbound family publisher (P4).
+- **Give B:** valid, signed events (P0–P1), quality flags (P1), the ward layout and seed prescriptions (P3), family-gateway ingest (P4).
+- **Give C:** a running stack over HTTPS, a scenario timed to the demo script, the hosted URL.
+- **Need from B:** `call/state` (P2), outbound family pushes (P4), the HMAC key format.
 
 ## Invariants you guard
 
-3 (outbound only: network isolation), 5 (absent, not zero; stale flags), 6 (unique eventIds, replay-safe), 7 (synthetic data only, no secrets).
+3 (outbound only, network isolation), 5 (absent ≠ zero, stale flags), 6 (unique eventIds), 7 (synthetic data, no secrets), 10 (TLS in transit), 13 (frame integrity).

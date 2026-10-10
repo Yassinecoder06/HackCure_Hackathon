@@ -5,5 +5,6 @@ Ward gateway. Runs on a laptop in the demo, or on the Raspberry Pi. **Not implem
 - `adapters/`: one adapter per device family behind a common read-only interface. Starts with a replay adapter for simulator streams.
 - Validity and freshness flags (`sensor_off`, `artifact`, `implausible`, `stale_after_s`), with ranges in config.
 - Device → bed binding from `binding` events.
-- Store-and-forward outbox (SQLite) that keeps the original `eventId` and `ts` and adds the `late_delivery` flag.
+- Store-and-forward outbox (local SQLite, payloads AES-256-GCM encrypted) that keeps the original `eventId` and `ts` and adds the `late_delivery` flag.
+- HMAC-SHA256 signing of every outgoing message (`borj_contracts.sign`), and CRC/checksum verification of raw device frames.
 - **Never writes to a device** (whitepaper 4.1).

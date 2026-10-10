@@ -54,3 +54,23 @@ def test_7_no_env_files_committed():
 @pytest.mark.skip(reason="P1, B: every clinical threshold lives in server/config with a 'who validates' comment")
 def test_8_clinical_parameters_are_config():
     pass
+
+
+@pytest.mark.skip(reason="P1, A+B: TLS 1.3 broker/proxy; AES-256-GCM at rest (no plaintext vitals in the DB)")
+def test_10_encrypted_in_transit_and_at_rest():
+    pass
+
+
+@pytest.mark.skip(reason="P1, B: every patient-data access audited; audit hash chain detects tampering")
+def test_11_non_repudiation():
+    pass
+
+
+@pytest.mark.skip(reason="P1-P3, B: every score/alert/suggestion carries confidence + explanation")
+def test_12_explainable_and_advisory():
+    pass
+
+
+@pytest.mark.skip(reason="P1, A+B: messages with a bad or missing HMAC are rejected in demo mode")
+def test_13_frame_integrity():
+    pass

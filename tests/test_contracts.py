@@ -129,3 +129,17 @@ def test_family_update_requires_nurse_approval():
     payload["approval"]["approved"] = False
     with pytest.raises(bc.ContractError):
         bc.validate("family-update", payload)
+
+
+def test_integrity_sign_and_verify():
+    """Invariant 13: a signed message verifies, validates, and any tampering breaks it."""
+    keys = {"MON-B04": b"synthetic-test-key-not-a-secret"}
+    signed = bc.sign(load_example("vitals.device.json"), keys["MON-B04"], "MON-B04")
+    bc.validate("vitals", signed)
+    assert bc.verify(signed, keys)
+
+    tampered = json.loads(json.dumps(signed))
+    tampered["params"]["spo2"] = 99
+    assert not bc.verify(tampered, keys)
+    assert not bc.verify(signed, {"OTHER": b"x"})
+    assert not bc.verify(load_example("vitals.device.json"), keys)  # unsigned
