@@ -70,7 +70,7 @@ Read first:
   - Inputs: acuity + NEWS2 workload, skills, proximity, continuity, locked assignments, breaks.
   - Output: a suggestion with reasons, workload before and after, and a confidence (solver status, data freshness).
   - **Never auto-applied**: only a charge nurse's decision changes assignments (invariant 1). Write a test for this.
-- [ ] **What-if** (inference, SimPy):
+- [x] **What-if** (inference, SimPy):
   - Clone the twin, apply the disruptions, simulate ahead over N seeds, using the same seeds for baseline and scenario.
   - Report the median and p5–p95, plus the assumptions list.
   - **Erlang-C oracle test**: 26 calls/h at 8 min each gives 3 nurses → unbounded, 4 → 10.8 min, 5 → 1.9 min; routed 40% to care assistants gives 4.2 / 0.8 / 0.2 min.

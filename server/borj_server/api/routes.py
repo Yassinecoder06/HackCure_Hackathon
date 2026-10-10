@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from .. import stream
 from ..auth import AuthError, Principal, TooManyAttempts, require_role, require_staff
 from ..ids import new_ulid
-from ..live import build_beds, build_snapshot
+from ..live import build_beds, build_snapshot, news2_by_bed
 from ..timeutil import format_ts
 from ..twin.views import call_view, staff_view
 
@@ -120,6 +120,23 @@ def ack_alert(ward: str, alertId: str, request: Request, who: Staff) -> dict:  #
     return next(a for a in alerts if a["alertId"] == alertId)
 
 
+class DisruptionIn(BaseModel):
+    type: str = Field(pattern="^(staff_leaves|staff_joins|admissions|call_surge|route_comfort_to_assistants|"
+                              "patient_deteriorates)$")
+    atMin: int = Field(ge=0, le=720)
+    staffId: str | None = None
+    role: str | None = Field(default=None, pattern="^(nurse|care_assistant)$")
+    count: int = Field(default=1, ge=1, le=20)
+    bed: str | None = None
+    callsPerHour: float | None = Field(default=None, ge=0, le=200)
+
+
+class WhatIfIn(BaseModel):
+    disruptions: list[DisruptionIn]
+    horizonMin: int = Field(default=240, ge=30, le=720)
+    seeds: int = Field(default=200, ge=10, le=2000)
+
+
 class DecisionIn(BaseModel):
     decision: str = Field(pattern="^(approve|reject)$")
     reason: str | None = Field(default=None, max_length=200)
@@ -155,6 +172,45 @@ def decide_suggestion(ward: str, suggestionId: str, body: DecisionIn, request: R
     require_role(who, "charge_nurse")
     return _suggestion_call(request.app.state.assignment.decide, suggestionId, body.decision, who.staff_id,
                             body.reason)
+
+
+@router.post("/api/v1/wards/{ward}/whatif/runs")
+def whatif_run(ward: str, body: WhatIfIn, request: Request, who: Staff) -> dict:
+    """Simulate a copy of the current ward with disruptions; never touches live state."""
+    _check_ward(request, ward)
+    app = request.app
+    news2 = news2_by_bed(app)
+    ingestor = app.state.ingestor
+    with ingestor.lock:
+        twin = ingestor.twin
+        on_ward = [s for s in twin.staff.values() if s.on_ward]
+        roles = {s.staff_id: s.role for s in twin.staff.values()}
+        beds = [(b.bed, (news2.get(b.bed) or {}).get("band", "low")) for b in twin.beds.values() if b.admission]
+        uncertain = sum(1 for b in twin.beds.values()
+                        if b.admission and not (news2.get(b.bed) or {}).get("complete"))
+    disruptions = []
+    for d in body.disruptions:
+        role = d.role or (roles.get(d.staffId) if d.staffId else None) or "nurse"
+        if role not in ("nurse", "care_assistant"):
+            raise HTTPException(422, {"error": "invalid", "detail": f"{d.staffId} is not a nurse or care assistant"})
+        disruptions.append({"type": d.type, "atMin": d.atMin, "role": role, "count": d.count, "bed": d.bed,
+                            "callsPerHour": d.callsPerHour})
+    payload = {
+        "ward": {"nurses": sum(1 for s in on_ward if s.role == "nurse"),
+                 "careAssistants": sum(1 for s in on_ward if s.role == "care_assistant"), "beds": beds},
+        "disruptions": disruptions, "horizonMin": body.horizonMin, "seeds": body.seeds,
+    }
+    inference = app.state.inference
+    result = inference.whatif(payload) if inference else None
+    if result is None:
+        raise HTTPException(503, {"error": "inference_unavailable", "detail": "inference layer unreachable"})
+    if uncertain:
+        result["assumptions"].append(f"{uncertain} bed(s) have no complete NEWS2: simulated with their minimum "
+                                     "band (or low risk if unavailable), so their workload may be underestimated.")
+    result["runId"] = f"W-{new_ulid()[:16]}"
+    ingestor.store.audit(who.staff_id, "whatif.run", result["runId"],
+                         {"disruptions": disruptions, "seeds": body.seeds, "horizonMin": body.horizonMin})
+    return result
 
 
 @router.websocket("/api/v1/wards/{ward}/stream")

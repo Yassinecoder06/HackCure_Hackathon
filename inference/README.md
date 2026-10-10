@@ -6,7 +6,7 @@ The **inference layer** ([ADR 0009](../docs/decisions/0009-layers-and-postgres.m
 |---|---|---|
 | `news2` | ✅ | Total, band, points per component, missing/stale lists, a "partial" label, the response text, **confidence** |
 | `assignment` | ✅ | OR-Tools suggestion with reasons, workload before/after, confidence. Never applied by itself |
-| `whatif` | P3 | SimPy results over N seeds: median and p5–p95, plus the assumptions list |
+| `whatif` | ✅ | SimPy results over N seeds: median and p5–p95, plus the assumptions list |
 | `explain` | P3 | Template sentences from rule traces |
 
 Deterministic by design, with no black-box model (HackCure section 6).
@@ -34,6 +34,26 @@ Deterministic by design, with no black-box model (HackCure section 6).
   3. rooms per nurse → walking. Staff are never tracked; only room membership is used.
 - It returns the changes, `loadBefore`/`loadAfter`, reason sentences and a confidence (1.0 if optimal, 0.8 if only feasible, scaled by the share of beds with a fresh NEWS2).
 - CP-SAT runs single-threaded with a fixed seed, so the same ward gives the same suggestion. It never applies anything: the server keeps it pending until a charge nurse decides.
+
+## What-if: how it works
+
+- `POST /v1/whatif` with `{ward: {nurses, careAssistants, beds: [[bed, band]], routeComfort}, disruptions: [...], horizonMin, seeds}`.
+- **Model (SimPy):** nurses and care assistants are limited resources. The work is:
+  - bedside calls (Poisson; comfort calls go to care assistants only when routing is on);
+  - observation rounds paced by each bed's NEWS2 band;
+  - medication doses;
+  - admission assessments.
+- **Disruptions:** `staff_leaves` / `staff_joins` (nurse or care assistant), `admissions`, `call_surge`, `route_comfort_to_assistants`, `patient_deteriorates`.
+- **Honest statistics:** N seeds; baseline and scenario use the **same seeds**; every random stream has its own generator. Each metric is reported as median and p5–p95. The metrics: wait for a nurse, longest wait, queue length, nurse utilisation, overdue medications, patients without observations.
+- **Validated against queueing theory first.** `tests/test_whatif_engine.py` reproduces the whitepaper's Erlang-C table from the simulator alone (26 calls/h, 8 min each):
+
+  | Nurses | All calls to nurses (theory → simulated) | 40% routed to care assistants |
+  |---|---|---|
+  | 3 | unbounded → waits keep growing | 4.2 → 4.25 min |
+  | 4 | 10.8 → 10.5 min | 0.8 → 0.83 min |
+  | 5 | 1.9 → 1.94 min | |
+
+- Rates and durations in [`config/whatif.yaml`](config/whatif.yaml) are **illustrative** until calibrated with pilot timings, and every result lists its assumptions. It compares scenarios; it does not predict patient outcomes.
 
 ## API
 
