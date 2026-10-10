@@ -51,6 +51,10 @@ def apply_binding(twin: WardTwin, payload: dict[str, Any]) -> str:
 
     if bed.binding_ts is not None and ts < bed.binding_ts:
         return "ignored:older_than_current_binding"
+    if action in LEAVE_ACTIONS and (bed.admission is None or bed.admission.admission_id != payload["admissionId"]):
+        # E.g. a late discharge of the previous patient: it must not touch the current patient.
+        return "ignored:not_current_admission"
+
     bed.binding_ts = ts
     # A new or departing patient must never inherit the previous patient's readings.
     bed.vitals.clear()
@@ -61,9 +65,8 @@ def apply_binding(twin: WardTwin, payload: dict[str, Any]) -> str:
             acuity=payload.get("acuity", DEFAULT_ACUITY),
             admitted_at=ts,
         )
-    elif action in LEAVE_ACTIONS:
-        if bed.admission is not None and bed.admission.admission_id == payload["admissionId"]:
-            bed.admission = None
+    else:
+        bed.admission = None
     return "applied"
 
 
