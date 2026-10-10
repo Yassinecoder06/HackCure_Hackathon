@@ -28,13 +28,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: python3 infra/gen_secrets.py
       - run: docker compose -f infra/docker-compose.yml config --quiet
       - run: docker compose -f infra/docker-compose.yml up -d --build --wait
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install paho-mqtt==2.1.0 jsonschema==4.26.0 referencing==0.37.0
-      - name: Events flow MQTT -> twin -> inference -> API
+      - name: Events flow MQTT -> twin (PostgreSQL, encrypted) -> inference -> API
         run: python tests/integration/mqtt_smoke.py
       - if: failure()
         run: docker compose -f infra/docker-compose.yml logs

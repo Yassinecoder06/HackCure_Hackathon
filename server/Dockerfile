@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/contracts:/app/server \
     BORJ_SEED_PATH=/app/seed/ward-W1.yaml \
-    BORJ_DB_PATH=/data/borj.sqlite
+    BORJ_DB_URL=sqlite:////data/borj.sqlite
 
 COPY server/requirements.txt server/requirements.txt
 RUN pip install --no-cache-dir -r server/requirements.txt

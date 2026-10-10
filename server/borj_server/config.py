@@ -20,7 +20,8 @@ def _env_bool(name: str, default: bool) -> bool:
 class Settings:
     ward: str = "W1"
     seed_path: Path = REPO_ROOT / "seed" / "ward-W1.yaml"
-    db_path: str = str(REPO_ROOT / "data" / "borj.sqlite")
+    # PostgreSQL in compose (postgresql+psycopg://...); SQLite for local dev and tests (ADR 0009).
+    db_url: str = f"sqlite:///{(REPO_ROOT / 'data' / 'borj.sqlite').as_posix()}"
     # "sim": use borj/{ward}/sim/clock as "now" when the simulator publishes it; "wall": real UTC.
     clock_mode: str = "sim"
     mqtt_enabled: bool = True
@@ -36,7 +37,7 @@ class Settings:
         return cls(
             ward=os.environ.get("BORJ_WARD", cls.ward),
             seed_path=Path(os.environ.get("BORJ_SEED_PATH", str(cls.seed_path))),
-            db_path=os.environ.get("BORJ_DB_PATH", cls.db_path),
+            db_url=os.environ.get("BORJ_DB_URL", cls.db_url),
             clock_mode=os.environ.get("BORJ_CLOCK_MODE", cls.clock_mode),
             mqtt_enabled=_env_bool("BORJ_MQTT_ENABLED", cls.mqtt_enabled),
             mqtt_host=os.environ.get("MQTT_HOST", cls.mqtt_host),

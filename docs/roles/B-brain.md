@@ -29,8 +29,8 @@ Read first:
 ## P1: secure vertical slice
 
 **Database and layers ([ADR 0009](../decisions/0009-layers-and-postgres.md))**
-- [ ] Move the event log and audit log to **PostgreSQL**, with a `postgres` service in compose (coordinate with A). Keep the repository layer so unit tests can still use in-memory SQLite.
-- [ ] **AES-256-GCM** encryption of event payloads and audit details before storage. The key comes from env/secret, with a key id stored for rotation. Write a test that the raw database contains no plaintext vitals.
+- [x] Move the event log and audit log to **PostgreSQL**, with a `postgres` service in compose (coordinate with A). Keep the repository layer so unit tests can still use in-memory SQLite.
+- [x] **AES-256-GCM** encryption of event payloads and audit details before storage. The key comes from env/secret, with a key id stored for rotation. Write a test that the raw database contains no plaintext vitals.
 
 **Inference service**
 - [x] `inference/` (FastAPI, internal network only, stateless).

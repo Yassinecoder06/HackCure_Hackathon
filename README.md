@@ -73,8 +73,12 @@ python -m venv .venv
 .venv/Scripts/pip install -r requirements-dev.txt     # .venv/bin/pip on Linux/macOS
 .venv/Scripts/python -m pytest
 
-# The demo stack (today: the Mosquitto broker; services are added phase by phase)
-docker compose -f infra/docker-compose.yml up
+# Local secrets (PostgreSQL password, AES-256 data key) into infra/.env, never committed
+python infra/gen_secrets.py
+
+# The demo stack: Mosquitto, PostgreSQL, inference, server (more services are added phase by phase)
+docker compose -f infra/docker-compose.yml up --build
+curl localhost:8000/api/v1/wards/W1/snapshot
 ```
 
 Each component's README lists its own dependencies and run commands. Copy `.env.example` to `.env` for local settings, and never commit `.env`.

@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from .api.routes import router
 from .clock import Clock
 from .config import Settings
+from .crypto import DataCipher
 from .inference_client import InferenceClient
 from .ingest import Ingestor
 from .mqtt import MqttListener
@@ -23,13 +24,17 @@ from .twin.layout import WardLayout
 log = logging.getLogger("borj_server")
 
 
-def create_app(settings: Settings | None = None, inference_http: httpx.Client | None = None) -> FastAPI:
-    """inference_http lets tests plug in an in-process inference app instead of a URL."""
+def create_app(
+    settings: Settings | None = None,
+    inference_http: httpx.Client | None = None,
+    cipher: DataCipher | None = None,
+) -> FastAPI:
+    """inference_http and cipher let tests plug in an in-process inference app and a test key."""
     settings = settings or Settings.from_env()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        store = EventStore(settings.db_path)
+        store = EventStore(settings.db_url, cipher or DataCipher.from_env())
         ingestor = Ingestor(WardLayout.load(settings.seed_path), store, Clock(settings.clock_mode))
         ingestor.rebuild()  # restore the twin from the persisted log
         app.state.ingestor = ingestor
