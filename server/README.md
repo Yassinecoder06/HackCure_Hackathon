@@ -64,6 +64,16 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   - Overdue doses raise `dose_overdue` alerts. **Clashes** (too many doses, or more than one infusion, due for
     the same nurse in 15 min) are listed in `GET .../meds/timeline`.
   - The system never selects drugs or doses (invariant 1, statically checked).
+- P3: **read-only FHIR R4 export** (`fhir.py`, `api/fhir_routes.py`, mapping in
+  [`contracts/fhir-mapping.md`](../contracts/fhir-mapping.md)): `GET /fhir/r4/Patient/{id}`, `Encounter`,
+  `Observation` and `MedicationAdministration` searches, returned as `application/fhir+json`.
+  - Pseudonymised patients carry the HL7 `PSEUDED` label.
+  - Vital signs come from the **event log** (the admission's full history), with LOINC codes and UCUM units.
+    Flagged readings carry a note.
+  - NEWS2 is a survey Observation with its components; a partial score is `preliminary`.
+  - Only nurse-recorded doses are exported.
+  - Every request is audited; there are no write methods (405).
+  - Tests validate every resource with `fhir.resources` (R4B models).
 - Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
 
 ## Run
