@@ -74,6 +74,9 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   - Only nurse-recorded doses are exported.
   - Every request is audited; there are no write methods (405).
   - Tests validate every resource with `fhir.resources` (R4B models).
+- P3: **remote doctor instructions** (`POST .../alerts/{id}/instructions`, doctor only): the on-call doctor answers an
+  escalation with a short instruction, stored as a staff `ack` event (`action: instruct`) and shown on the alert as
+  `instructions` for the nurses. Audited; survives replays.
 - Still to come: HMAC checks on incoming frames (needs A's device keys), SMS fallback (stub logs only).
 
 ## Run

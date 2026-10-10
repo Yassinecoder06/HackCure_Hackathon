@@ -63,3 +63,32 @@ def test_stream_carries_call_and_alert_messages(tmp_path, make_event):
                     break
     assert seen["call"]["callId"] == "C-B06-0001"
     assert seen["alert"]["escalatedTo"] == ["nurse", "charge_nurse", "doctor"]
+
+
+def test_remote_doctor_instruction_on_an_escalated_call(tmp_path, make_event):
+    with make_client(tmp_path, auto_suggest=False) as c:
+        ingestor = c.app.state.ingestor
+        ingestor.handle(*make_event("call"))  # assist call from B06 at 22:12:40
+        ingestor.handle("borj/W1/sim/clock", {"schemaVersion": 1, "ward": "W1", "simTs": "2026-10-10T22:17:40Z",
+                                              "speed": 1, "scenario": "t", "running": True})
+        login(c, "DR1")
+        alert = next(a for a in c.get("/api/v1/wards/W1/snapshot").json()["alerts"] if a["type"] == "call_escalated")
+        assert "doctor" in alert["escalatedTo"]
+        url = f"/api/v1/wards/W1/alerts/{alert['alertId']}/instructions"
+        text = "Repeat full observations now and call me with the NEWS2."
+        answered = c.post(url, json={"text": text})
+        assert answered.status_code == 200, answered.text
+        assert not list(openapi_validator("Alert").iter_errors(answered.json()))
+        assert answered.json()["instructions"][0] == {"text": text, "by": "DR1", "at": "2026-10-10T22:17:40Z"}
+
+        login(c, "N1")
+        assert c.post(url, json={"text": "nurse note"}).status_code == 403  # instructions come from the doctor
+        seen = next(a for a in c.get("/api/v1/wards/W1/snapshot").json()["alerts"] if a["alertId"] == alert["alertId"])
+        assert seen["instructions"][0]["text"] == text
+        ingestor.rebuild()  # stored as an event: survives a replay
+        assert ingestor.twin.alert_instructions[alert["alertId"]][0][0] == text
+        login(c, "DR1")
+        assert c.post("/api/v1/wards/W1/alerts/call-0000000000000000/instructions",
+                      json={"text": "x"}).status_code == 404
+        audit = [(e["actor"], e["action"]) for e in ingestor.store.audit_entries(30)]
+    assert ("DR1", "alert.instruct") in audit

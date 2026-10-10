@@ -64,7 +64,8 @@ def snapshot(ward: str, request: Request, who: Staff) -> dict:
     return build_snapshot(request.app)
 
 
-def _staff_ack(request: Request, who: Principal, target: str, target_id: str, action: str) -> None:
+def _staff_ack(request: Request, who: Principal, target: str, target_id: str, action: str,
+               note: str | None = None) -> None:
     """Record a staff action as an `ack` event: the authoritative record that a human acted."""
     ingestor = request.app.state.ingestor
     ward = ingestor.layout.ward
@@ -72,6 +73,7 @@ def _staff_ack(request: Request, who: Principal, target: str, target_id: str, ac
         "schemaVersion": 1, "eventId": new_ulid(), "ts": format_ts(ingestor.event_now()), "ward": ward,
         "source": "staff-app", "sourceType": "staff_app", "staffId": who.staff_id,
         "target": target, "targetId": target_id, "action": action,
+        **({"note": note} if note else {}),
     }
     result = ingestor.handle(bc.topic("ack", ward, staff_id=who.staff_id), payload)
     if result.status != "accepted":
@@ -136,6 +138,10 @@ class AdministrationIn(BaseModel):
     action: str = Field(pattern="^(given|not_given)$")
     presence: str = Field(pattern="^(badge_tap|wristband_scan|none)$")
     reason: str | None = Field(default=None, max_length=200)
+
+
+class InstructionIn(BaseModel):
+    text: str = Field(min_length=1, max_length=280)
 
 
 class DisruptionIn(BaseModel):
@@ -300,6 +306,20 @@ def whatif_run(ward: str, body: WhatIfIn, request: Request, who: Staff) -> dict:
     ingestor.store.audit(who.staff_id, "whatif.run", result["runId"],
                          {"disruptions": disruptions, "seeds": body.seeds, "horizonMin": body.horizonMin})
     return result
+
+
+@router.post("/api/v1/wards/{ward}/alerts/{alertId}/instructions")
+def instruct_alert(ward: str, alertId: str, body: InstructionIn, request: Request, who: Staff) -> dict:  # noqa: N803
+    """The remote on-call doctor answers an escalation with a short instruction (telemedicine, ADR 0008).
+    Works asynchronously: the doctor's app queues it while offline and sends it on reconnect."""
+    _check_ward(request, ward)
+    require_role(who, "doctor")
+    _, alerts = build_beds(request.app, None)
+    if not any(a["alertId"] == alertId for a in alerts):
+        raise HTTPException(404, {"error": "not_found", "detail": f"no active alert {alertId}"})
+    _staff_ack(request, who, "alert", alertId, "instruct", note=body.text)
+    _, alerts = build_beds(request.app, None)
+    return next(a for a in alerts if a["alertId"] == alertId)
 
 
 @router.websocket("/api/v1/wards/{ward}/stream")

@@ -207,7 +207,14 @@ def apply_med(twin: WardTwin, payload: dict[str, Any]) -> str:
 
 def apply_ack(twin: WardTwin, payload: dict[str, Any]) -> str:
     """Acks on alerts are recorded here. Acks on calls are turned into call/state by the call engine."""
-    if payload["target"] != "alert" or payload["action"] != "acknowledge":
+    if payload["target"] != "alert":
+        return "stored_only"
+    if payload["action"] == "instruct":
+        notes = twin.alert_instructions.setdefault(payload["targetId"], [])
+        notes.append((payload["note"], payload["staffId"], parse_ts(payload["ts"])))
+        notes.sort(key=lambda n: n[2])  # replay order never changes what the nurse sees
+        return "applied"
+    if payload["action"] != "acknowledge":
         return "stored_only"
     twin.alert_acks.setdefault(payload["targetId"], AlertAck(payload["staffId"], parse_ts(payload["ts"])))
     return "applied"
