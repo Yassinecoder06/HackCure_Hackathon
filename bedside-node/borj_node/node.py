@@ -32,8 +32,8 @@ class BedsideNode:
         bed: str = "B06",
         broker_host: str = "10.42.0.1",
         broker_port: int = 1883,
-        pin_assist: int = 17,
-        pin_comfort: int = 27,
+        pin_assist: int = 27,
+        pin_comfort: int = 17,
         pin_led_green: int | None = 25,
         pin_led_red: int | None = 22,
         pin_led_amber: int | None = None,
@@ -125,6 +125,14 @@ class BedsideNode:
     def on_button_press(self, kind: str) -> None:
         """Invoked when the patient presses Assist or Comfort button."""
         with self._lock:
+            # If an alert is active and the green (comfort/presence) button is pressed,
+            # this represents nurse presence arriving at the bedside to acknowledge the call
+            if kind == "comfort" and self.active_call_id and self.current_state in ("sent", "escalated"):
+                log.info("Bedside nurse presence: Green button pressed to acknowledge call %s", self.active_call_id)
+                self.audio.play_beep()
+                self.mqtt.publish_ack(self.active_call_id, staff_id="N1")
+                return
+
             # Immediate feedback to patient (whitepaper 4.2)
             self.audio.play_beep()
             self.leds.show_pressed()

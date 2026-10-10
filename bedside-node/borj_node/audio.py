@@ -94,19 +94,11 @@ class AudioManager:
 
     def play_ack_reassurance(self) -> None:
         """Requirement C: Reassuring double-chime + spoken 'Votre appel a été pris en compte, un soignant arrive.'"""
-        def _seq() -> None:
-            self.play("chime", wait=True)
-            self.play("ack_reassurance", wait=False)
-
-        threading.Thread(target=_seq, daemon=True, name="audio-ack").start()
+        self.play("ack_reassurance", wait=False)
 
     def play_outage_alert(self) -> None:
         """Requirement A: Fail-safe buzzer + voice prompt 'Veuillez utiliser la sonnette d'urgence.'"""
-        def _seq() -> None:
-            self.play("buzzer", wait=True)
-            self.play("emergency_bell", wait=False)
-
-        threading.Thread(target=_seq, daemon=True, name="audio-outage").start()
+        self.play("emergency_bell", wait=False)
 
     def stop(self) -> None:
         with self._lock:

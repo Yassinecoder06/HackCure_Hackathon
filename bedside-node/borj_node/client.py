@@ -163,3 +163,34 @@ class NodeMqttClient:
         except Exception as exc:
             log.warning("Failed to publish node status: %s", exc)
         return False
+
+    def publish_ack(self, call_id: str, staff_id: str = "N1") -> bool:
+        from datetime import datetime, UTC
+        from borj_contracts import generate_ulid
+
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        topic = f"borj/{self.ward}/ack"
+        payload = {
+            "schemaVersion": 1,
+            "eventId": generate_ulid(),
+            "ts": now,
+            "ward": self.ward,
+            "source": self.client_id,
+            "sourceType": "bedside_node",
+            "staffId": staff_id,
+            "target": "call",
+            "targetId": call_id,
+            "action": "acknowledge",
+        }
+        if self.key:
+            payload = bc.sign(payload, self.key, self.key_id)
+        try:
+            bc.validate_message(topic, payload)
+            if self.is_connected:
+                raw = json.dumps(payload).encode("utf-8")
+                self._client.publish(topic, raw, qos=1)
+                log.info("Published bedside ack for call %s to %s", call_id, topic)
+                return True
+        except Exception as exc:
+            log.warning("Failed to publish bedside ack: %s", exc)
+        return False

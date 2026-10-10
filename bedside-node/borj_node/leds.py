@@ -108,35 +108,33 @@ class LedController:
             log.debug("[LED] State: PRESSED (brief pulse)")
 
     def show_sent(self) -> None:
-        """Call delivered to ward server. Amber if present, otherwise steady green."""
+        """Call active / emergency alert: RED indicator steady ON."""
         with self._lock:
             self._stop_animation()
             self._current_pattern = "sent"
-            if self._led_amber:
-                self._set_raw(False, False, True)
-            else:
-                # If no dedicated amber LED, use green steady
-                self._set_raw(True, False, False)
-            log.info("[LED] State: SENT (steady)")
+            # Red LED ON, Green OFF (Alert Active!)
+            self._set_raw(False, True, False)
+            log.info("[LED] State: ALERT ACTIVE (Red steady ON)")
 
     def show_acknowledged(self) -> None:
-        """Staff acknowledged the call: green pulsing."""
+        """Staff acknowledged the call: switches to GREEN indicator (nurse coming)."""
         with self._lock:
             self._stop_animation()
             self._current_pattern = "acknowledged"
 
-            def _pulse_green() -> None:
+            def _steady_or_pulse_green() -> None:
                 while not self._stop_event.is_set():
+                    # Green ON, Red OFF
                     self._set_raw(True, False, False)
-                    self._stop_event.wait(0.6)
+                    self._stop_event.wait(0.7)
                     if self._stop_event.is_set():
                         break
                     self._set_raw(False, False, False)
-                    self._stop_event.wait(0.4)
+                    self._stop_event.wait(0.3)
 
-            self._anim_thread = threading.Thread(target=_pulse_green, daemon=True, name="led-ack")
+            self._anim_thread = threading.Thread(target=_steady_or_pulse_green, daemon=True, name="led-ack")
             self._anim_thread.start()
-            log.info("[LED] State: ACKNOWLEDGED (green pulsing)")
+            log.info("[LED] State: ACKNOWLEDGED (switched to Green)")
 
     def show_not_sent(self) -> None:
         """Call not delivered within timeout: fast red blink."""

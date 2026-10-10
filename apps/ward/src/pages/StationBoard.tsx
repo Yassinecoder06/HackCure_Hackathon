@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { STRINGS } from '../i18n/strings';
+import { wardApi } from '../services/api';
 import { AlertCircle, Info, ShieldCheck, X, Bell, User } from 'lucide-react';
 
 interface StationBoardProps {
@@ -67,12 +68,39 @@ export const StationBoard: React.FC<StationBoardProps> = ({
         id={`bed-card-${bedId}`}
       >
         {call && (
-          <div className={`bed-call-banner ${call.state}`}>
+          <div className={`bed-call-banner ${call.state}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>
               <Bell size={12} style={{ display: 'inline', marginRight: 4 }} />
               {call.kind === 'assist' ? STRINGS.calls.assistCall : STRINGS.calls.comfortCall}
             </span>
-            <span style={{ textTransform: 'uppercase' }}>{call.state}</span>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ textTransform: 'uppercase' }}>{call.state}</span>
+              {call.state !== 'acknowledged' && (
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await wardApi.acknowledgeCall(call.callId);
+                    } catch (err) {
+                      console.error('Failed to acknowledge call:', err);
+                    }
+                  }}
+                  style={{
+                    background: '#10b981',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 4,
+                    padding: '2px 8px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Acknowledge
+                </button>
+              )}
+            </div>
           </div>
         )}
 
