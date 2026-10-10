@@ -85,6 +85,7 @@ class Ingestor:
         with self.lock:
             if not self.store.append(topic, route.schema, payload):
                 self.stats["duplicate"] += 1
+                log.debug("duplicate event %s on %s ignored", payload["eventId"], topic)
                 return IngestResult("duplicate", payload["eventId"])
 
             ts = parse_ts(payload["ts"])
