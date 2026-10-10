@@ -11,6 +11,7 @@ import borj_contracts as bc
 import pytest
 from borj_server.clock import Clock
 from borj_server.config import REPO_ROOT
+from borj_server.crypto import DataCipher
 from borj_server.ingest import Ingestor
 from borj_server.store import EventStore
 from borj_server.twin.layout import WardLayout
@@ -32,6 +33,11 @@ def _ulids():
 _ids = _ulids()
 
 
+def make_test_cipher() -> DataCipher:
+    """A fixed, obviously synthetic key for tests only."""
+    return DataCipher({"test": b"T" * 32}, "test")
+
+
 def example(name: str) -> dict[str, Any]:
     return json.loads((EXAMPLES / f"{name}.json").read_text(encoding="utf-8"))
 
@@ -43,7 +49,7 @@ def layout() -> WardLayout:
 
 @pytest.fixture
 def ingestor(layout: WardLayout) -> Ingestor:
-    return Ingestor(layout, EventStore(":memory:"), Clock("sim"))
+    return Ingestor(layout, EventStore("sqlite://", make_test_cipher()), Clock("sim"))
 
 
 @pytest.fixture

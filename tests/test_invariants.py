@@ -57,13 +57,15 @@ def test_6_idempotency():
 
     import borj_contracts as bc
     from borj_server.clock import Clock
+    from borj_server.crypto import DataCipher
     from borj_server.ingest import Ingestor
     from borj_server.store import EventStore
     from borj_server.timeutil import parse_ts
     from borj_server.twin.layout import WardLayout
     from borj_server.twin.views import snapshot_view
 
-    ingestor = Ingestor(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"), EventStore(":memory:"), Clock("wall"))
+    store = EventStore("sqlite://", DataCipher({"test": b"T" * 32}, "test"))
+    ingestor = Ingestor(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"), store, Clock("wall"))
     messages = []
     for path in sorted((ROOT / "contracts" / "examples").glob("*.json")):
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -110,8 +112,25 @@ def test_8_clinical_parameters_are_config():
         assert threshold not in engine, "NEWS2 thresholds must come from config, not code"
 
 
-@pytest.mark.skip(reason="P1, A+B: TLS 1.3 broker/proxy; AES-256-GCM at rest (no plaintext vitals in the DB)")
-def test_10_encrypted_in_transit_and_at_rest():
+def test_10a_encrypted_at_rest():
+    """No patient data in clear in the database; the payload still reads back intact."""
+    import json
+
+    from borj_server.crypto import DataCipher
+    from borj_server.store import EventStore, events
+    from sqlalchemy import select
+
+    store = EventStore("sqlite://", DataCipher({"k1": b"K" * 32}, "k1"))
+    payload = json.loads((ROOT / "contracts" / "examples" / "vitals.device.json").read_text(encoding="utf-8"))
+    store.append("borj/W1/B04/vitals", "vitals", payload)
+    with store.engine.connect() as conn:
+        raw = repr(conn.execute(select(events)).all()).encode()
+    assert b"pulse" not in raw and b"112" not in raw
+    assert next(store.events()).payload == payload
+
+
+@pytest.mark.skip(reason="P1, A: TLS 1.3 on the broker (8883) and on Caddy; plain ports refused in demo mode")
+def test_10b_encrypted_in_transit():
     pass
 
 

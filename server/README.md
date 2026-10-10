@@ -6,11 +6,15 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
 
 - P0 done: event log (SQLite, deduped by `eventId`), live twin rebuilt from the log, MQTT ingest with contract
   validation, demo clock, `GET /health`, `GET /api/v1/wards/{ward}/snapshot`, audit log table.
+- P1: event log and audit log in **PostgreSQL** (compose) / SQLite (tests, local dev) through one SQLAlchemy Core
+  code path (`store.py`). Every payload and audit detail is **encrypted with AES-256-GCM** before it reaches the
+  database (`crypto.py`): a per-row random nonce, the row id bound in as associated data, and a key id per row for
+  rotation. Only routing metadata stays in clear (event id, schema, topic, ward, timestamp). The key comes from
+  `BORJ_DATA_KEY` (`python infra/gen_secrets.py` writes it to `infra/.env`).
 - P1 (in progress): the snapshot carries **NEWS2 per admitted bed** from the [inference layer](../inference/README.md)
   (`news2Status`: `ok` / `unavailable` / `not_admitted`). The server decides each reading's freshness against the ward
   clock and sends it to inference (`scoring.py`, `inference_client.py`, 0.5 s timeout). If inference is down, NEWS2
-  shows as `unavailable`, never as a guess. Still to come in P1: PostgreSQL + encryption at rest, login + access audit,
-  HMAC checks, WebSocket.
+  shows as `unavailable`, never as a guess. Still to come in P1: login + access audit, HMAC checks, WebSocket.
 
 ## Run
 
@@ -20,10 +24,11 @@ docker compose -f infra/docker-compose.yml up --build
 curl localhost:8000/api/v1/wards/W1/snapshot
 
 # without docker, API only (e.g. for UI work)
-PYTHONPATH="contracts;server" BORJ_MQTT_ENABLED=0 .venv/Scripts/python -m uvicorn borj_server.main:app --reload
+python infra/gen_secrets.py   # once; then load infra/.env into your shell (BORJ_DATA_KEY)
+PYTHONPATH="contracts;server" BORJ_MQTT_ENABLED=0 BORJ_DATA_KEY=<from infra/.env> .venv/Scripts/python -m uvicorn borj_server.main:app --reload
 
 # tests (from repo root)
-.venv/Scripts/pip install -r requirements-dev.txt -r server/requirements.txt
+.venv/Scripts/pip install -r requirements-dev.txt -r server/requirements.txt -r inference/requirements.txt
 .venv/Scripts/python -m pytest
 ```
 

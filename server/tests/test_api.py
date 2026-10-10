@@ -5,15 +5,15 @@ from borj_server.config import Settings
 from borj_server.main import create_app
 from fastapi.testclient import TestClient
 
-from .conftest import SEED, openapi_validator
+from .conftest import SEED, make_test_cipher, openapi_validator
 
 
 def client(tmp_path, with_inference: bool = False) -> TestClient:
     """Ward server app. with_inference=True plugs in the real inference app in-process."""
-    settings = Settings(seed_path=SEED, db_path=str(tmp_path / "borj.sqlite"), mqtt_enabled=False,
-                        inference_url=None)
+    settings = Settings(seed_path=SEED, db_url=f"sqlite:///{(tmp_path / 'borj.sqlite').as_posix()}",
+                        mqtt_enabled=False, inference_url=None)
     inference_http = TestClient(create_inference_app()) if with_inference else None
-    return TestClient(create_app(settings, inference_http=inference_http))
+    return TestClient(create_app(settings, inference_http=inference_http, cipher=make_test_cipher()))
 
 
 def bed(body: dict, bed_id: str) -> dict:

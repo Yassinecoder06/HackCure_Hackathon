@@ -1,5 +1,5 @@
 # Borj-PiCare demo stack. Owner: A.
-# Today: Mosquitto only. Each role adds its service in its P0/P1 task (commented below).
+# Secrets come from infra/.env (never committed): create it once with `python infra/gen_secrets.py`.
 #
 # Networks enforce safety invariant 3 (outbound-only family link):
 #   ward : broker, server, simulator, gateway, ward app
@@ -31,6 +31,21 @@ services:
   # gateway:          # A, P1
   #   networks: [ward]
 
+  postgres:           # B: database layer (ADR 0009). Internal only: no published port.
+    image: postgres:17.2-alpine
+    environment:
+      POSTGRES_DB: borj
+      POSTGRES_USER: borj
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?missing - run python infra/gen_secrets.py}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U borj -d borj"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [ward]
+
   inference:          # B: NEWS2 (later assignment, what-if). Internal only: no published port.
     build: { context: .., dockerfile: inference/Dockerfile }
     networks: [ward]
@@ -43,13 +58,16 @@ services:
       MQTT_HOST: mosquitto
       MQTT_PORT: "1883"
       INFERENCE_URL: http://inference:8001
+      BORJ_DB_URL: postgresql+psycopg://borj:${POSTGRES_PASSWORD}@postgres:5432/borj
+      # AES-256-GCM key for patient payloads at rest (ADR 0010).
+      BORJ_DATA_KEY: ${BORJ_DATA_KEY:?missing - run python infra/gen_secrets.py}
+      BORJ_DATA_KEY_ID: ${BORJ_DATA_KEY_ID:-k1}
     ports:
       - "8000:8000"
-    volumes:
-      - server-data:/data
     depends_on:
       mosquitto: { condition: service_healthy }
       inference: { condition: service_healthy }
+      postgres: { condition: service_healthy }
     networks: [ward]
 
   # family-publisher: # B, P4  (outbound only: no ports, no listening socket)
@@ -66,4 +84,4 @@ networks:
   dmz: {}
 
 volumes:
-  server-data: {}
+  pg-data: {}
