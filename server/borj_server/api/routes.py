@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket
 from pydantic import BaseModel, Field
 
+from .. import stream
 from ..auth import AuthError, Principal, TooManyAttempts, require_role, require_staff
-from ..scoring import attach_news2, news2_inputs
+from ..live import build_snapshot
 from ..timeutil import format_ts
-from ..twin.views import snapshot_view, staff_view
+from ..twin.views import staff_view
 
 router = APIRouter()
 Staff = Annotated[Principal, Depends(require_staff)]
@@ -56,17 +57,16 @@ def login(body: LoginIn, request: Request) -> dict:
 @router.get("/api/v1/wards/{ward}/snapshot")
 def snapshot(ward: str, request: Request, who: Staff) -> dict:
     _check_ward(request, ward)
-    ingestor = request.app.state.ingestor
-    ingestor.store.audit(who.staff_id, "snapshot.read", ward)
-    with ingestor.lock:
-        clock = ingestor.clock
-        now = clock.now()
-        snap = snapshot_view(ingestor.twin, now, clock.effective_mode)
-        inputs = news2_inputs(ingestor.twin, now)
-    # Outside the lock: never hold up ingest while waiting on the inference layer.
-    inference = request.app.state.inference
-    attach_news2(snap, inference.news2_batch(snap["asOf"], inputs) if inference else None)
-    return snap
+    request.app.state.ingestor.store.audit(who.staff_id, "snapshot.read", ward)
+    return build_snapshot(request.app)
+
+
+@router.websocket("/api/v1/wards/{ward}/stream")
+async def live_stream(websocket: WebSocket, ward: str) -> None:
+    """Token in the `token` query parameter (browsers cannot set headers on WebSockets)."""
+    settings = websocket.app.state.settings
+    await stream.serve(websocket, websocket.app, ward, settings.stream_metrics_interval_s,
+                       settings.stream_refresh_interval_s)
 
 
 @router.get("/api/v1/wards/{ward}/audit")

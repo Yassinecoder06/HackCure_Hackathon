@@ -104,8 +104,12 @@ paths:
         Upgrade to WebSocket. The server first sends one `snapshot` message, then incremental
         messages. Every message is a `StreamMessage`. Clients re-request the snapshot after
         a reconnect. Staff alerts arrive here; the staff view plays sound/vibration while open
-        (Web Push is a stretch goal, see ADR 0005).
-      parameters: [{ $ref: "#/components/parameters/ward" }]
+        (Web Push is a stretch goal, see ADR 0005). Authenticate with the login token in the `token`
+        query parameter (browsers cannot set headers on WebSockets); a missing or invalid token closes
+        the socket with code 4401. Opening a stream is audited.
+      parameters:
+        - { $ref: "#/components/parameters/ward" }
+        - { name: token, in: query, required: true, schema: { type: string } }
       responses:
         "101":
           description: Switching protocols. Messages follow the StreamMessage schema.

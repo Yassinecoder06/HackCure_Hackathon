@@ -35,6 +35,9 @@ class Settings:
     token_key_b64: str | None = None
     staff_pins: str = ""
     token_ttl_s: int = 4 * 3600
+    # Live stream: how often to send latency metrics, and to re-push all beds so readings age into "stale".
+    stream_metrics_interval_s: float = 5.0
+    stream_refresh_interval_s: float = 30.0
 
     @classmethod
     def from_env(cls) -> Settings:

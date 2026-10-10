@@ -20,7 +20,13 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   lock the staff id for 5 minutes. **Every access to patient data needs a token and is audited with the actor's
   name.** The audit log is **hash-chained** (`store.verify_audit_chain`, `GET /api/v1/wards/{ward}/audit/verify`,
   charge nurse only), so editing or deleting any entry is detected.
-- Still to come in P1: HMAC checks on incoming frames, WebSocket stream.
+- P1: **live stream** `GET /api/v1/wards/{ward}/stream` (WebSocket, token in the `token` query parameter, audited):
+  first a `snapshot`, then `bed` / `staff` / `clock` updates as events arrive, and `metrics` every 5 s.
+  Ingest (MQTT thread) only notes which beds changed; each client coroutine merges bursts, rebuilds those beds with
+  NEWS2 in a worker thread and sends them (`stream.py`, `live.py`). All beds are re-pushed every 30 s so readings
+  visibly age into "stale" without new events. `metrics.triageLatencyMs` (p50/p95 over 60 s) is the server's share
+  of the triage latency budget: event received to update sent.
+- Still to come in P1: HMAC checks on incoming frames.
 
 ## Run
 

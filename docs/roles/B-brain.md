@@ -50,7 +50,7 @@ Read first:
 - [ ] **HMAC check** on incoming MQTT messages that carry `integrity`. Bad signatures are rejected and logged.
 
 **API**
-- [ ] WebSocket `stream`: an initial snapshot, then `bed`/`call`/`alert`/`clock`/`metrics` messages.
+- [x] WebSocket `stream`: an initial snapshot, then `bed`/`staff`/`clock`/`metrics` messages (`call`/`alert` come with P2).
 - [ ] `POST .../observations`: manual fast entry → a `vitals` event with `sourceType: manual`.
 
 ## P2: calls, escalation, latency

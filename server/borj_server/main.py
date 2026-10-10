@@ -5,6 +5,7 @@ Run locally:  uvicorn borj_server.main:app --reload   (with contracts/ and serve
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 from contextlib import asynccontextmanager
@@ -22,6 +23,7 @@ from .inference_client import InferenceClient
 from .ingest import Ingestor
 from .mqtt import MqttListener
 from .store import EventStore
+from .stream import StreamHub
 from .twin.layout import WardLayout
 
 log = logging.getLogger("borj_server")
@@ -50,6 +52,10 @@ def create_app(
         ingestor = Ingestor(layout, store, Clock(settings.clock_mode))
         ingestor.rebuild()  # restore the twin from the persisted log
         app.state.ingestor = ingestor
+        app.state.settings = settings
+        app.state.hub = StreamHub()
+        app.state.hub.loop = asyncio.get_running_loop()
+        ingestor.listeners.append(app.state.hub.on_ingest)
         if inference_http is not None:
             app.state.inference = InferenceClient(inference_http)
         elif settings.inference_url:
