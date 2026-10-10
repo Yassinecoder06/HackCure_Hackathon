@@ -117,3 +117,14 @@ def test_other_ward_and_clock_are_not_stored(ingestor, make_event, clock_at):
     assert ingestor.clock.effective_mode == "sim"
     assert ingestor.clock.now() == parse_ts("2026-10-10T22:15:00Z")
     assert ingestor.store.count() == 0
+
+
+def test_discharge_of_another_admission_does_not_touch_current_patient(ingestor, make_event):
+    admit_b04(ingestor, make_event)  # ADM-0004 at 22:00
+    ingestor.handle(*make_event("vitals.device"))
+    result = ingestor.handle(*make_event("binding", action="discharge", admissionId="ADM-0001",
+                                         ts="2026-10-10T22:05:00Z"))
+    assert result.detail == "ignored:not_current_admission"
+    bed = ingestor.twin.beds["B04"]
+    assert bed.admission.admission_id == "ADM-0004"
+    assert bed.vitals["pulse"].value == 112
