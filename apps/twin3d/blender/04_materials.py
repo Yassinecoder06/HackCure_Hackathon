@@ -21,6 +21,7 @@ How it works (kept simple on purpose, so it can be explained):
 Room A is not touched. Re-running is safe.
 """
 import glob
+import importlib
 import os
 import sys
 
@@ -29,6 +30,8 @@ import bpy
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+
+importlib.reload(common)   # a long-lived Blender session may hold an older copy
 
 ASSETS = os.environ.get("BORJ_ASSETS", os.path.join(os.path.expanduser("~"), "Desktop", "borj-assets"))
 TEX_DIR = os.path.join(ASSETS, "textures")

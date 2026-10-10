@@ -10,11 +10,12 @@ the server's WebSocket (`/api/v1/wards/W1/stream`) already says, and stale data 
 | Part | State |
 |---|---|
 | Blender scene: Room B at real size, 2 beds, walls and ceiling, bedside kit, PBR materials | **done** (this folder: `blender/01..04`) |
-| Corridor, nurse station, 6 rooms placed from the seed, call lights, station TV | planned, see "Layout" |
+| Nurse station (counter, 3 workstations, keyboards, TV with its own screen), crash cart, wheelchair, ceiling light panel | **done** (`05`), parked in a review row |
+| Corridor, 6 rooms placed from the seed, call lights | planned, see "Layout" |
 | Lighting bake (Cycles + OptiX) and `.glb` export (Draco + KTX2) | not started |
 | React Three Fiber app (`src/`) | not started |
 | Poly Haven textures (7 materials) and the hospital HDRI | **done**, wired into `04_materials.py` |
-| Nurses, patients, station and corridor props | waiting on downloads, see [ASSETS.md](ASSETS.md) |
+| Nurses, doctor, care assistant, patients and their animations | waiting on downloads, see [ASSETS.md](ASSETS.md) |
 
 ## How the pipeline works (the part to explain to the judges)
 
@@ -32,6 +33,8 @@ Blender scene  --bpy scripts-->  ward .blend  --bake lighting-->  ward.glb  --> 
    flat quad named `screen_monitor` whose texture the web app replaces with live values.
 
 ![Room B with textures, rendered with Cycles and the childrens_hospital HDRI](docs/room-textured-preview.png)
+
+![The nurse station built from the reception pack](docs/station-preview.png)
 
 ## The Blender scripts (`blender/`)
 
@@ -56,6 +59,7 @@ folder under `<unzipped>`):
 | `02_second_bed_and_shell.py` | Adds a second bed (linked copy: same mesh, no extra size) where the stretcher was; adds the missing east wall, south wall and ceiling as separate boxes tagged `twin_cutaway`. | Every seed room has 2 beds. The room had 1 bed and no walls on two sides. The web view hides walls facing the camera. |
 | `03_bedside_kit.py` | Copies a monitor cart, IV pole and headwall unit out of room "Sketchfab_model" (room A, untouched), decimates them (200k to ~65k triangles per bed), builds a `screen_monitor` quad on the real display face, and places one kit beside each bed. | Room B has no monitor at all, and the twin needs one per bed. |
 | `04_materials.py` | Replaces the single flat grey with a table of PBR materials (colour, roughness, metallic, glass, emission) assigned by part name or size. Image maps from `borj-assets/textures/` are used when present (floor, walls, door, mattress, linen, curtains, armchair); a `tint` multiplies a map's colour. | glTF is PBR; flat grey would bake into a dull model. |
+| `05_station_and_props.py` | Builds a compact ward nurse station from the "hospital-reception-environment" pack: keeps the 3-workstation counter, monitors, chairs and one wall TV, drops the overhead canopy and its lettering, waiting chairs, magazine racks, signs and rails. Adds a dark screen quad over each monitor and over the TV, a keyboard (47k to 3k triangles) at each workstation, the wheelchair, a crash cart (412k to 28k) and a ceiling light panel. | The pack is a 12 x 9 m lobby; a ward needs a counter, not a reception hall. The pack bakes a blue error screen into its monitors, so each gets a neutral screen mesh. |
 | `prepare_textures.py` (tool, not a scene step) | Turns the Poly Haven `.blend.zip` bundles into 3 plain 8-bit maps per material (colour jpg, roughness, OpenGL normal png) and checks each conversion by reading it back. | The bundles mix `.exr` and `.png`, and carry maps glTF cannot use (displacement, AO). KTX2 compression later wants plain images. |
 
 `common.py` holds three small helpers (subtree, bounding box, linked copy). Each script is
@@ -80,8 +84,12 @@ the corridor. Our room is 3.95 m wide (x) and 6.96 m deep (y), the door is on th
 - **Device profile from the seed drives the screen**, not the model: B09 and B11 (oximeter only)
   show SpO2 and pulse; B12 (`none`) shows "no device"; B03 and B08 show "RR missing". The same
   monitor mesh is used for all (absent is shown as absent, invariant 5).
-- **Names the web app will look up** (contract with the exporter): `screen_<bedId>`,
-  `callLight_<bedId>`, `tv_station`, plus `twin_cutaway` on walls and ceilings.
+- **Names the web app will look up** (contract with the exporter): `screen_<bedId>` (today
+  `screen_monitor`, renamed per bed in step 6), `callLight_<bedId>`, `screen_tv_station`,
+  `screen_station_pc_0..2`, plus `twin_cutaway` on walls and ceilings.
+- **The station** sits in the hall between rooms R2 and R3 (x -4..4), its 5.9 m counter facing
+  the corridor with the staff side toward the middle; the TV hangs on the hall wall. The pack's
+  waiting chairs are not used (an optional row of four near the entrance later).
 - **Triangle budget**: ~260k per room today, so 6 rooms are ~1.6M. The export step merges meshes by
   material and decimates further; target under 800k for the whole ward.
 

@@ -17,6 +17,7 @@ Why:
 Nothing is deleted. Archived objects stay in the .blend, in a collection that is
 excluded from the view layer (hidden, not rendered, not exported).
 """
+import importlib
 import os
 import sys
 
@@ -24,6 +25,8 @@ import bpy
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+
+importlib.reload(common)   # a long-lived Blender session may hold an older copy
 
 ROOT = "Hospital"
 SCALE = 0.07            # metres per file unit, measured (see above)

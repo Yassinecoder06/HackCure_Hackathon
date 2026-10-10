@@ -13,6 +13,7 @@ Why:
   so the web view can hide the ones facing the camera (doll-house view) instead of the
   walls blocking the beds.
 """
+import importlib
 import os
 import sys
 
@@ -22,6 +23,8 @@ from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+
+importlib.reload(common)   # a long-lived Blender session may hold an older copy
 
 BED = "bed:All_bed"
 BED2 = "bed2:All_bed"

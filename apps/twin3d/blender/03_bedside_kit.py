@@ -17,23 +17,22 @@ Three details worth knowing:
   normal), inset a little so the bezel stays. The web app swaps its texture.
 - Room A has its bed head on +x, Room B on -x, so the kit is turned 180 degrees about Z.
 """
-import collections
+import importlib
 import math
 import os
 import sys
 
-import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 
+importlib.reload(common)   # a long-lived Blender session may hold an older copy
+
 ROOM_A = "Sketchfab_model"
 HEADBOARD_A = "Cube.231__0"      # head of Room A's bed: defines the kit origin
 MONITOR_BODY_A = "Cube.248__0"   # the tilted display body on the cart
-MAX_POLYS = 3000
-SCREEN_INSET = 0.10              # fraction of the front face left as bezel on each side
 KIT = "Bedside_kit_source"
 BED_ROOTS = ["bed:All_bed", "bed2:All_bed"]
 
@@ -55,65 +54,6 @@ def in_group(centre, size, name, g):
     if max(size) > g.get("maxdim", 99) or name in g.get("skip", ()):
         return False
     return True
-
-
-def poly_budget(obj):
-    """Triangles a part deserves: small parts (buttons, fittings) get few, big ones up to MAX_POLYS."""
-    lo, hi = common.world_bbox([obj])          # world metres (obj.dimensions ignores parent scale)
-    return min(MAX_POLYS, max(150, int(8000 * max(hi - lo))))
-
-
-def decimated(obj):
-    """Give `obj` its own, lighter mesh (original mesh data is left alone)."""
-    n = len(obj.data.polygons)
-    budget = poly_budget(obj)
-    if n <= budget:
-        return
-    # Weld duplicated vertices first: the FBX import left many unwelded, which stops the
-    # collapse from reaching its target.
-    mesh = obj.data.copy()
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
-    bm.to_mesh(mesh)
-    bm.free()
-    obj.data = mesh
-    mod = obj.modifiers.new("decimate", "DECIMATE")
-    mod.ratio = budget / n
-    evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
-    obj.data = bpy.data.meshes.new_from_object(evaluated)
-    obj.modifiers.remove(mod)
-
-
-def screen_quad(src, to_kit, parent, collection):
-    """A flat quad on the largest flat face of `src` (the monitor's display)."""
-    nm = src.matrix_world.to_3x3()
-    area = collections.defaultdict(float)
-    faces = collections.defaultdict(list)
-    for p in src.data.polygons:
-        n = (nm @ p.normal).normalized()
-        key = tuple(round(v, 1) for v in n)
-        area[key] += p.area
-        faces[key].append(p)
-    key = max(area, key=area.get)
-    pts = [src.matrix_world @ src.data.vertices[i].co for p in faces[key] for i in p.vertices]
-    n = Vector(key).normalized()
-    right = Vector((0, 0, 1)).cross(n).normalized()   # as seen by someone facing the screen
-    up = n.cross(right)
-    s = [v.dot(right) for v in pts]
-    t = [v.dot(up) for v in pts]
-    d = sum(v.dot(n) for v in pts) / len(pts) + 0.002  # 2 mm in front, avoids z-fighting
-    ds, dt = (max(s) - min(s)) * SCREEN_INSET, (max(t) - min(t)) * SCREEN_INSET
-    s0, s1, t0, t1 = min(s) + ds, max(s) - ds, min(t) + dt, max(t) - dt
-    corners = [right * a + up * b + n * d for a, b in ((s0, t0), (s1, t0), (s1, t1), (s0, t1))]
-    mesh = bpy.data.meshes.new("screen_monitor")
-    mesh.from_pydata([to_kit @ c for c in corners], [], [(0, 1, 2, 3)])
-    mesh.uv_layers.new(name="UVMap").data.foreach_set("uv", [0, 0, 1, 0, 1, 1, 0, 1])
-    obj = bpy.data.objects.new("screen_monitor", mesh)
-    obj["twin_role"] = "bed_monitor_screen"
-    collection.objects.link(obj)
-    obj.parent = parent
-    return obj
 
 
 def remove_previous_run():
@@ -163,13 +103,15 @@ for o in common.subtree(room_a):
             kit_coll.objects.link(c)
             c.parent = group_empties[name]
             c.matrix_world = to_kit @ o.matrix_world
-            decimated(c)
+            common.decimated(c, common.poly_budget(c))
             if c.data.users > 1:
                 c.data = c.data.copy()     # own mesh: later material changes never touch Room A
             taken.add(o.name)
 
 body = bpy.data.objects[MONITOR_BODY_A]
-screen = screen_quad(body, to_kit, group_empties["bedside_monitor"], kit_coll)
+screen = common.screen_quad(body, "screen_monitor", kit_coll, to_frame=to_kit)
+screen["twin_role"] = "bed_monitor_screen"
+screen.parent = group_empties["bedside_monitor"]
 bpy.context.view_layer.update()
 
 # ------------------------------------------------- place one kit beside each Room B bed

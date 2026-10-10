@@ -48,31 +48,32 @@ To add another: download the **.blend.zip** bundle (any resolution up to 2K) fro
   It is a real hospital interior, so reflections on chrome and glass look right. If it is too
   contrasty: `blender_institute` or `brown_photostudio_03` (low contrast).
 
-## 3. Models to find (search terms)
+## 3. Models received (2026-10-11), and what is still missing
 
-Look on Sketchfab (filter: Downloadable, License = CC0 or CC-BY), Poly Haven models, Quaternius and
-Kenney (both CC0). Keep each under about 30k triangles; prefer `.glb`/`.gltf`, `.fbx` also fine.
+Unzipped into `models\` (the zips stay in `Imports\`). All four are used by `05_station_and_props.py`:
+
+| Pack | Used for | Not used |
+|---|---|---|
+| `hospital-reception-environment` | station counter, 3 monitors, 3 chairs, 1 wall TV, wheelchair | overhead canopy and lettering ("welcome"), waiting chairs, magazine racks, direction and wet-floor signs, wall rails, walls, floor |
+| `emergency-cart` | crash cart for the corridor (cut from 412k to 28k polygons) | |
+| `ceiling-lowpoly-fluorescent-lamps-with-diffuser` | ceiling light panel (lit variant) for the rooms and corridor | the "off" variant |
+| `keyboard.glb` | one keyboard per workstation (47k to 3k triangles) | |
+
+Note: the keyboard has a generic Windows-style symbol on one key, baked into its texture. It is not
+legible at the web view's distance. If you want it gone, say so and I paint that key out.
+
+Still needed (you said these are the only ones):
 
 | Priority | What | Search terms | Why |
 |---|---|---|---|
-| 1 | Nurse station desk | `nurse station`, `reception desk`, `hospital reception counter` | the seed's `station` at x = 0 |
-| 1 | Office chair, PC monitors, keyboard | `office chair low poly`, `computer monitor`, `desktop pc` | station dressing |
-| 1 | Nurse / doctor / care assistant characters (rigged) | `nurse rigged low poly`, `doctor scrubs rigged`, `scrubs character` | seed has CN1, N1, N2, N3, CA1, DR1 |
-| 1 | Animations for them (Mixamo, free Adobe account) | `Idle`, `Walking`, `Typing`, `Talking` | nurses walk to the call. Pick any neutral character, I recolour to scrubs |
-| 2 | Patient lying in bed (clothed, awake) | `patient low poly rigged`, `human base mesh male`, `human base mesh female` | so occupied and empty beds differ. Do **not** pick anything with a shroud or sheet over the face |
-| 2 | Medicine / crash cart | `crash cart`, `emergency trolley`, `medicine cart` | corridor dressing |
-| 2 | Wheelchair | `wheelchair` | corridor dressing |
-| 2 | Hand sanitiser dispenser | `hand sanitizer dispenser wall` | one per door |
-| 2 | Wall clock | `wall clock simple` | station and rooms |
-| 2 | Pedal waste bin, sharps container | `pedal bin`, `sharps container` | rooms |
-| 3 | Corridor handrail | `wall handrail`, `grab bar` | corridor |
-| 3 | Ceiling light panel | `ceiling light panel led`, `recessed ceiling light` | the bake needs visible sources |
-| 3 | Wall sink, mirror | `hospital sink`, `wall mounted sink` | rooms |
-| 3 | Oxygen cylinder, medical gas outlet | `oxygen cylinder`, `medical gas outlet` | headwall detail |
-| 3 | Plants, visitor chairs | `visitor chair`, `potted plant` | station and corridor warmth |
+| 1 | Nurse, charge nurse, care assistant, doctor (rigged, scrubs or white coat) | `nurse rigged low poly`, `doctor scrubs rigged`, `scrubs character` | seed staff CN1, N1, N2, N3, CA1, DR1 |
+| 1 | Animations for them (Mixamo) | `Idle`, `Walking`, `Typing`, `Talking` | nurses walk to the call |
+| 2 | Patient lying in a bed, clothed and awake | `patient low poly rigged`, `human base mesh male`, `human base mesh female` | so occupied and empty beds differ. Nothing with a shroud or sheet over the face |
 
-I build without downloads: the corridor, walls, floor, doors, call lights, the station TV (as a
-separate screen mesh) and the call-light fixtures.
+Optional later: a few waiting seats for the corridor entrance (the reception pack has some), a wall
+sink and sanitiser dispenser.
+
+I build without downloads: the corridor, walls, floor, doors, handrails, call lights.
 
 ## 4. Two things I need from you
 
