@@ -8,14 +8,16 @@ from __future__ import annotations
 
 from typing import Annotated
 
+import borj_contracts as bc
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket
 from pydantic import BaseModel, Field
 
 from .. import stream
 from ..auth import AuthError, Principal, TooManyAttempts, require_role, require_staff
-from ..live import build_snapshot
+from ..ids import new_ulid
+from ..live import build_beds, build_snapshot
 from ..timeutil import format_ts
-from ..twin.views import staff_view
+from ..twin.views import call_view, staff_view
 
 router = APIRouter()
 Staff = Annotated[Principal, Depends(require_staff)]
@@ -59,6 +61,63 @@ def snapshot(ward: str, request: Request, who: Staff) -> dict:
     _check_ward(request, ward)
     request.app.state.ingestor.store.audit(who.staff_id, "snapshot.read", ward)
     return build_snapshot(request.app)
+
+
+def _staff_ack(request: Request, who: Principal, target: str, target_id: str, action: str) -> None:
+    """Record a staff action as an `ack` event: the authoritative record that a human acted."""
+    ingestor = request.app.state.ingestor
+    ward = ingestor.layout.ward
+    payload = {
+        "schemaVersion": 1, "eventId": new_ulid(), "ts": format_ts(ingestor.event_now()), "ward": ward,
+        "source": "staff-app", "sourceType": "staff_app", "staffId": who.staff_id,
+        "target": target, "targetId": target_id, "action": action,
+    }
+    result = ingestor.handle(bc.topic("ack", ward, staff_id=who.staff_id), payload)
+    if result.status != "accepted":
+        raise HTTPException(422, {"error": "rejected", "detail": result.detail})
+    ingestor.store.audit(who.staff_id, f"{target}.{action}", target_id)
+
+
+def _call_or_404(request: Request, call_id: str):
+    ingestor = request.app.state.ingestor
+    with ingestor.lock:
+        call = ingestor.twin.calls.get(call_id)
+    if call is None or call.state is None:
+        raise HTTPException(404, {"error": "not_found", "detail": f"call {call_id}"})
+    return call
+
+
+@router.post("/api/v1/wards/{ward}/calls/{callId}/ack")
+def ack_call(ward: str, callId: str, request: Request, who: Staff) -> dict:  # noqa: N803 (contract name)
+    """One tap: someone is coming."""
+    _check_ward(request, ward)
+    call = _call_or_404(request, callId)
+    if call.state == "resolved":
+        raise HTTPException(409, {"error": "conflict", "detail": "call already resolved"})
+    _staff_ack(request, who, "call", callId, "acknowledge")
+    return call_view(_call_or_404(request, callId))
+
+
+@router.post("/api/v1/wards/{ward}/calls/{callId}/resolve")
+def resolve_call(ward: str, callId: str, request: Request, who: Staff) -> dict:  # noqa: N803
+    _check_ward(request, ward)
+    call = _call_or_404(request, callId)
+    if call.state == "resolved":
+        raise HTTPException(409, {"error": "conflict", "detail": "call already resolved"})
+    _staff_ack(request, who, "call", callId, "resolve")
+    return call_view(_call_or_404(request, callId))
+
+
+@router.post("/api/v1/wards/{ward}/alerts/{alertId}/ack")
+def ack_alert(ward: str, alertId: str, request: Request, who: Staff) -> dict:  # noqa: N803
+    """Acknowledging silences a critical alarm; the alert stays listed while its condition lasts."""
+    _check_ward(request, ward)
+    _, alerts = build_beds(request.app, None)
+    if not any(a["alertId"] == alertId for a in alerts):
+        raise HTTPException(404, {"error": "not_found", "detail": f"no active alert {alertId}"})
+    _staff_ack(request, who, "alert", alertId, "acknowledge")
+    _, alerts = build_beds(request.app, None)
+    return next(a for a in alerts if a["alertId"] == alertId)
 
 
 @router.websocket("/api/v1/wards/{ward}/stream")

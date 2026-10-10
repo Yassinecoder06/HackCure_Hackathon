@@ -150,9 +150,32 @@ def test_11_non_repudiation():
     assert store.verify_audit_chain()["valid"] is False
 
 
-@pytest.mark.skip(reason="P1-P3, B: every score/alert/suggestion carries confidence + explanation")
 def test_12_explainable_and_advisory():
-    pass
+    """Every NEWS2 result and every alert carries a confidence index and an explanation.
+    (Assignment suggestions and what-if join this test in P3.)"""
+    from borj_inference.news2 import News2Config, Reading, score
+    from borj_server.alerts import FirstSeen, derive_alerts
+    from borj_server.calls import CallConfig
+    from borj_server.timeutil import parse_ts
+    from borj_server.twin.layout import WardLayout
+    from borj_server.twin.state import Admission, Call, Device, WardTwin
+
+    result = score({"pulse": Reading(135, "fresh", 10, 900), "consciousness": Reading("C", "fresh", 10, 14400)},
+                   News2Config.load())
+    assert 0 <= result["confidence"]["value"] <= 1 and result["confidence"]["basis"]
+    assert result["components"] and result["label"]
+
+    now = parse_ts("2026-10-10T23:00:00Z")
+    twin = WardTwin(WardLayout.load(ROOT / "seed" / "ward-W1.yaml"))
+    twin.beds["B04"].admission = Admission("ADM-0004", "Patient 04", 2, now)
+    twin.beds["B07"].devices["MON-B07"] = Device("MON-B07", "bedside_monitor", "offline", now)
+    twin.calls["C1"] = Call("C1", "B06", "assist", now, state="escalated", escalation_level=2,
+                            escalation_reason="unacknowledged_timeout")
+    alerts = derive_alerts(twin, {"B04": {**result, "computedAt": "x"}}, now, CallConfig.load(), FirstSeen())
+    assert {a["type"] for a in alerts} >= {"news2_high", "device_offline", "call_escalated"}
+    for alert in alerts:
+        assert alert["explanation"] and alert["confidence"]["basis"]
+        assert 0 <= alert["confidence"]["value"] <= 1
 
 
 @pytest.mark.skip(reason="P1, A+B: messages with a bad or missing HMAC are rejected in demo mode")

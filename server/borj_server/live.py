@@ -1,4 +1,4 @@
-"""Building ward views with NEWS2 attached, shared by the REST snapshot and the live stream."""
+"""Building ward views with NEWS2 and alerts attached, shared by the REST API and the live stream."""
 
 from __future__ import annotations
 
@@ -6,9 +6,14 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from .alerts import derive_alerts
 from .scoring import attach_news2, news2_inputs
 from .timeutil import format_ts
-from .twin.views import bed_view, snapshot_view, staff_view
+from .twin.views import bed_view, call_view, snapshot_view, staff_view
+
+
+def _news2_by_bed(beds: list[dict[str, Any]]) -> dict[str, dict[str, Any] | None]:
+    return {b["bed"]: b["news2"] for b in beds}
 
 
 def build_snapshot(app: FastAPI) -> dict[str, Any]:
@@ -21,11 +26,14 @@ def build_snapshot(app: FastAPI) -> dict[str, Any]:
     # Outside the lock: never hold up ingest while waiting on the inference layer.
     inference = app.state.inference
     attach_news2(snap, inference.news2_batch(snap["asOf"], inputs) if inference else None)
+    with ingestor.lock:
+        snap["alerts"] = derive_alerts(ingestor.twin, _news2_by_bed(snap["beds"]), now, app.state.call_config,
+                                       app.state.first_seen)
     return snap
 
 
-def build_beds(app: FastAPI, bed_ids: set[str] | None) -> list[dict[str, Any]]:
-    """Current view of some beds (None = all), NEWS2 included."""
+def build_beds(app: FastAPI, bed_ids: set[str] | None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Current view of some beds (None = all) with NEWS2, plus the alerts that apply to them."""
     ingestor = app.state.ingestor
     with ingestor.lock:
         now = ingestor.clock.now()
@@ -35,10 +43,26 @@ def build_beds(app: FastAPI, bed_ids: set[str] | None) -> list[dict[str, Any]]:
         as_of = format_ts(now)
     inference = app.state.inference
     attach_news2(views, inference.news2_batch(as_of, inputs) if inference else None)
-    return views["beds"]
+    with ingestor.lock:
+        alerts = derive_alerts(ingestor.twin, _news2_by_bed(views["beds"]), now, app.state.call_config,
+                               app.state.first_seen, bed_ids)
+    return views["beds"], alerts
+
+
+def build_calls(app: FastAPI, call_ids: set[str]) -> list[dict[str, Any]]:
+    ingestor = app.state.ingestor
+    with ingestor.lock:
+        return [call_view(ingestor.twin.calls[c]) for c in call_ids if c in ingestor.twin.calls]
 
 
 def build_staff(app: FastAPI, staff_ids: set[str]) -> list[dict[str, Any]]:
     ingestor = app.state.ingestor
     with ingestor.lock:
         return [staff_view(ingestor.twin.staff[s]) for s in staff_ids if s in ingestor.twin.staff]
+
+
+def news2_total(app: FastAPI, bed_id: str) -> int | None:
+    """Current NEWS2 total (a minimum if partial) for the call engine, or None if unavailable."""
+    beds, _ = build_beds(app, {bed_id})
+    news2 = beds[0]["news2"] if beds else None
+    return news2["total"] if news2 else None

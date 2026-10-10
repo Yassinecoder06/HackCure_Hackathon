@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from ..timeutil import format_ts
-from .state import Bed, Reading, StaffMember, WardTwin
+from .state import Bed, Call, Reading, StaffMember, WardTwin
 
 
 def reading_status(reading: Reading, now: datetime) -> str:
@@ -66,6 +66,27 @@ def staff_view(member: StaffMember) -> dict[str, Any]:
     }
 
 
+def call_view(call: Call) -> dict[str, Any]:
+    view: dict[str, Any] = {
+        "callId": call.call_id,
+        "bed": call.bed,
+        "kind": call.kind,
+        "state": call.state or "pressed",
+        "escalationLevel": call.escalation_level,
+        "routedToRole": call.routed_to_role or ("nurse" if call.kind == "assist" else "care_assistant"),
+        "pressCount": call.press_count,
+        "deliveredLate": call.delivered_late,
+        "pressedAt": format_ts(call.pressed_at),
+    }
+    if call.escalation_reason:
+        view["escalationReason"] = call.escalation_reason
+    if call.acknowledged_by:
+        view["acknowledgedBy"] = call.acknowledged_by
+    if call.acknowledged_at:
+        view["acknowledgedAt"] = format_ts(call.acknowledged_at)
+    return view
+
+
 def snapshot_view(twin: WardTwin, now: datetime, clock_mode: str) -> dict[str, Any]:
     return {
         "ward": twin.ward,
@@ -73,6 +94,6 @@ def snapshot_view(twin: WardTwin, now: datetime, clock_mode: str) -> dict[str, A
         "clockMode": clock_mode,
         "beds": [bed_view(b, now) for b in twin.beds.values()],
         "staff": [staff_view(s) for s in twin.staff.values()],
-        "calls": [],  # call engine: P2
-        "alerts": [],  # NEWS2 / call alerts: P1-P2
+        "calls": [call_view(c) for c in twin.calls.values() if c.open],
+        "alerts": [],  # derived after NEWS2 is attached (live.py, alerts.py)
     }

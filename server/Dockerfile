@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r server/requirements.txt
 COPY contracts contracts
 COPY seed seed
 COPY server/borj_server server/borj_server
+COPY server/config server/config
 
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \

@@ -46,6 +46,15 @@ class Ingestor:
         self.stats = {"accepted": 0, "duplicate": 0, "invalid": 0, "rebuilds": 0}
         self.listeners: list[Callable[[str, dict[str, Any]], None]] = []
 
+    def event_now(self) -> datetime:
+        """Timestamp for events the server itself emits: never earlier than what it already applied.
+
+        In demo mode the simulator clock only ticks once per simulated minute, so "clock now" can lag
+        behind the event that triggered a decision; stamping with it would look out of order."""
+        with self.lock:
+            now = self.clock.now()
+            return max(now, self._latest_ts) if self._latest_ts else now
+
     def rebuild(self) -> None:
         """Recompute the twin from the event log (event-time order)."""
         with self.lock:

@@ -48,6 +48,12 @@ def wait_for(fn, what: str, timeout_s: float = 60) -> object:
     raise SystemExit(f"timed out waiting for {what}")
 
 
+def post_json(path: str) -> dict:
+    req = urllib.request.Request(API + path, data=b"", headers=HEADERS, method="POST")
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        return json.load(resp)
+
+
 def get_json(path: str) -> dict:
     with urllib.request.urlopen(urllib.request.Request(API + path, headers=HEADERS), timeout=5) as resp:
         return json.load(resp)
@@ -85,9 +91,23 @@ def main() -> None:
     news2 = b04["news2"]
     if b04["news2Status"] != "ok" or (news2["total"], news2["band"], news2["complete"]) != (8, "high", True):
         raise SystemExit(f"unexpected NEWS2: {b04['news2Status']} {news2}")
+    # A bedside call: press over MQTT -> server routes it -> one-tap ack over REST.
+    client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id="mqtt-smoke-call")
+    client.connect("localhost", 1883)
+    client.loop_start()
+    call = json.loads((ROOT / "contracts" / "examples" / "call.json").read_text(encoding="utf-8"))
+    client.publish(bc.topic("call", "W1", bed=call["bed"]), json.dumps(call), qos=1).wait_for_publish(5)
+    client.loop_stop()
+    client.disconnect()
+    wait_for(lambda: any(c["callId"] == call["callId"] for c in get_json("/api/v1/wards/W1/snapshot")["calls"]),
+             "call routed by the server", timeout_s=20)
+    if post_json(f"/api/v1/wards/W1/calls/{call['callId']}/ack")["state"] != "acknowledged":
+        raise SystemExit("call ack failed")
+
     if not get_json("/api/v1/wards/W1/audit/verify")["valid"]:
         raise SystemExit("audit chain does not verify")
-    print("OK: login -> events flowed MQTT -> twin -> inference -> API (NEWS2 8, high, complete); audit chain valid")
+    print("OK: login -> MQTT -> twin -> inference -> API (NEWS2 8, high, complete); call routed and acked; "
+          "audit chain valid")
     print(json.dumps(b04, indent=2))
 
 

@@ -875,6 +875,9 @@ components:
           items: { type: string }
         acknowledgedBy: { $ref: "#/components/schemas/Id" }
         confidence: { $ref: "#/components/schemas/Confidence" }
+        active:
+          type: boolean
+          description: "false = the condition has cleared (sent once on the stream so clients can remove it)"
         escalatedTo:
           type: array
           description: Roles reached so far (e.g. nurse, charge_nurse, doctor)

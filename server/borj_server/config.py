@@ -38,6 +38,8 @@ class Settings:
     # Live stream: how often to send latency metrics, and to re-push all beds so readings age into "stale".
     stream_metrics_interval_s: float = 5.0
     stream_refresh_interval_s: float = 30.0
+    calls_config_path: Path = REPO_ROOT / "server" / "config" / "calls.yaml"
+    escalation_tick_s: float = 1.0
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -54,4 +56,5 @@ class Settings:
             token_key_b64=os.environ.get("BORJ_TOKEN_KEY") or None,
             staff_pins=os.environ.get("BORJ_STAFF_PINS", ""),
             token_ttl_s=int(os.environ.get("BORJ_TOKEN_TTL_S", str(cls.token_ttl_s))),
+            calls_config_path=Path(os.environ.get("BORJ_CALLS_CONFIG", str(cls.calls_config_path))),
         )

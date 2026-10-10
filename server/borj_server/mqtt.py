@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 
 import borj_contracts as bc
@@ -24,6 +25,10 @@ class MqttListener:
         self.client.on_disconnect = self._on_disconnect
         self.client.reconnect_delay_set(min_delay=1, max_delay=30)
         self.client.enable_logger(logging.getLogger("borj_server.paho"))
+
+    def publish_retained(self, topic: str, payload: dict) -> None:
+        """Publish a server decision (call/state). Retained so a rebooting bedside node gets its state back."""
+        self.client.publish(topic, json.dumps(payload, separators=(",", ":")), qos=1, retain=True)
 
     def start(self) -> None:
         log.info("connecting to MQTT %s:%d", self.host, self.port)

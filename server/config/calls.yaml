@@ -1,0 +1,29 @@
+# Call routing, escalation and alert priorities (whitepaper 4.2 and 6; contracts/mqtt-topics.md).
+# SAFETY INVARIANT 8: these are parameters, not code. Each block says who must validate it.
+
+timers:
+  validated_by: "TO BE CONFIRMED BY THE WARD (charge nurse / nursing direction)"
+  # Measured from the patient's press (the original press time, even for late-delivered calls).
+  ack_timeout_s: 120        # no acknowledgement after this -> level 1: re-alert, wider audience
+  escalate_timeout_s: 300   # still none -> level 2: charge nurse (and on-call doctor for assist calls)
+
+routing:
+  validated_by: "TO BE CONFIRMED BY THE WARD (charge nurse / nursing direction)"
+  # Role that owns the call at escalation level 0, 1, 2.
+  assist: [nurse, nurse, charge_nurse]
+  comfort: [care_assistant, nurse, charge_nurse]
+  # Assist calls at this level are also sent to the remote on-call doctor (telemedicine, ADR 0008).
+  doctor_from_level: 2
+
+news2_escalation:
+  validated_by: "TO BE CONFIRMED BY A CLINICIAN"
+  # A press from a patient whose current NEWS2 (or partial minimum) is at least this escalates at once.
+  escalate_press_at_total: 5
+
+alerts:
+  validated_by: "TO BE CONFIRMED BY THE WARD (alert-fatigue review with nurses)"
+  # Escalation ladder: low = silent badge, medium = notification, critical = persistent until acknowledged.
+  news2_band_priority: { low_medium: medium, medium: medium, high: critical }
+  call_level_priority: { 1: medium, 2: critical }
+  stale_data_priority: low
+  device_offline_priority: medium
