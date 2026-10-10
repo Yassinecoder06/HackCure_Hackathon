@@ -31,4 +31,13 @@ Rules:
 | `consciousness` | _to confirm_ | Level of consciousness (ACVPU) | coded (`valueCodeableConcept`) |
 | NEWS2 total | _to confirm_ | NEWS2 aggregate score | `{score}` |
 
+Implementation notes (server, P3):
+- Observations are built from the **event log**, so a consumer gets the admission's full vital-sign history,
+  not just the latest value. Readings from before the admission are never attached to it.
+- A reading the gateway flagged as invalid is exported with its value and a note saying it was not used for NEWS2.
+- A partial NEWS2 is `status: preliminary`, with its label and confidence in `note`.
+- The Patient carries `meta.security` = HL7 v3 `PSEUDED`. `MedicationAdministration` uses `context` → Encounter (R4).
+- Search: `Encounter?patient=`, `Observation?patient=|encounter=&code=[system|]code&date=ge…&date=le…`,
+  `MedicationAdministration?patient=|encounter=`. Read-only: no write methods.
+
 Local fallback code system for codes still to confirm: `https://borj.local/fhir/CodeSystem/observation`, with codes `on-oxygen`, `acvpu`, `news2-total`.

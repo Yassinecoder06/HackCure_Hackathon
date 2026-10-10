@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from .alerts import FirstSeen
+from .api.fhir_routes import router as fhir_router
 from .api.routes import router
 from .assignment import AssignmentService
 from .auth import Auth, AuthError, parse_pins
@@ -120,6 +121,7 @@ def create_app(
         return JSONResponse(body, status_code=exc.status_code, headers=exc.headers)
 
     app.include_router(router)
+    app.include_router(fhir_router)
     return app
 
 
