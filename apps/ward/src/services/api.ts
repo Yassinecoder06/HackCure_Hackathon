@@ -290,6 +290,18 @@ class WardApiService {
     return res.json();
   }
 
+  public silenceAlarm() {
+    audioAlerts.stopCriticalAlarm();
+  }
+
+  public toggleAudioMute(): boolean {
+    return audioAlerts.toggleMute();
+  }
+
+  public isAudioMuted(): boolean {
+    return audioAlerts.getMuted();
+  }
+
   public async getSuggestions(ward = 'W1') {
     const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/assignments/suggestions`, {
       headers: this.getHeaders()
