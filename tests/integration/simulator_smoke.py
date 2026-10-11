@@ -23,12 +23,16 @@ def main() -> None:
              timeout_s=90)
     b06 = wait_for(lambda: beds()["B06"] if beds()["B06"]["vitals"] else None, "B06 readings from the simulator",
                    timeout_s=90)
-    rejected = [a for a in get_json("/api/v1/wards/W1/audit?limit=1000") if a["action"] == "integrity.rejected"]
-    # mqtt_smoke.py sends one tampered and one unsigned frame on purpose; anything more came from the simulator.
-    if len(rejected) != 2:
-        raise SystemExit(f"{len(rejected)} frames rejected, expected only the 2 test frames: {rejected[:3]}")
+    audit = get_json("/api/v1/wards/W1/audit?limit=1000")
+    rejected = [a for a in audit if a["action"] == "integrity.rejected"]
+    # The earlier smoke tests rejected frames on purpose: empty ACL probes (no eventId), a tampered and an unsigned
+    # vitals frame. A rejection of anything the simulator sent would carry its own event id.
+    deliberate = {"", "01K80000000000000000TAMPER", "01K80000000000000000UNSIGN"}
+    stray = [a for a in rejected if a["detail"]["eventId"] not in deliberate]
+    if stray:
+        raise SystemExit(f"{len(stray)} frames from the simulator were rejected: {stray[:3]}")
     print(f"OK: simulator ingested ({sum(1 for b in beds().values() if b['admission'])} beds admitted, "
-          f"B06 vitals {sorted(b06['vitals'])}), no rejected frames besides the 2 test frames")
+          f"B06 vitals {sorted(b06['vitals'])}), none of its frames rejected")
 
 
 if __name__ == "__main__":

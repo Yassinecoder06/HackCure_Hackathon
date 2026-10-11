@@ -2,6 +2,7 @@
 # Builds the broker's runtime files, then starts mosquitto. Runs as root inside the container.
 #   BORJ_MQTT_USERS  "user:password,user:password,..." (.env, written by infra/gen_secrets.py)
 set -eu
+umask 077   # the password file is private from the moment it is created
 RUN=/mosquitto/run
 mkdir -p "$RUN"
 : > "$RUN/passwd"
