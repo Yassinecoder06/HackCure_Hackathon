@@ -281,6 +281,14 @@ def test_10b_encrypted_in_transit():
     published = [str(p) for p in compose["services"]["mosquitto"].get("ports", [])]
     assert published == ["8883:8883"], "no plain MQTT port is published"
 
+    # HTTP: nginx (local) and Caddy (hosted) accept TLS 1.3 only, and port 80 only redirects.
+    nginx = (ROOT / "infra" / "nginx" / "nginx.conf").read_text(encoding="utf-8")
+    assert "ssl_protocols TLSv1.3;" in nginx and "ssl_protocols TLSv1.2" not in nginx
+    port80 = nginx.split("listen 80;", 1)[1].split("listen 443", 1)[0]
+    assert "return 301 https://" in port80 and "proxy_pass http://frontend" not in port80
+    assert "443:443" in compose["services"]["nginx"]["ports"]
+    assert "protocols tls1.3" in (ROOT / "infra" / "Caddyfile").read_text(encoding="utf-8")
+
 
 def test_11_non_repudiation():
     """Audit entries name their actor, the chain verifies, and any edit is detected."""

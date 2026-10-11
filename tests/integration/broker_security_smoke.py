@@ -1,6 +1,6 @@
 """Broker security checks against a running Borj broker (safety invariants 10 and 13, HackCure spec section 5).
 
-    python tests/integration/broker_security_smoke.py            # broker on localhost:8883, secrets from infra/.env
+    python tests/integration/broker_security_smoke.py            # broker on localhost:8883, secrets from .env
 
 Proves, on the real broker: TLS 1.3 only, no anonymous access, no wrong password, and the topic rules in
 infra/mosquitto/acl.conf (a bedside node can only call from its own bed; nobody but the server publishes call/state;
@@ -26,7 +26,7 @@ CA = str(ROOT / "infra" / "certs" / "ca.crt")
 
 
 def env() -> dict[str, str]:
-    lines = (ROOT / "infra" / ".env").read_text(encoding="utf-8").splitlines()
+    lines = (ROOT / ".env").read_text(encoding="utf-8").splitlines()
     return dict(line.split("=", 1) for line in lines if line and not line.startswith("#"))
 
 

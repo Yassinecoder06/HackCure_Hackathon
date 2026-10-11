@@ -31,7 +31,7 @@ class Settings:
     inference_url: str | None = "http://localhost:8001"
     # Short: NEWS2 is on the triage path (latency budget < 1 s end to end).
     inference_timeout_s: float = 0.5
-    # Login (ADR 0010). Base64 signing key and "STAFFID:PIN,..." demo PINs, both from infra/.env.
+    # Login (ADR 0010). Base64 signing key and "STAFFID:PIN,..." demo PINs, both from .env.
     token_key_b64: str | None = None
     staff_pins: str = ""
     token_ttl_s: int = 4 * 3600
@@ -43,7 +43,7 @@ class Settings:
     family_config_path: Path = REPO_ROOT / "server" / "config" / "family.yaml"
     observations_config_path: Path = REPO_ROOT / "server" / "config" / "observations.yaml"
     escalation_tick_s: float = 1.0
-    # Frame integrity (invariant 13). Key ring "keyId:<base64>,..." from infra/.env, and the mode:
+    # Frame integrity (invariant 13). Key ring "keyId:<base64>,..." from .env, and the mode:
     # off | verify (check signatures that are present) | require (also reject unsigned measurements).
     device_keys: str = ""
     integrity_mode: str = "verify"

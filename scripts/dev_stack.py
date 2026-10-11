@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_env() -> dict[str, str]:
-    lines = (ROOT / "infra" / ".env").read_text(encoding="utf-8").splitlines()
+    lines = (ROOT / ".env").read_text(encoding="utf-8").splitlines()
     return dict(line.split("=", 1) for line in lines if line and not line.startswith("#"))
 
 

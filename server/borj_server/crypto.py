@@ -41,7 +41,7 @@ class DataCipher:
 
     @classmethod
     def from_env(cls) -> DataCipher:
-        """BORJ_DATA_KEY (base64 of 32 random bytes) and BORJ_DATA_KEY_ID, e.g. from infra/.env."""
+        """BORJ_DATA_KEY (base64 of 32 random bytes) and BORJ_DATA_KEY_ID, e.g. from .env."""
         raw = os.environ.get("BORJ_DATA_KEY")
         if not raw:
             raise DataKeyError("BORJ_DATA_KEY is not set; run `python infra/gen_secrets.py` (see infra/README.md)")

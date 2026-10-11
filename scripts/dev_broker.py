@@ -2,7 +2,7 @@
 
     python scripts/dev_broker.py          # TLS 1.3 on localhost:8883, runtime files in data/broker/
 
-Needs Mosquitto installed (Windows: mosquitto.org/download, Linux: apt install mosquitto) and `infra/.env` and
+Needs Mosquitto installed (Windows: mosquitto.org/download, Linux: apt install mosquitto) and `.env` and
 `infra/certs/` from `python infra/gen_secrets.py` and `python infra/gen_certs.py`. It is the fallback when Docker is
 not available; the compose stack stays the reference setup.
 """
@@ -32,7 +32,7 @@ def find(tool: str) -> str:
 
 
 def users() -> list[tuple[str, str]]:
-    lines = (ROOT / "infra" / ".env").read_text(encoding="utf-8").splitlines()
+    lines = (ROOT / ".env").read_text(encoding="utf-8").splitlines()
     env = dict(line.split("=", 1) for line in lines if line and not line.startswith("#"))
     return [tuple(pair.split(":", 1)) for pair in env["BORJ_MQTT_USERS"].split(",")]  # type: ignore[misc]
 
@@ -54,7 +54,7 @@ def main() -> None:
     # The loopback-only healthcheck listener moves aside: a Mosquitto Windows service often already owns 1883.
     config = config.replace("listener 1883 127.0.0.1", "listener 18830 127.0.0.1")
     (RUN / "mosquitto.conf").write_text(config, encoding="utf-8")
-    print(f"broker: TLS 1.3 on 8883, accounts from infra/.env, runtime files in {RUN}")
+    print(f"broker: TLS 1.3 on 8883, accounts from .env, runtime files in {RUN}")
     sys.exit(subprocess.call([find("mosquitto"), "-c", str(RUN / "mosquitto.conf")]))
 
 

@@ -26,8 +26,8 @@ HEADERS: dict[str, str] = {}
 
 
 def env() -> dict[str, str]:
-    """Demo secrets live in the git-ignored infra/.env written by infra/gen_secrets.py."""
-    return dict(line.split("=", 1) for line in (ROOT / "infra" / ".env").read_text(encoding="utf-8").splitlines()
+    """Demo secrets live in the git-ignored .env written by infra/gen_secrets.py."""
+    return dict(line.split("=", 1) for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines()
                 if line and not line.startswith("#"))
 
 
@@ -40,7 +40,7 @@ def login_as_charge_nurse() -> None:
 
 
 def mqtt_client(client_id: str) -> mqtt.Client:
-    """A client on the real broker: TLS 1.3, the simulator's account (infra/.env)."""
+    """A client on the real broker: TLS 1.3, the simulator's account (.env)."""
     client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id)
     bc_mqtt.configure(client, {"MQTT_USERNAME": "sim", "MQTT_PASSWORD": env()["MQTT_PW_SIM"],
                                "MQTT_CA_CERT": str(ROOT / "infra" / "certs" / "ca.crt")})

@@ -7,13 +7,13 @@ cd "$SCRIPT_DIR"
 
 export PYTHONPATH="contracts:bedside-node:${PYTHONPATH}"
 
-# Broker account, TLS 1.3 CA and signing keys come from infra/.env and infra/certs (python infra/gen_secrets.py,
+# Broker account, TLS 1.3 CA and signing keys come from .env and infra/certs (python infra/gen_secrets.py,
 # python infra/gen_certs.py). On a Raspberry Pi copy infra/certs/ca.crt and put MQTT_PASSWORD / BORJ_DEVICE_KEYS
 # (this node's entry) in the environment instead.
-if [ -f "infra/.env" ]; then
+if [ -f ".env" ]; then
     set -a
     # shellcheck disable=SC1091
-    source infra/.env
+    source .env
     set +a
 fi
 export MQTT_CA_CERT="${MQTT_CA_CERT:-infra/certs/ca.crt}"

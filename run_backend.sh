@@ -5,10 +5,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-if [ -f "infra/.env" ]; then
+if [ -f ".env" ]; then
     set -a
     # shellcheck disable=SC1091
-    source infra/.env
+    source .env
     set +a
 fi
 

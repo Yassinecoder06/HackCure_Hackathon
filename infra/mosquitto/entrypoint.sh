@@ -1,6 +1,6 @@
 #!/bin/sh
 # Builds the broker's runtime files, then starts mosquitto. Runs as root inside the container.
-#   BORJ_MQTT_USERS  "user:password,user:password,..." (infra/.env, written by infra/gen_secrets.py)
+#   BORJ_MQTT_USERS  "user:password,user:password,..." (.env, written by infra/gen_secrets.py)
 set -eu
 RUN=/mosquitto/run
 mkdir -p "$RUN"
