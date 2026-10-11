@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     INFERENCE_NEWS2_CONFIG=/app/inference/config/news2.yaml     INFERENCE_ASSIGNMENT_CONFIG=/app/inference/config/assignment.yaml     INFERENCE_WHATIF_CONFIG=/app/inference/config/whatif.yaml
 
 COPY inference/requirements.txt inference/requirements.txt
-RUN pip install --no-cache-dir -r inference/requirements.txt
+RUN pip install --default-timeout=1000 --retries=10 -r inference/requirements.txt
 
 COPY inference/config inference/config
 COPY inference/borj_inference inference/borj_inference

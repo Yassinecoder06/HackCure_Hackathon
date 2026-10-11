@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     BORJ_DB_URL=sqlite:////data/borj.sqlite
 
 COPY server/requirements.txt server/requirements.txt
-RUN pip install --no-cache-dir -r server/requirements.txt
+RUN pip install --default-timeout=1000 --retries=10 -r server/requirements.txt
 
 COPY contracts contracts
 COPY seed seed

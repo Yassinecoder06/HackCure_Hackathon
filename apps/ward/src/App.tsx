@@ -17,6 +17,7 @@ export const App: React.FC = () => {
   });
 
   const [beds, setBeds] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [calls, setCalls] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [triageMetrics, setTriageMetrics] = useState<any | null>(null);
@@ -70,6 +71,7 @@ export const App: React.FC = () => {
     try {
       const snap = await wardApi.getSnapshot('W1');
       setBeds(snap.beds || []);
+      setStaff(snap.staff || []);
       setCalls(snap.calls || []);
       setAlerts(snap.alerts || []);
     } catch (e) {
@@ -119,6 +121,7 @@ export const App: React.FC = () => {
         setTriageMetrics(data);
       } else if (type === 'snapshot') {
         setBeds(data.beds || []);
+        setStaff(data.staff || []);
         setCalls(data.calls || []);
         setAlerts(data.alerts || []);
       } else if (type === 'bed') {
@@ -136,6 +139,16 @@ export const App: React.FC = () => {
           if (data.acknowledgedBy || data.active === false) return filtered;
           return [data, ...filtered];
         });
+      } else if (type === 'staff') {
+        setStaff(prev => {
+          const exists = prev.some(s => s.staffId === data.staffId);
+          if (exists) {
+            return prev.map(s => s.staffId === data.staffId ? data : s);
+          }
+          return [...prev, data];
+        });
+      } else if (type === 'assignment_suggestion') {
+        loadInitialSnapshot();
       }
     });
 
@@ -290,6 +303,7 @@ export const App: React.FC = () => {
         ) : currentTab === 'staff' ? (
           <StaffView
             beds={beds}
+            staff={staff}
             calls={calls}
             alerts={alerts}
             onRefresh={loadInitialSnapshot}

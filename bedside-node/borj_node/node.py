@@ -129,27 +129,42 @@ class BedsideNode:
             # this represents nurse presence arriving at the bedside to acknowledge the call
             if kind == "comfort" and self.active_call_id and self.current_state in ("sent", "escalated"):
                 log.info("Bedside nurse presence: Green button pressed to acknowledge call %s", self.active_call_id)
-                self.audio.play_beep()
+                self.audio.play_staff_present()
+                self.leds.show_acknowledged()
                 self.mqtt.publish_ack(self.active_call_id, staff_id="N1")
                 return
 
-            # Immediate feedback to patient (whitepaper 4.2)
-            self.audio.play_beep()
-            self.leds.show_pressed()
-
             # Repeat press logic: reuse active callId if still open and unacknowledged/escalated
-            if self.active_call_id and self.current_state in ("sent", "not_sent", "escalated"):
+            if self.active_call_id and self.current_state not in ("resolved", "idle"):
                 self.active_press_count += 1
                 call_id = self.active_call_id
                 log.info("Repeat press on call %s (count: %d)", call_id, self.active_press_count)
-                # If patient taps multiple times on emergency button, play reassurance cue
-                if kind == "assist" and self.active_press_count >= 2:
-                    self.audio.play_ack_reassurance()
             else:
                 call_id = f"C-{self.bed}-{int(time.time() * 1000) % 10000000:07d}"
                 self.active_call_id = call_id
                 self.active_kind = kind
                 self.active_press_count = 1
+                self.current_state = "sent"
+
+            # Sensory feedback according to kind & press count
+            if kind == "assist":
+                if self.active_press_count >= 3:
+                    # Triple-tap: IMMEDIATE EMERGENCY ESCALATION
+                    log.warning("🚨 [TRIPLE-TAP EMERGENCY] Patient tapped %d times on bed %s: escalating to EMERGENCY!",
+                                self.active_press_count, self.bed)
+                    self.audio.play_emergency_trigger()
+                    self.leds.show_emergency()
+                elif self.active_press_count == 2:
+                    # Double-tap: repeat press reassurance cue
+                    self.audio.play_ack_reassurance()
+                    self.leds.show_sent()
+                else:
+                    # Single tap: tactile feedback beep + alert active
+                    self.audio.play_beep()
+                    self.leds.show_sent()
+            elif kind == "comfort":
+                self.audio.play_comfort_ack()
+                self.leds.show_sent()
 
             now_utc = datetime.now(UTC).isoformat().replace("+00:00", "Z")
             event_id = generate_ulid()
@@ -223,19 +238,25 @@ class BedsideNode:
 
             if state == "sent":
                 log.info("Call %s delivered to ward tower (SENT)", call_id)
-                self.leds.show_sent()
+                if self.active_press_count >= 3:
+                    self.leds.show_emergency()
+                else:
+                    self.leds.show_sent()
 
             elif state == "acknowledged":
                 ack_by = payload.get("acknowledgedBy", "staff")
                 log.info("Call %s acknowledged by %s (ACKNOWLEDGED)", call_id, ack_by)
                 self.leds.show_acknowledged()
-                # Requirement C: Double-chime + spoken "Votre appel a été pris en compte, un soignant arrive."
+                # Requirement C: Reassurance chime + spoken acknowledgment prompt
                 self.audio.play_ack_reassurance()
 
             elif state == "escalated":
                 level = payload.get("escalationLevel", 1)
                 log.info("Call %s escalated (level %d)", call_id, level)
-                self.leds.show_sent()
+                if level >= 2 or self.active_press_count >= 3:
+                    self.leds.show_emergency()
+                else:
+                    self.leds.show_sent()
 
             elif state == "resolved":
                 log.info("Call %s resolved by staff (RESOLVED)", call_id)

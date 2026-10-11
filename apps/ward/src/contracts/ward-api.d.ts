@@ -1441,7 +1441,7 @@ export interface components {
             state: "pressed" | "sent" | "not_sent" | "acknowledged" | "escalated" | "resolved";
             escalationLevel: number;
             /** @enum {unknown} */
-            escalationReason?: "unacknowledged_timeout" | "repeat_press" | "high_news2";
+            escalationReason?: "unacknowledged_timeout" | "repeat_press" | "high_news2" | "triple_tap_emergency";
             /** @enum {unknown} */
             routedToRole: "nurse" | "care_assistant" | "charge_nurse";
             pressCount?: number;

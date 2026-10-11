@@ -17,7 +17,7 @@
       "minimum": 0,
       "maximum": 2
     },
-    "escalationReason": { "enum": ["unacknowledged_timeout", "repeat_press", "high_news2"] },
+    "escalationReason": { "enum": ["unacknowledged_timeout", "repeat_press", "high_news2", "triple_tap_emergency"] },
     "routedToRole": { "enum": ["nurse", "care_assistant", "charge_nurse"] },
     "acknowledgedBy": {
       "description": "Staff id. Shown on staff devices only, never sent to family components (safety invariant 2).",

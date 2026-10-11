@@ -68,7 +68,7 @@ interface CallState {
   kind: 'assist' | 'comfort';
   state: 'pressed' | 'sent' | 'not_sent' | 'acknowledged' | 'escalated' | 'resolved';
   escalationLevel: number;
-  escalationReason?: 'unacknowledged_timeout' | 'repeat_press' | 'high_news2';
+  escalationReason?: 'unacknowledged_timeout' | 'repeat_press' | 'high_news2' | 'triple_tap_emergency';
   routedToRole: 'nurse' | 'care_assistant' | 'charge_nurse';
   pressCount: number;
   deliveredLate: boolean;

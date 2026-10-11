@@ -68,6 +68,8 @@ def test_stream_carries_call_and_alert_messages(tmp_path, make_event):
 def test_remote_doctor_instruction_on_an_escalated_call(tmp_path, make_event):
     with make_client(tmp_path, auto_suggest=False) as c:
         ingestor = c.app.state.ingestor
+        ingestor.handle("borj/W1/sim/clock", {"schemaVersion": 1, "ward": "W1", "simTs": "2026-10-10T22:12:40Z",
+                                              "speed": 1, "scenario": "t", "running": True})
         ingestor.handle(*make_event("call"))  # assist call from B06 at 22:12:40
         ingestor.handle("borj/W1/sim/clock", {"schemaVersion": 1, "ward": "W1", "simTs": "2026-10-10T22:17:40Z",
                                               "speed": 1, "scenario": "t", "running": True})

@@ -104,17 +104,27 @@ class CallEngine:
             call = self._call(payload["callId"])
             if call is None or not call.open:
                 return
+            press_count = payload.get("pressCount", 1)
             if call.state is None:
+                self._handled_presses[call.call_id] = press_count
+                if press_count >= 3 and call.kind == "assist":
+                    self._emit(call, "sent", 0, None, self.cfg.role_for(call.kind, 0))
+                    self._emit(call, "escalated", 2, "triple_tap_emergency", self.cfg.role_for("assist", 2))
+                    return
                 self._emit(call, "sent", 0, None, self.cfg.role_for(call.kind, 0))
-                self._handled_presses[call.call_id] = call.press_count
                 total = self.news2_total(call.bed)
                 if total is not None and total >= self.cfg.escalate_press_at_total:
                     self._emit(call, "escalated", 1, "high_news2", self.cfg.role_for("assist", 1))
                 return
-            if payload["pressCount"] > self._handled_presses.get(call.call_id, 1):
-                self._handled_presses[call.call_id] = payload["pressCount"]
-                level = min(call.escalation_level + 1, 2)
-                self._emit(call, "escalated", level, "repeat_press", self.cfg.role_for(call.kind, level))
+            if press_count > self._handled_presses.get(call.call_id, 1):
+                self._handled_presses[call.call_id] = press_count
+                if press_count >= 3 and call.kind == "assist":
+                    level = 2
+                    reason = "triple_tap_emergency"
+                else:
+                    level = min(call.escalation_level + 1, 2)
+                    reason = "repeat_press"
+                self._emit(call, "escalated", level, reason, self.cfg.role_for(call.kind, level))
 
     def on_ack(self, payload: dict[str, Any]) -> None:
         with self._lock:

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
+import { audioAlerts } from '../components/AudioAlerts';
 import {
   Bell,
   CheckCircle,
@@ -17,6 +18,7 @@ import {
 
 interface StaffViewProps {
   beds: any[];
+  staff?: any[];
   calls: any[];
   alerts: any[];
   onRefresh?: () => void;
@@ -26,6 +28,7 @@ interface StaffViewProps {
 
 export const StaffView: React.FC<StaffViewProps> = ({
   beds,
+  staff = [],
   calls,
   alerts,
   onRefresh,
@@ -48,6 +51,12 @@ export const StaffView: React.FC<StaffViewProps> = ({
   // Suggestions state
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [decidingSug, setDecidingSug] = useState<boolean>(false);
+  const [requestingSug, setRequestingSug] = useState<boolean>(false);
+  const [decisionFeedback, setDecisionFeedback] = useState<string | null>(null);
+
+  const session = wardApi.getSession();
+  const isChargeNurse = session?.staff?.role === 'charge_nurse';
+  const onWardNurses = staff.filter((s: any) => s.onWard && (s.role === 'nurse' || s.role === 'charge_nurse'));
 
   // What-If state
   const [whatIfDisruptions, setWhatIfDisruptions] = useState<string[]>(['staff_leaves']);
@@ -75,14 +84,22 @@ export const StaffView: React.FC<StaffViewProps> = ({
     loadSuggestions();
     loadMeds();
     loadFamilyUpdates();
+
+    const unsub = wardApi.subscribe((type) => {
+      if (type === 'assignment_suggestion' || type === 'staff' || type === 'auth_changed') {
+        loadSuggestions();
+      }
+    });
+    return () => unsub();
   }, []);
 
   const loadSuggestions = async () => {
     try {
       const data = await wardApi.getSuggestions();
-      setSuggestions(data || []);
+      setSuggestions(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
+      setSuggestions([]);
     }
   };
 
@@ -105,10 +122,25 @@ export const StaffView: React.FC<StaffViewProps> = ({
   };
 
   // Critical persistent alert takeover
-  const criticalAlert = alerts.find(a => a.priority === 'critical');
+  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set());
+
+  // Only UNACKNOWLEDGED active critical alerts trigger the takeover modal
+  const criticalAlert = alerts.find(
+    a => a.priority === 'critical' && !a.acknowledgedBy && a.active !== false && !dismissedAlertIds.has(a.alertId)
+  );
+
+  const activeUnackedAlerts = alerts.filter(
+    a => !a.acknowledgedBy && a.active !== false && !dismissedAlertIds.has(a.alertId)
+  );
 
   const handleAckAlert = async (alertId: string) => {
-    await wardApi.acknowledgeAlert(alertId);
+    setDismissedAlertIds(prev => new Set(prev).add(alertId));
+    audioAlerts.stopCriticalAlarm();
+    try {
+      await wardApi.acknowledgeAlert(alertId);
+    } catch (e) {
+      console.warn('Acknowledge alert failed', e);
+    }
     onRefresh?.();
   };
 
@@ -148,14 +180,54 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
   const handleDecideSuggestion = async (id: string, decision: 'approve' | 'reject') => {
     setDecidingSug(true);
+    setDecisionFeedback(null);
     try {
       await wardApi.decideSuggestion(id, decision, 'Charge Nurse approved in staff controls');
+      setDecisionFeedback(decision === 'approve' ? '✓ Rebalance proposal approved! Bed assignments updated across the ward.' : 'Rebalance proposal rejected.');
       await loadSuggestions();
       onRefresh?.();
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      alert(e.message || 'Failed to record assignment decision');
     } finally {
       setDecidingSug(false);
+    }
+  };
+
+  const handleRequestSuggestion = async () => {
+    setRequestingSug(true);
+    setDecisionFeedback(null);
+    try {
+      await wardApi.requestSuggestion();
+      await loadSuggestions();
+      onRefresh?.();
+    } catch (e: any) {
+      alert(e.message || 'Failed to request suggestion from solver');
+    } finally {
+      setRequestingSug(false);
+    }
+  };
+
+  const handleToggleStaffPresence = async (staffId: string, onWard: boolean, reason: string) => {
+    try {
+      await wardApi.setStaffPresence(staffId, onWard, reason);
+      onRefresh?.();
+      await loadSuggestions();
+    } catch (e: any) {
+      alert(e.message || 'Failed to update staff presence');
+    }
+  };
+
+  const handleCheckInAllShiftStaff = async () => {
+    try {
+      for (const st of staff.filter((s: any) => s.role === 'nurse' || s.role === 'charge_nurse')) {
+        if (!st.onWard) {
+          await wardApi.setStaffPresence(st.staffId, true, 'shift_start');
+        }
+      }
+      onRefresh?.();
+      await loadSuggestions();
+    } catch (e: any) {
+      alert(e.message || 'Failed to check in staff team');
     }
   };
 
@@ -211,52 +283,228 @@ export const StaffView: React.FC<StaffViewProps> = ({
       {/* Critical Alarm Persistent Takeover Modal */}
       {criticalAlert && (
         <div className="critical-full-modal">
-          <div className="critical-modal-content">
-            <AlertTriangle size={56} color="#ef4444" />
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>{STRINGS.alerts.criticalTakeoverTitle}</h2>
-            <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: '1rem', borderRadius: 8, width: '100%', border: '1px solid rgba(239,68,68,0.3)' }}>
-              <div style={{ fontWeight: 700, fontSize: '1.2rem', color: '#ef4444' }}>
-                Bed {criticalAlert.bed} — Critical Clinical Event
-              </div>
-              <ul style={{ textAlign: 'left', marginTop: 8, fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                {criticalAlert.explanation.map((exp: string, idx: number) => (
-                  <li key={idx}>• {exp}</li>
-                ))}
-              </ul>
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Persistent audio alarm active. Continuous alert escalation until acknowledged by attending staff.
-            </p>
+          <div className="critical-modal-content" style={{ position: 'relative', maxWidth: 540, width: '92%', padding: '2rem' }}>
             <button
-              className="ack-critical-btn"
-              onClick={() => handleAckAlert(criticalAlert.alertId)}
-              id="btn-ack-critical"
+              type="button"
+              onClick={() => {
+                setDismissedAlertIds(prev => new Set(prev).add(criticalAlert.alertId));
+                audioAlerts.stopCriticalAlarm();
+              }}
+              style={{
+                position: 'absolute',
+                top: 14,
+                right: 14,
+                background: 'var(--bg-surface, rgba(0,0,0,0.06))',
+                border: '1px solid var(--border-subtle, rgba(0,0,0,0.1))',
+                borderRadius: '50%',
+                width: 34,
+                height: 34,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-main)',
+                transition: 'all 0.15s ease'
+              }}
+              id="btn-close-critical-modal"
+              title="Dismiss Takeover"
             >
-              <CheckCircle size={20} style={{ display: 'inline', marginRight: 8 }} />
-              {STRINGS.alerts.ackAlertBtn}
+              <X size={18} />
             </button>
+
+            {/* Pulsing Alert Icon Badge */}
+            <div style={{
+              width: 68,
+              height: 68,
+              borderRadius: '50%',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '2px solid rgba(239, 68, 68, 0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ef4444',
+              boxShadow: '0 0 25px rgba(239, 68, 68, 0.35)'
+            }}>
+              <AlertTriangle size={38} />
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 6px 0' }}>
+                {STRINGS.alerts.criticalTakeoverTitle}
+              </h2>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                padding: '3px 12px',
+                borderRadius: 20
+              }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  Persistent Emergency Alarm Active
+                </span>
+              </div>
+            </div>
+
+            {/* Emergency Event Card */}
+            <div style={{
+              backgroundColor: 'var(--bg-surface, rgba(239, 68, 68, 0.05))',
+              padding: '1.15rem',
+              borderRadius: 12,
+              width: '100%',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              boxShadow: '0 4px 14px rgba(239, 68, 68, 0.08)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingBottom: 10,
+                borderBottom: '1px solid rgba(239, 68, 68, 0.2)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.05em'
+                  }}>
+                    BED {criticalAlert.bed}
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#ef4444' }}>
+                    Critical Clinical Event
+                  </span>
+                </div>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  color: '#ef4444',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(239, 68, 68, 0.3)'
+                }}>
+                  LEVEL 2
+                </span>
+              </div>
+
+              {/* Clean, perfectly-aligned explanation items — NO MISPLACED OR DOUBLE BULLETS */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+                {(criticalAlert.explanation || []).map((exp: string, idx: number) => {
+                  const cleanText = exp.replace(/^[•\s\-\*]+/, '').trim();
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        background: 'var(--bg-card, #ffffff)',
+                        border: '1px solid var(--border-subtle, rgba(239, 68, 68, 0.2))',
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        fontSize: '0.88rem',
+                        color: 'var(--text-main)',
+                        lineHeight: 1.45,
+                        textAlign: 'left'
+                      }}
+                    >
+                      <span style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        background: '#ef4444',
+                        marginTop: 6,
+                        flexShrink: 0,
+                        boxShadow: '0 0 6px #ef4444'
+                      }} />
+                      <span style={{ flex: 1, fontWeight: 500 }}>{cleanText}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+              Continuous audio alarm will sound until acknowledged by attending staff at bedside or console.
+            </p>
+
+            <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8, flexWrap: 'wrap' }}>
+              <button
+                className="ack-critical-btn"
+                onClick={() => handleAckAlert(criticalAlert.alertId)}
+                id="btn-ack-critical"
+                style={{
+                  flex: 2,
+                  minWidth: 200,
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '0.85rem 1.5rem',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  boxShadow: '0 4px 16px rgba(239, 68, 68, 0.45)'
+                }}
+              >
+                <CheckCircle size={20} />
+                {STRINGS.alerts.ackAlertBtn}
+              </button>
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => {
+                  setDismissedAlertIds(prev => new Set(prev).add(criticalAlert.alertId));
+                  audioAlerts.stopCriticalAlarm();
+                }}
+                id="btn-dismiss-critical-takeover"
+                style={{
+                  flex: 1,
+                  padding: '0.85rem 1rem',
+                  fontSize: '0.9rem',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-subtle, #cbd5e1)',
+                  background: 'var(--bg-surface, transparent)',
+                  color: 'var(--text-muted, #475569)',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Dismiss Modal
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Escalation Alert Ladder Bar */}
-      {alerts.length > 0 && (
+      {activeUnackedAlerts.length > 0 && (
         <div className="escalation-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Bell size={24} color="#f97316" />
             <div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>
-                {alerts.length} Active Escalation Alerts
+                {activeUnackedAlerts.length} Active Escalation Alerts
               </div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                {alerts[0].explanation[0]}
+                {activeUnackedAlerts[0]?.explanation?.[0] || 'Clinical escalation alert active'}
               </div>
             </div>
           </div>
           <button
             className="btn-outline"
             style={{ borderColor: 'rgba(239,68,68,0.4)', color: '#ef4444' }}
-            onClick={() => handleAckAlert(alerts[0].alertId)}
+            onClick={() => handleAckAlert(activeUnackedAlerts[0].alertId)}
           >
             Acknowledge Top Alert
           </button>
@@ -561,12 +809,179 @@ export const StaffView: React.FC<StaffViewProps> = ({
       {/* 3. OR-TOOLS ASSIGNMENT REBALANCING TAB */}
       {activeTab === 'assignments' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.assignments.title}</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Mathematical workload balancing respecting continuity of care, proximity, and skill mix.
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.assignments.title}</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Mathematical workload balancing respecting continuity of care, proximity, and skill mix.
+              </p>
+            </div>
+            <button
+              className="btn-primary"
+              onClick={handleRequestSuggestion}
+              disabled={requestingSug}
+              id="btn-request-rebalance"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.65rem 1.25rem' }}
+            >
+              <Sparkles size={16} />
+              {requestingSug ? 'Calculating OR-Tools Optimization...' : 'Calculate Optimal Rebalance (OR-Tools)'}
+            </button>
           </div>
+
+          {/* Role Check & Switch Banner */}
+          {!isChargeNurse && (
+            <div style={{ background: 'rgba(234, 88, 12, 0.12)', border: '1px solid #ea580c', padding: '0.85rem 1.25rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <div style={{ fontWeight: 800, color: '#f97316', fontSize: '0.9rem' }}>
+                  Logged in as {session?.staff?.name || 'Staff'} ({session?.staff?.role || 'nurse'})
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Safety Invariant 1: Reviewing and approving assignment suggestions requires Charge Nurse authority (CN1, PIN 687463).
+                </div>
+              </div>
+              <button
+                className="btn-primary"
+                onClick={async () => {
+                  await wardApi.login('CN1', '687463');
+                  onRefresh?.();
+                  await loadSuggestions();
+                }}
+                style={{ background: '#0284c7', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                id="btn-switch-charge-nurse"
+              >
+                Switch to Charge Nurse A Session (1-Tap)
+              </button>
+            </div>
+          )}
+
+          {/* 0 Nurses On Ward Alert */}
+          {onWardNurses.length === 0 && (
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', padding: '0.85rem 1.25rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <div style={{ fontWeight: 800, color: '#ef4444', fontSize: '0.9rem' }}>
+                  ⚠️ No Nurses Currently Checked In On Ward
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  The Google OR-Tools solver requires at least one nurse on duty to calculate workload assignments.
+                </div>
+              </div>
+              <button
+                className="btn-success"
+                onClick={handleCheckInAllShiftStaff}
+                style={{ padding: '0.5rem 1.1rem', fontSize: '0.85rem' }}
+                id="btn-checkin-shift-nurses"
+              >
+                Check In Shift Nurses (1-Tap)
+              </button>
+            </div>
+          )}
+
+          {/* Decision Feedback Banner */}
+          {decisionFeedback && (
+            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#10b981', padding: '0.75rem 1.25rem', borderRadius: 6, fontSize: '0.85rem', fontWeight: 600 }}>
+              {decisionFeedback}
+            </div>
+          )}
+
+          {/* Ward Shift & Staff Availability Roster */}
+          <div className="room-box" style={{ padding: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                  Ward Shift & Staff Availability Roster
+                </h4>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {staff.filter((s: any) => s.onWard).length} of {staff.length} on ward
+                </span>
+              </div>
+              <button
+                className="btn-outline"
+                style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                onClick={handleCheckInAllShiftStaff}
+              >
+                Check In All Shift Staff
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
+              {staff.map((st: any) => (
+                <div
+                  key={st.staffId}
+                  style={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid ' + (st.onWard ? 'rgba(16,185,129,0.4)' : 'var(--border-subtle)'),
+                    borderRadius: 6,
+                    padding: '0.75rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.9rem' }}>{st.displayName} ({st.staffId})</span>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                        {st.role.replace('_', ' ')} {st.skills?.length > 0 ? `· [${st.skills.join(', ')}]` : ''}
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: st.onWard ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.15)',
+                        color: st.onWard ? '#10b981' : '#94a3b8'
+                      }}
+                    >
+                      {st.onWard ? 'ON WARD' : 'OFF WARD'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                    {!st.onWard ? (
+                      <button
+                        className="btn-success"
+                        onClick={() => handleToggleStaffPresence(st.staffId, true, 'shift_start')}
+                        style={{ flex: 1, padding: '4px 8px', fontSize: '0.75rem' }}
+                      >
+                        Check In (On Ward)
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          className="btn-outline"
+                          onClick={() => handleToggleStaffPresence(st.staffId, false, 'break_start')}
+                          style={{ flex: 1, padding: '4px 8px', fontSize: '0.75rem' }}
+                        >
+                          Break
+                        </button>
+                        <button
+                          className="btn-outline"
+                          onClick={() => handleToggleStaffPresence(st.staffId, false, 'called_away')}
+                          style={{ flex: 1, padding: '4px 8px', fontSize: '0.75rem', borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }}
+                        >
+                          Called Away
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {suggestions.length === 0 && (
+            <div className="room-box" style={{ padding: '2.5rem 1.5rem', textAlign: 'center', border: '1px dashed rgba(59,130,246,0.3)' }}>
+              <Sparkles size={36} color="#0284c7" style={{ margin: '0 auto 12px' }} />
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>No Rebalancing Calculations Pending</h4>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: 500, margin: '8px auto 16px' }}>
+                Click "Calculate Optimal Rebalance" to trigger Google OR-Tools MIP solver. It distributes bed assignments across available nurses according to live NEWS2 acuity, continuity of care, and room walking distance.
+              </p>
+              <button className="btn-primary" onClick={handleRequestSuggestion} disabled={requestingSug}>
+                {requestingSug ? 'Calculating OR-Tools Optimization...' : 'Run OR-Tools Solver Now'}
+              </button>
+            </div>
+          )}
 
           {suggestions.map(sug => (
             <div key={sug.suggestionId} className="room-box" style={{ padding: '1.5rem', border: '1px solid rgba(59,130,246,0.3)' }}>
@@ -723,14 +1138,16 @@ export const StaffView: React.FC<StaffViewProps> = ({
                 <div className="metric-card">
                   <h4>{STRINGS.whatIf.metrics.utilization}</h4>
                   <div className="metric-values">
-                    <span className="median-val" style={{ color: whatIfResult.scenario.nurse_utilization.median > 85 ? '#ea580c' : 'var(--text-main)' }}>
-                      {whatIfResult.scenario.nurse_utilization.median}%
+                    <span className="median-val" style={{ color: (whatIfResult.scenario.nurse_utilization.median <= 1 ? whatIfResult.scenario.nurse_utilization.median * 100 : whatIfResult.scenario.nurse_utilization.median) > 85 ? '#ea580c' : 'var(--text-main)' }}>
+                      {whatIfResult.scenario.nurse_utilization.median <= 1 ? (whatIfResult.scenario.nurse_utilization.median * 100).toFixed(0) : whatIfResult.scenario.nurse_utilization.median}%
                     </span>
                     <span className="percentiles-band">
-                      [{whatIfResult.scenario.nurse_utilization.p5}% – {whatIfResult.scenario.nurse_utilization.p95}%]
+                      [{whatIfResult.scenario.nurse_utilization.p5 <= 1 ? (whatIfResult.scenario.nurse_utilization.p5 * 100).toFixed(0) : whatIfResult.scenario.nurse_utilization.p5}% – {whatIfResult.scenario.nurse_utilization.p95 <= 1 ? (whatIfResult.scenario.nurse_utilization.p95 * 100).toFixed(0) : whatIfResult.scenario.nurse_utilization.p95}%]
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Baseline: {whatIfResult.baseline.nurse_utilization.median}%</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Baseline: {whatIfResult.baseline.nurse_utilization.median <= 1 ? (whatIfResult.baseline.nurse_utilization.median * 100).toFixed(0) : whatIfResult.baseline.nurse_utilization.median}%
+                  </span>
                 </div>
 
                 <div className="metric-card">
