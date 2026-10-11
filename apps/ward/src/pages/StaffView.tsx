@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
+import { audioAlerts } from '../components/AudioAlerts';
 import {
   Bell,
   CheckCircle,
@@ -121,10 +122,25 @@ export const StaffView: React.FC<StaffViewProps> = ({
   };
 
   // Critical persistent alert takeover
-  const criticalAlert = alerts.find(a => a.priority === 'critical');
+  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set());
+
+  // Only UNACKNOWLEDGED active critical alerts trigger the takeover modal
+  const criticalAlert = alerts.find(
+    a => a.priority === 'critical' && !a.acknowledgedBy && a.active !== false && !dismissedAlertIds.has(a.alertId)
+  );
+
+  const activeUnackedAlerts = alerts.filter(
+    a => !a.acknowledgedBy && a.active !== false && !dismissedAlertIds.has(a.alertId)
+  );
 
   const handleAckAlert = async (alertId: string) => {
-    await wardApi.acknowledgeAlert(alertId);
+    setDismissedAlertIds(prev => new Set(prev).add(alertId));
+    audioAlerts.stopCriticalAlarm();
+    try {
+      await wardApi.acknowledgeAlert(alertId);
+    } catch (e) {
+      console.warn('Acknowledge alert failed', e);
+    }
     onRefresh?.();
   };
 
@@ -267,7 +283,33 @@ export const StaffView: React.FC<StaffViewProps> = ({
       {/* Critical Alarm Persistent Takeover Modal */}
       {criticalAlert && (
         <div className="critical-full-modal">
-          <div className="critical-modal-content">
+          <div className="critical-modal-content" style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setDismissedAlertIds(prev => new Set(prev).add(criticalAlert.alertId));
+                audioAlerts.stopCriticalAlarm();
+              }}
+              style={{
+                position: 'absolute',
+                top: 14,
+                right: 14,
+                background: 'rgba(0,0,0,0.06)',
+                border: '1px solid rgba(0,0,0,0.1)',
+                borderRadius: '50%',
+                width: 34,
+                height: 34,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-main)'
+              }}
+              id="btn-close-critical-modal"
+              title="Dismiss Takeover"
+            >
+              <X size={18} />
+            </button>
             <AlertTriangle size={56} color="#ef4444" />
             <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>{STRINGS.alerts.criticalTakeoverTitle}</h2>
             <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: '1rem', borderRadius: 8, width: '100%', border: '1px solid rgba(239,68,68,0.3)' }}>
@@ -275,7 +317,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                 Bed {criticalAlert.bed} — Critical Clinical Event
               </div>
               <ul style={{ textAlign: 'left', marginTop: 8, fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                {criticalAlert.explanation.map((exp: string, idx: number) => (
+                {(criticalAlert.explanation || []).map((exp: string, idx: number) => (
                   <li key={idx}>• {exp}</li>
                 ))}
               </ul>
@@ -283,36 +325,51 @@ export const StaffView: React.FC<StaffViewProps> = ({
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Persistent audio alarm active. Continuous alert escalation until acknowledged by attending staff.
             </p>
-            <button
-              className="ack-critical-btn"
-              onClick={() => handleAckAlert(criticalAlert.alertId)}
-              id="btn-ack-critical"
-            >
-              <CheckCircle size={20} style={{ display: 'inline', marginRight: 8 }} />
-              {STRINGS.alerts.ackAlertBtn}
-            </button>
+            <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8, flexWrap: 'wrap' }}>
+              <button
+                className="ack-critical-btn"
+                onClick={() => handleAckAlert(criticalAlert.alertId)}
+                id="btn-ack-critical"
+                style={{ flex: 2, minWidth: 200 }}
+              >
+                <CheckCircle size={20} style={{ display: 'inline', marginRight: 8 }} />
+                {STRINGS.alerts.ackAlertBtn}
+              </button>
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => {
+                  setDismissedAlertIds(prev => new Set(prev).add(criticalAlert.alertId));
+                  audioAlerts.stopCriticalAlarm();
+                }}
+                id="btn-dismiss-critical-takeover"
+                style={{ flex: 1, padding: '0.8rem 1rem', fontSize: '0.9rem' }}
+              >
+                Dismiss Modal
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Escalation Alert Ladder Bar */}
-      {alerts.length > 0 && (
+      {activeUnackedAlerts.length > 0 && (
         <div className="escalation-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Bell size={24} color="#f97316" />
             <div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>
-                {alerts.length} Active Escalation Alerts
+                {activeUnackedAlerts.length} Active Escalation Alerts
               </div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                {alerts[0].explanation[0]}
+                {activeUnackedAlerts[0]?.explanation?.[0] || 'Clinical escalation alert active'}
               </div>
             </div>
           </div>
           <button
             className="btn-outline"
             style={{ borderColor: 'rgba(239,68,68,0.4)', color: '#ef4444' }}
-            onClick={() => handleAckAlert(alerts[0].alertId)}
+            onClick={() => handleAckAlert(activeUnackedAlerts[0].alertId)}
           >
             Acknowledge Top Alert
           </button>
