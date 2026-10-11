@@ -15,14 +15,20 @@ interface StationBoardProps {
     };
   } | null;
   onOpenFastEntry?: (bedId: string) => void;
+  onAcknowledgeAlert?: (alertId: string) => Promise<void>;
+  onSilenceAlarm?: () => void;
+  isAlarmSounding?: boolean;
 }
 
 export const StationBoard: React.FC<StationBoardProps> = ({
   beds,
   calls,
-  alerts: _alerts,
+  alerts,
   triageMetrics,
-  onOpenFastEntry
+  onOpenFastEntry,
+  onAcknowledgeAlert,
+  onSilenceAlarm,
+  isAlarmSounding
 }) => {
   const [selectedBed, setSelectedBed] = useState<any | null>(null);
 
@@ -263,6 +269,74 @@ export const StationBoard: React.FC<StationBoardProps> = ({
             </div>
 
             <div className="modal-body">
+              {/* Active Bed Alert Callout & Silence/Ack Action */}
+              {(() => {
+                const bedAlert = alerts?.find(a => a.bed === selectedBed.bed && a.active !== false);
+                if (!bedAlert) return null;
+                return (
+                  <div
+                    style={{
+                      padding: '0.85rem 1rem',
+                      borderRadius: 8,
+                      backgroundColor: '#fef2f2',
+                      border: '2px solid #ef4444',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '1rem',
+                      boxShadow: '0 2px 8px rgba(239,68,68,0.15)'
+                    }}
+                  >
+                    <div>
+                      <div style={{ color: '#991b1b', fontWeight: 800, fontSize: '0.9rem' }}>
+                        🚨 Active Deterioration Alert ({bedAlert.priority.toUpperCase()})
+                      </div>
+                      <div style={{ color: '#7f1d1d', fontSize: '0.8rem', marginTop: 2 }}>
+                        {bedAlert.explanation?.[0] || 'Urgent medical intervention recommended'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {isAlarmSounding && onSilenceAlarm && (
+                        <button
+                          onClick={onSilenceAlarm}
+                          style={{
+                            background: '#ffffff',
+                            color: '#b91c1c',
+                            border: '1px solid #f87171',
+                            borderRadius: 6,
+                            padding: '0.4rem 0.8rem',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Silence Sound
+                        </button>
+                      )}
+                      {onAcknowledgeAlert && (
+                        <button
+                          onClick={async () => {
+                            await onAcknowledgeAlert(bedAlert.alertId);
+                          }}
+                          style={{
+                            background: '#15803d',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: 6,
+                            padding: '0.4rem 0.8rem',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Acknowledge & Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* NEWS2 Summary Banner */}
               <div
                 style={{
