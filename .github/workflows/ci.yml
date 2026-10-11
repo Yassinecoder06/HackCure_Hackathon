@@ -28,26 +28,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 infra/gen_secrets.py
-      - run: docker compose -f infra/docker-compose.yml config --quiet
-      - run: docker compose -f infra/docker-compose.yml build
-      # mqtt_smoke.py pins the demo clock and binds B04 itself. The simulator (own clock, own patients) is
-      # started after it, by the next step.
-      - run: docker compose -f infra/docker-compose.yml up -d --wait mosquitto postgres inference server
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install paho-mqtt==2.1.0 jsonschema==4.26.0 referencing==0.37.0
+      - run: pip install paho-mqtt==2.1.0 jsonschema==4.26.0 referencing==0.37.0 cryptography
+      - run: python3 infra/gen_secrets.py
+      - run: python3 infra/gen_certs.py
+      - run: docker compose config --quiet
+      - run: docker compose build mosquitto postgres inference server simulator
+      # mqtt_smoke.py pins the demo clock and binds B04 itself. The simulator (own clock, own patients) is
+      # started after it, by a later step.
+      - run: docker compose up -d --wait mosquitto postgres inference server
+      - name: Broker is TLS 1.3 only, authenticated, with topic ACLs
+        run: python tests/integration/broker_security_smoke.py
       - name: Events flow MQTT -> twin (PostgreSQL, encrypted) -> inference -> API
         run: python tests/integration/mqtt_smoke.py
       - name: The simulator's stream is ingested
         run: |
-          docker compose -f infra/docker-compose.yml up -d simulator
+          docker compose up -d simulator
           python tests/integration/simulator_smoke.py
       - if: failure()
-        run: docker compose -f infra/docker-compose.yml logs
+        run: docker compose logs
       - if: always()
-        run: docker compose -f infra/docker-compose.yml down -v
+        run: docker compose down -v
 
   apps:
     name: Apps lint, isolation, build

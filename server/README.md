@@ -117,7 +117,7 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
 
 ```bash
 # with the broker (from repo root)
-docker compose -f infra/docker-compose.yml up --build
+docker compose up --build
 curl localhost:8000/api/v1/wards/W1/snapshot
 
 # without docker, API only (e.g. for UI work)

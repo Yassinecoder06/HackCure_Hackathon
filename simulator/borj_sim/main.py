@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import signal
 import sys
 from pathlib import Path
+
+from borj_contracts import mqtt as bc_mqtt
 
 from .config import ScenarioConfig, WardConfig
 from .runner import SimulationRunner
@@ -44,8 +47,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--broker",
-        default="localhost:1883",
-        help="MQTT broker host:port (default: localhost:1883)",
+        default=f"{os.environ.get('MQTT_HOST', 'localhost')}:{os.environ.get('MQTT_PORT', '1883')}",
+        help="MQTT broker host:port (default: $MQTT_HOST:$MQTT_PORT, else localhost:1883)",
     )
     parser.add_argument(
         "--max-min",
@@ -88,6 +91,7 @@ def main() -> None:
         host = args.broker
         port = 1883
 
+    key, key_id = bc_mqtt.signing_key("sim-k1")  # signs every message when BORJ_DEVICE_KEYS is set (invariant 13)
     runner = SimulationRunner(
         scenario=scenario,
         ward=ward,
@@ -95,6 +99,8 @@ def main() -> None:
         dry_run=args.dry_run,
         broker_host=host,
         broker_port=port,
+        key=key,
+        key_id=key_id,
     )
 
     def _sig_handler(sig, frame):

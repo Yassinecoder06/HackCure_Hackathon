@@ -1,5 +1,7 @@
-# Borj-PiCare demo stack. Owner: A.
-# Secrets come from infra/.env (never committed): create it once with `python infra/gen_secrets.py`.
+# Borj-PiCare demo stack: the one compose file (CI, the demo laptop and the hosted VM all use it).
+# One-time setup:  python infra/gen_secrets.py   (passwords, keys, broker accounts -> infra/.env, never committed)
+#                  python infra/gen_certs.py     (local CA + TLS certificate -> infra/certs/, never committed)
+# Then:            docker compose up --build
 #
 # Networks enforce safety invariant 3 (outbound-only family link):
 #   ward : broker, server, simulator, gateway, ward app, reverse proxy
@@ -9,21 +11,37 @@
 name: borj
 
 services:
-  mosquitto:
+  mosquitto:          # TLS 1.3 only on 8883, one account per component, topic ACLs (invariants 10 and 13)
     image: eclipse-mosquitto:2.0.20
+    entrypoint: ["sh", "/mosquitto/entrypoint.sh"]
+    environment:
+      BORJ_MQTT_USERS: ${BORJ_MQTT_USERS:?missing - run python infra/gen_secrets.py}
     ports:
-      - "1883:1883"
+      - "8883:8883"
     volumes:
+      - ./infra/mosquitto/entrypoint.sh:/mosquitto/entrypoint.sh:ro
       - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/acl.conf:/mosquitto/config/acl.conf:ro
+      - ./infra/certs:/mosquitto/certs:ro
     networks: [ward]
     healthcheck:
-      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-W", "3"]
+      # plain MQTT exists only on the container's own loopback, for this probe
+      test: ["CMD", "mosquitto_sub", "-h", "127.0.0.1", "-p", "1883", "-t", "$$SYS/#", "-C", "1", "-W", "3"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   simulator:        # A, P0
     build: { context: ., dockerfile: simulator/Dockerfile }
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "8883"
+      MQTT_CA_CERT: /certs/ca.crt
+      MQTT_USERNAME: sim
+      MQTT_PASSWORD: ${MQTT_PW_SIM:?missing - run python infra/gen_secrets.py}
+      BORJ_DEVICE_KEYS: ${BORJ_DEVICE_KEYS:?missing - run python infra/gen_secrets.py}
+    volumes:
+      - ./infra/certs/ca.crt:/certs/ca.crt:ro
     depends_on: { mosquitto: { condition: service_healthy } }
     networks: [ward]
 
@@ -55,7 +73,10 @@ services:
       BORJ_WARD: W1
       BORJ_CLOCK_MODE: sim
       MQTT_HOST: mosquitto
-      MQTT_PORT: "1883"
+      MQTT_PORT: "8883"
+      MQTT_CA_CERT: /certs/ca.crt
+      MQTT_USERNAME: server
+      MQTT_PASSWORD: ${MQTT_PW_SERVER:?missing - run python infra/gen_secrets.py}
       INFERENCE_URL: http://inference:8001
       BORJ_DB_URL: postgresql+psycopg://borj:${POSTGRES_PASSWORD}@postgres:5432/borj
       # AES-256-GCM key for patient payloads at rest (ADR 0010).
@@ -65,13 +86,16 @@ services:
       BORJ_TOKEN_KEY: ${BORJ_TOKEN_KEY:?missing - run python infra/gen_secrets.py}
       BORJ_STAFF_PINS: ${BORJ_STAFF_PINS:?missing - run python infra/gen_secrets.py}
       # Frame integrity (invariant 13): per-device HMAC keys.
-      BORJ_DEVICE_KEYS: ${BORJ_DEVICE_KEYS:-}
-      BORJ_INTEGRITY_MODE: ${BORJ_INTEGRITY_MODE:-verify}
+      BORJ_DEVICE_KEYS: ${BORJ_DEVICE_KEYS:?missing - run python infra/gen_secrets.py}
+      # require = bad AND unsigned measurements are rejected (the simulator, gateway and nodes all sign).
+      BORJ_INTEGRITY_MODE: ${BORJ_INTEGRITY_MODE:-require}
       # The demo stack turns the live-demo trigger on (POST /api/v1/demo/trigger-peak: charge nurse only, audited).
       # Leave it off for anything else.
       BORJ_DEMO_ENDPOINTS: ${BORJ_DEMO_ENDPOINTS:-1}
       # Extra browser origins for the API, e.g. the hosted demo URL. localhost and LAN addresses are always allowed.
       BORJ_CORS_ORIGINS: ${BORJ_CORS_ORIGINS:-}
+    volumes:
+      - ./infra/certs/ca.crt:/certs/ca.crt:ro
     ports:
       - "8000:8000"
     depends_on:

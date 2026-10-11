@@ -27,7 +27,7 @@ Read first:
 - [ ] Seeded and reproducible, including deterministic ULIDs.
 - [ ] `--speed N`, `--dry-run` (JSON lines to stdout), `--broker host:port`.
 - [ ] Scripted events: `deteriorate`, `set_manual`, `call` (`no_ack`), `call_rate`, `admit`, `staff_leaves`, `device_offline`, `node_outage_call`.
-- [ ] A `simulator` service in `infra/docker-compose.yml`. The server service already exists (PR #2).
+- [ ] A `simulator` service in `docker-compose.yml`. The server service already exists (PR #2).
 - [ ] Tests: every scenario only produces valid messages, with unique ids and no null/zero placeholders.
 
 ## P1: gateway + secure transport

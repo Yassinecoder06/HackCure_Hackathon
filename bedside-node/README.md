@@ -52,13 +52,13 @@ pip install -r requirements.txt
 
 ### Running on the Raspberry Pi
 ```bash
-python -m borj_node --ward W1 --bed B06 --broker 10.42.0.1:1883
+python -m borj_node --ward W1 --bed B06 --broker 10.42.0.1:8883
 ```
 
 ### Options
 - `--ward W1`: Ward identifier (default: `W1`)
 - `--bed B06`: Bed identifier (default: `B06`)
-- `--broker IP:PORT`: MQTT broker address (default: `10.42.0.1:1883`)
+- `--broker IP:PORT`: MQTT broker address (default: `10.42.0.1:8883`)
 - `--pin-assist 17`: GPIO pin for Assist button (default: `17`)
 - `--pin-comfort 27`: GPIO pin for Comfort button (default: `27`)
 - `--pin-led-green 22`: GPIO pin for Green LED (default: `22`)
@@ -81,7 +81,7 @@ After=network.target
 Type=simple
 User=berry
 WorkingDirectory=/home/berry/bedside-node
-ExecStart=/usr/bin/python3 -m borj_node --ward W1 --bed B06 --broker 10.42.0.1:1883
+ExecStart=/usr/bin/python3 -m borj_node --ward W1 --bed B06 --broker 10.42.0.1:8883
 Restart=always
 RestartSec=3
 

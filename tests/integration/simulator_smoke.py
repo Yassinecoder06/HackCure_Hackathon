@@ -1,7 +1,7 @@
 """Smoke test for role A's simulator running against the compose stack.
 
 Run after tests/integration/mqtt_smoke.py, with the `simulator` service started:
-    docker compose -f infra/docker-compose.yml up -d simulator
+    docker compose up -d simulator
     python tests/integration/simulator_smoke.py
 
 The simulator admits the scenario's patients and streams vitals and calls. The server must ingest them
@@ -24,11 +24,11 @@ def main() -> None:
     b06 = wait_for(lambda: beds()["B06"] if beds()["B06"]["vitals"] else None, "B06 readings from the simulator",
                    timeout_s=90)
     rejected = [a for a in get_json("/api/v1/wards/W1/audit?limit=1000") if a["action"] == "integrity.rejected"]
-    # mqtt_smoke.py sends exactly one tampered frame on purpose; anything more came from the simulator.
-    if len(rejected) != 1:
-        raise SystemExit(f"{len(rejected)} frames rejected, expected only the 1 tampered test frame: {rejected[:3]}")
+    # mqtt_smoke.py sends one tampered and one unsigned frame on purpose; anything more came from the simulator.
+    if len(rejected) != 2:
+        raise SystemExit(f"{len(rejected)} frames rejected, expected only the 2 test frames: {rejected[:3]}")
     print(f"OK: simulator ingested ({sum(1 for b in beds().values() if b['admission'])} beds admitted, "
-          f"B06 vitals {sorted(b06['vitals'])}), no rejected frames besides the tampered test frame")
+          f"B06 vitals {sorted(b06['vitals'])}), no rejected frames besides the 2 test frames")
 
 
 if __name__ == "__main__":

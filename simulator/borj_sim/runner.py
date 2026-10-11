@@ -10,6 +10,7 @@ from typing import Any
 
 import borj_contracts as bc
 import paho.mqtt.client as mqtt
+from borj_contracts import mqtt as bc_mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 
 from .config import ScenarioConfig, WardConfig
@@ -50,6 +51,7 @@ class SimulationRunner:
                 callback_api_version=CallbackAPIVersion.VERSION2,
                 client_id=f"borj-sim-{scenario.name}",
             )
+            bc_mqtt.configure(self._client)  # TLS 1.3 + broker account from the environment
 
     def start_broker(self) -> None:
         if self._client:

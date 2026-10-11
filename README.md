@@ -77,7 +77,7 @@ python -m venv .venv
 python infra/gen_secrets.py
 
 # The demo stack: Mosquitto, PostgreSQL, inference, server (more services are added phase by phase)
-docker compose -f infra/docker-compose.yml up --build
+docker compose up --build
 # Log in with a demo PIN printed by gen_secrets.py (also in infra/.env), then use the token:
 #   curl -X POST localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"staffId":"CN1","secret":"<PIN>"}'
 #   curl -H "Authorization: Bearer <token>" localhost:8000/api/v1/wards/W1/snapshot

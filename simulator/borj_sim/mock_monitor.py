@@ -26,6 +26,7 @@ from typing import Any
 import borj_contracts as bc
 import paho.mqtt.client as mqtt
 from borj_contracts import generate_ulid
+from borj_contracts import mqtt as bc_mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 
 log = logging.getLogger("mock_monitor")
@@ -86,6 +87,8 @@ class MockMedicalMonitor:
             callback_api_version=CallbackAPIVersion.VERSION2,
             client_id=f"borj-mon-{bed}",
         )
+        bc_mqtt.configure(self._client)  # TLS 1.3 + broker account from the environment
+        self._key, self._key_id = bc_mqtt.signing_key("sim-k1")  # stands in for a device behind the gateway
 
     def start(self) -> None:
         log.info("Connecting Mock Medical Monitor to %s:%d...", self.broker_host, self.broker_port)
@@ -103,6 +106,9 @@ class MockMedicalMonitor:
             self._client.disconnect()
         except Exception:
             pass
+
+    def _signed(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return bc.sign(payload, self._key, self._key_id) if self._key else payload
 
     def publish_admission(self) -> None:
         """Publishes bed admission/binding so bed is active on station board."""
@@ -124,7 +130,7 @@ class MockMedicalMonitor:
             "staffId": "N1",
         }
         bc.validate_message(topic, payload)
-        self._client.publish(topic, json.dumps(payload), qos=1)
+        self._client.publish(topic, json.dumps(self._signed(payload)), qos=1)
         log.info("Published admission binding for %s (%s)", self.bed, topic)
 
     def generate_reading(self) -> dict[str, Any]:
@@ -162,7 +168,7 @@ class MockMedicalMonitor:
         }
 
         bc.validate_message(topic, payload)
-        self._client.publish(topic, json.dumps(payload), qos=1)
+        self._client.publish(topic, json.dumps(self._signed(payload)), qos=1)
         return payload
 
     def run_loop(self) -> None:

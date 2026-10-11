@@ -7,6 +7,7 @@ import logging
 
 import borj_contracts as bc
 import paho.mqtt.client as mqtt
+from borj_contracts import mqtt as bc_mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 
 from .ingest import Ingestor
@@ -23,6 +24,7 @@ class MqttListener:
         self.host = host
         self.port = port
         self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id)
+        bc_mqtt.configure(self.client)  # TLS 1.3 + broker account from MQTT_CA_CERT / MQTT_USERNAME / MQTT_PASSWORD
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
         self.client.on_disconnect = self._on_disconnect

@@ -15,6 +15,7 @@ from typing import Any
 
 import borj_contracts as bc
 import paho.mqtt.client as mqtt
+from borj_contracts import mqtt as bc_mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 
 log = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ class NodeMqttClient:
             callback_api_version=CallbackAPIVersion.VERSION2,
             client_id=self.client_id,
         )
+        bc_mqtt.configure(self._client)  # TLS 1.3 + broker account from the environment
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
         self._client.on_message = self._on_message

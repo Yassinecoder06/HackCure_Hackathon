@@ -15,4 +15,5 @@ COPY seed seed
 COPY simulator/scenarios simulator/scenarios
 COPY simulator/borj_sim simulator/borj_sim
 
-CMD ["python", "-m", "borj_sim", "--scenario", "simulator/scenarios/night-shift-peak.yaml", "--broker", "mosquitto:1883", "--speed", "10"]
+# Broker address, account and TLS come from MQTT_HOST, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD, MQTT_CA_CERT.
+CMD ["python", "-m", "borj_sim", "--scenario", "simulator/scenarios/night-shift-peak.yaml", "--speed", "10"]

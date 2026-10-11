@@ -9,6 +9,9 @@ Holds (ADR 0010):
 - BORJ_TOKEN_KEY           signing key for login tokens
 - BORJ_STAFF_PINS          a random 6-digit demo PIN per synthetic staff member in seed/ward-W1.yaml
 - FAMILY_PUBLISHER_TOKEN   bearer token the family publisher presents to family-gateway ingest
+- BORJ_MQTT_USERS          broker accounts "user:password,...": server, sim, gw, node-B01...; the broker entrypoint
+                           builds its password file from it (rules per account: infra/mosquitto/acl.conf)
+- MQTT_PW_SERVER/_SIM/_GW  the same passwords for the compose services (a Raspberry Pi node uses its own entry)
 - BORJ_DEVICE_KEYS         HMAC-SHA256 key ring for frame integrity (invariant 13): one key for the
                            simulator (sim-k1), one for the gateway (gw-k1), one per bedside node (node-B01...)
 """
@@ -43,9 +46,20 @@ def device_keys() -> str:
     return ",".join(f"{kid}:{base64.b64encode(secrets.token_bytes(32)).decode('ascii')}" for kid in ids)
 
 
+def mqtt_accounts() -> dict[str, str]:
+    """One random password per broker account. Names match infra/mosquitto/acl.conf."""
+    users = ["server", "sim", "gw", *(f"node-{bed}" for bed in bed_ids())]
+    return {user: secrets.token_urlsafe(18) for user in users}  # urlsafe: no ':' or ',' to break the list format
+
+
 def fresh_values() -> dict[str, str]:
     pins = ",".join(f"{sid}:{secrets.randbelow(10**6):06d}" for sid in staff_ids())
+    accounts = mqtt_accounts()
     return {
+        "BORJ_MQTT_USERS": ",".join(f"{user}:{pw}" for user, pw in accounts.items()),
+        "MQTT_PW_SERVER": accounts["server"],
+        "MQTT_PW_SIM": accounts["sim"],
+        "MQTT_PW_GW": accounts["gw"],
         "POSTGRES_PASSWORD": secrets.token_urlsafe(24),
         "BORJ_DATA_KEY": base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
         "BORJ_DATA_KEY_ID": "k1",
@@ -77,6 +91,9 @@ def main() -> None:
 
     ENV_PATH.write_text(HEADER + "\n" + "".join(f"{k}={v}\n" for k, v in values.items()), encoding="utf-8")
     print(f"{ENV_PATH}: {'added ' + ', '.join(added) if added else 'already complete'}")
+    if "BORJ_MQTT_USERS" in added:
+        print("Broker accounts for a Raspberry Pi bedside node: MQTT_USERNAME=node-B04, MQTT_PASSWORD=<its entry in "
+              "BORJ_MQTT_USERS in infra/.env>")
     if "BORJ_STAFF_PINS" in added:
         print("Demo staff PINs (synthetic staff, also stored in infra/.env):")
         for pair in values["BORJ_STAFF_PINS"].split(","):

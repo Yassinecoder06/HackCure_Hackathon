@@ -254,9 +254,32 @@ def test_10a_encrypted_at_rest():
     assert next(store.events()).payload == payload
 
 
-@pytest.mark.skip(reason="P1, A: TLS 1.3 on the broker (8883) and on Caddy; plain ports refused in demo mode")
 def test_10b_encrypted_in_transit():
-    pass
+    """The broker listens on the network only with TLS 1.3 and authentication; plain MQTT is loopback-only."""
+    import re
+
+    import yaml
+
+    conf = (ROOT / "infra" / "mosquitto" / "mosquitto.conf").read_text(encoding="utf-8")
+    lines = [line.split("#")[0].strip() for line in conf.splitlines()]
+    blocks: list[list[str]] = []
+    for line in lines:
+        if line.startswith("listener "):
+            blocks.append([line])
+        elif line and blocks:
+            blocks[-1].append(line)
+    network = [b for b in blocks if not re.match(r"listener \d+ 127\.0\.0\.1$", b[0])]
+    assert len(network) == 1 and network[0][0] == "listener 8883", "the only network listener is the TLS port"
+    block = network[0]
+    assert "tls_version tlsv1.3" in block and "allow_anonymous false" in block
+    for required in ("password_file ", "acl_file "):
+        assert any(line.startswith(required) for line in block), required
+    plain = [b for b in blocks if b is not network[0]]
+    assert all(b[0].endswith("127.0.0.1") for b in plain), "plain MQTT may only listen on the container's loopback"
+
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    published = [str(p) for p in compose["services"]["mosquitto"].get("ports", [])]
+    assert published == ["8883:8883"], "no plain MQTT port is published"
 
 
 def test_11_non_repudiation():
