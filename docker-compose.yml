@@ -67,6 +67,11 @@ services:
       # Frame integrity (invariant 13): per-device HMAC keys.
       BORJ_DEVICE_KEYS: ${BORJ_DEVICE_KEYS:-}
       BORJ_INTEGRITY_MODE: ${BORJ_INTEGRITY_MODE:-verify}
+      # The demo stack turns the live-demo trigger on (POST /api/v1/demo/trigger-peak: charge nurse only, audited).
+      # Leave it off for anything else.
+      BORJ_DEMO_ENDPOINTS: ${BORJ_DEMO_ENDPOINTS:-1}
+      # Extra browser origins for the API, e.g. the hosted demo URL. localhost and LAN addresses are always allowed.
+      BORJ_CORS_ORIGINS: ${BORJ_CORS_ORIGINS:-}
     ports:
       - "8000:8000"
     depends_on:

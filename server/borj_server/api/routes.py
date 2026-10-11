@@ -6,6 +6,7 @@ entry naming them (safety invariant 11).
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 import borj_contracts as bc
@@ -23,6 +24,7 @@ from ..observations import manual_vitals
 from ..timeutil import format_ts
 from ..twin.views import call_view, staff_view
 
+log = logging.getLogger(__name__)
 router = APIRouter()
 Staff = Annotated[Principal, Depends(require_staff)]
 
@@ -389,6 +391,8 @@ def instruct_alert(ward: str, alertId: str, body: InstructionIn, request: Reques
 def update_staff_presence(ward: str, staffId: str, body: StaffPresenceIn, request: Request, who: Staff) -> dict:  # noqa: N803
     """Availability only, not location tracking (contracts/openapi.yaml). Publishes staff-presence."""
     _check_ward(request, ward)
+    if who.staff_id != staffId:
+        require_role(who, "charge_nurse")  # you can mark yourself; only the charge nurse can mark others
     ingestor = request.app.state.ingestor
     with ingestor.lock:
         if staffId not in ingestor.twin.staff:
@@ -418,6 +422,7 @@ def update_staff_presence(ward: str, staffId: str, body: StaffPresenceIn, reques
 def list_doctor_orders(ward: str, request: Request, who: Staff) -> list:
     _check_ward(request, ward)
     ingestor = request.app.state.ingestor
+    ingestor.store.audit(who.staff_id, "doctor.orders_read", ward)  # a read of patient data (invariant 11)
     with ingestor.lock:
         orders = getattr(ingestor.twin, "doctor_orders", [])
         return list(orders)
@@ -451,9 +456,9 @@ def create_doctor_order(ward: str, body: DoctorOrderIn, request: Request, who: S
     bed_alerts = [a for a in alerts if a.get("bed") == body.bed]
     for a in bed_alerts:
         try:
-            _staff_ack(request, who, "alert", a["alertId"], "instruct", note=body.orderText)
-        except Exception:
-            pass
+            _staff_ack(request, who, "alert", a["alertId"], "instruct", note=body.orderText[:280])
+        except HTTPException as exc:
+            log.warning("order not attached to alert %s: %s", a["alertId"], exc.detail)
 
     ingestor.store.audit(who.staff_id, "doctor.order_created", body.bed, {"orderText": body.orderText})
     if hasattr(request.app.state, "hub") and request.app.state.hub:
@@ -463,10 +468,19 @@ def create_doctor_order(ward: str, body: DoctorOrderIn, request: Request, who: S
 
 @router.post("/api/v1/demo/trigger-peak")
 def trigger_demo_peak(request: Request, who: Staff) -> dict:
-    """Helper for jury demo: deteriorate B06 and escalate assist call."""
+    """Helper for the live demo: deteriorate B06 and press an assist call. Off unless BORJ_DEMO_ENDPOINTS=1,
+    charge nurse only, and the audit log says it was a demo trigger, not a clinical entry."""
+    if not request.app.state.settings.demo_endpoints:
+        raise HTTPException(404, {"error": "not_found", "detail": "demo endpoints are disabled"})
+    require_role(who, "charge_nurse")
     ingestor = request.app.state.ingestor
     ward = ingestor.layout.ward
     bed = "B06"
+    with ingestor.lock:
+        target = ingestor.twin.beds.get(bed)
+        if target is None or target.admission is None:
+            raise HTTPException(409, {"error": "conflict", "detail": f"no patient admitted in {bed}"})
+    ingestor.store.audit(who.staff_id, "demo.trigger_peak", bed, {"synthetic": True})
     acute_vitals = {
         "temp_c": 39.2,
         "resp_rate": 26,
@@ -477,21 +491,24 @@ def trigger_demo_peak(request: Request, who: Staff) -> dict:
     }
     cfg = request.app.state.observations_config
     payload = manual_vitals(new_ulid(), format_ts(ingestor.event_now()), ward, bed, who.staff_id, acute_vitals, cfg)
-    ingestor.handle(bc.topic("vitals", ward, bed=bed), payload)
+    if (result := ingestor.handle(bc.topic("vitals", ward, bed=bed), payload)).status != "accepted":
+        raise HTTPException(422, {"error": "rejected", "detail": result.detail})
 
     call_payload = {
         "schemaVersion": 1,
         "eventId": new_ulid(),
         "ts": format_ts(ingestor.event_now()),
+        "tsSource": "server",
         "ward": ward,
         "bed": bed,
-        "source": "bedside-node",
-        "sourceType": "bedside",
-        "callId": f"C-{bed}-{new_ulid()[:6]}",
+        "source": f"node-{bed}",
+        "sourceType": "bedside_node",
+        "callId": f"C-{bed}-{new_ulid()[-6:]}",  # the random end of the ULID: the start is the same for hours
         "kind": "assist",
         "pressCount": 2,
     }
-    ingestor.handle(bc.topic("call", ward, bed=bed), call_payload)
+    if (result := ingestor.handle(bc.topic("call", ward, bed=bed), call_payload)).status != "accepted":
+        raise HTTPException(422, {"error": "rejected", "detail": result.detail})
     return {"status": "ok", "message": "Deterioration and assist escalation simulated on Bed B06"}
 
 

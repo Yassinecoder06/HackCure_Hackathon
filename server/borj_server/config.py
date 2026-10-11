@@ -47,6 +47,12 @@ class Settings:
     # off | verify (check signatures that are present) | require (also reject unsigned measurements).
     device_keys: str = ""
     integrity_mode: str = "verify"
+    # Browser origins allowed to call the API, beyond localhost and private-network (LAN) addresses on any
+    # port, which are always allowed so the apps work on a laptop and on phones on the demo Wi-Fi.
+    # Comma-separated, e.g. the hosted demo URL: https://borj.example.org
+    cors_origins: str = ""
+    # Demo-only helpers (POST /api/v1/demo/trigger-peak). Off unless the demo stack turns them on.
+    demo_endpoints: bool = False
     # Language of explanations when a request does not ask (?lang= or Accept-Language): en | fr.
     default_lang: str = "en"
     # Suggest a new assignment automatically when staff presence or admissions change.
@@ -70,5 +76,7 @@ class Settings:
             calls_config_path=Path(os.environ.get("BORJ_CALLS_CONFIG", str(cls.calls_config_path))),
             default_lang=os.environ.get("BORJ_LANG", cls.default_lang),
             device_keys=os.environ.get("BORJ_DEVICE_KEYS", ""),
+            cors_origins=os.environ.get("BORJ_CORS_ORIGINS", ""),
+            demo_endpoints=_env_bool("BORJ_DEMO_ENDPOINTS", cls.demo_endpoints),
             integrity_mode=os.environ.get("BORJ_INTEGRITY_MODE", cls.integrity_mode),
         )
