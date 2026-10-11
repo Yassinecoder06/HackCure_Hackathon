@@ -18,6 +18,7 @@ services:
       BORJ_MQTT_USERS: ${BORJ_MQTT_USERS:?missing - run python infra/gen_secrets.py}
     ports:
       - "8883:8883"
+      - "1883:1883"
     volumes:
       - ./infra/mosquitto/entrypoint.sh:/mosquitto/entrypoint.sh:ro
       - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
