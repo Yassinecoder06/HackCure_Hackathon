@@ -40,6 +40,10 @@ from .twin.layout import WardLayout
 
 log = logging.getLogger("borj_server")
 
+# localhost, 127.0.0.1 and RFC 1918 private addresses (10/8, 172.16/12, 192.168/16), any port.
+PRIVATE_ORIGIN = (r"^https?://(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}"
+                  r"|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d{1,5})?$")
+
 
 def create_app(
     settings: Settings | None = None,
@@ -125,10 +129,13 @@ def create_app(
 
     app = FastAPI(title="Borj ward server", version="0.1.0", lifespan=lifespan)
 
+    # Not "*": only localhost, private-network addresses and the origins in BORJ_CORS_ORIGINS. The apps
+    # authenticate with a bearer header, not cookies, so credentials are not allowed cross-origin.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
+        allow_origin_regex=PRIVATE_ORIGIN,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
