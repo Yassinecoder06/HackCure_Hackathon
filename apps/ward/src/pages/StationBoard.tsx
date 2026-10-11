@@ -19,6 +19,7 @@ interface StationBoardProps {
   onAcknowledgeAlert?: (alertId: string) => Promise<void>;
   onSilenceAlarm?: () => void;
   isAlarmSounding?: boolean;
+  onSelectTab?: (tab: 'board' | 'staff' | 'doctor' | 'twin') => void;
 }
 
 export const StationBoard: React.FC<StationBoardProps> = ({
@@ -29,7 +30,8 @@ export const StationBoard: React.FC<StationBoardProps> = ({
   onOpenFastEntry,
   onAcknowledgeAlert,
   onSilenceAlarm,
-  isAlarmSounding
+  isAlarmSounding,
+  onSelectTab
 }) => {
   const [selectedBed, setSelectedBed] = useState<any | null>(null);
 
@@ -183,6 +185,28 @@ export const StationBoard: React.FC<StationBoardProps> = ({
             <div style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', color: '#38bdf8', padding: '0.35rem 0.75rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>
               ⚡ Triage Latency: {triageMetrics?.triageLatencyMs ? `p50 ${triageMetrics.triageLatencyMs.p50}ms · p95 ${triageMetrics.triageLatencyMs.p95}ms (n=${triageMetrics.triageLatencyMs.n})` : '< 320ms budget'} · Zero-Cloud Ward Network
             </div>
+            {onSelectTab && (
+              <button
+                onClick={() => onSelectTab('twin')}
+                style={{
+                  background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+                  border: '1px solid #60a5fa',
+                  color: '#ffffff',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: 6,
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
+                id="btn-switch-twin3d"
+                title="Launch 3D Digital Twin View"
+              >
+                🏢 3D Digital Twin →
+              </button>
+            )}
           </div>
         </div>
 

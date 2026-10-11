@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
-import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon, Volume2, VolumeX } from 'lucide-react';
+import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon, Volume2, VolumeX, Box } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'board' | 'staff' | 'doctor';
-  onSelectTab: (tab: 'board' | 'staff' | 'doctor') => void;
+  currentTab: 'board' | 'staff' | 'doctor' | 'twin';
+  onSelectTab: (tab: 'board' | 'staff' | 'doctor' | 'twin') => void;
   isConnected: boolean;
   onPeakTriggered?: () => void;
   onOpenLogin: () => void;
@@ -80,6 +80,15 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <UserCheck size={16} />
           Doctor Console
+        </button>
+        <button
+          className={`nav-btn ${currentTab === 'twin' ? 'active' : ''}`}
+          onClick={() => onSelectTab('twin')}
+          id="nav-tab-twin"
+          title="Explore 3D Digital Twin View of Ward W1"
+        >
+          <Box size={16} />
+          {STRINGS.nav.digitalTwin}
         </button>
       </nav>
 

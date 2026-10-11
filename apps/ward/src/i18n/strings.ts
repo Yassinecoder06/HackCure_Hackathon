@@ -14,6 +14,8 @@ export const STRINGS = {
   nav: {
     stationBoard: 'Station Board (2D Plan)',
     staffView: 'Staff & Decisions',
+    doctorConsole: 'Doctor Console',
+    digitalTwin: '3D Digital Twin',
     triggerPeakDemo: 'Trigger Night Peak Demo',
     currentStaff: 'Active Staff Member'
   },
