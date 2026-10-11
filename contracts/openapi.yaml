@@ -368,6 +368,50 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/Invalid" }
 
+  /api/v1/wards/{ward}/doctor/orders:
+    get:
+      tags: [alerts]
+      summary: Doctor orders for the ward, newest first (staff only; every read is audited)
+      parameters: [{ $ref: "#/components/parameters/ward" }]
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DoctorOrder" }
+    post:
+      tags: [alerts]
+      summary: The remote on-call doctor sends an order to the ward
+      description: |
+        A free-text message to the nurses about one admitted bed. Stored as an encrypted `doctor-order`
+        event (never on MQTT, never to family components), so it survives a restart. It never changes a
+        prescription, an assignment or a score. If the bed has an active alert, the text (cut to 280
+        characters) is also attached to it as an instruction. Doctors only.
+      parameters: [{ $ref: "#/components/parameters/ward" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bed, orderText]
+              additionalProperties: false
+              properties:
+                bed: { $ref: "#/components/schemas/Id" }
+                orderText: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DoctorOrder" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
   /api/v1/wards/{ward}/meds/timeline:
     get:
       tags: [meds]
@@ -1094,6 +1138,17 @@ components:
         startDate: { type: string, format: date }
         endDate: { type: string, format: date }
         isInfusion: { type: boolean, default: false }
+
+    DoctorOrder:
+      type: object
+      required: [orderId, bed, orderText, doctorId, doctorName, createdAt]
+      properties:
+        orderId: { $ref: "#/components/schemas/Id" }
+        bed: { $ref: "#/components/schemas/Id" }
+        orderText: { type: string, maxLength: 500 }
+        doctorId: { $ref: "#/components/schemas/Id" }
+        doctorName: { type: string }
+        createdAt: { $ref: "#/components/schemas/Timestamp" }
 
     Prescription:
       description: The request's fields plus what the server adds. (Not an allOf of PrescriptionRequest, whose additionalProperties false would reject the added fields.)

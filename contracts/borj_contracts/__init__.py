@@ -42,7 +42,13 @@ _TOPIC_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # Internal only: stored in the event log, never published on MQTT (contains drug names).
     (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/prescription$"), "prescription"),
     (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/family$"), "family-event"),
+    (re.compile(rf"^borj/(?P<ward>{_ID})/(?P<bed>{_ID})/order$"), "doctor-order"),
 ]
+
+# Schemas that only the server itself creates, from an authenticated staff action over REST. They share the
+# borj/ topic tree so they go through the same validation, storage and replay, but a message of this kind
+# arriving over MQTT is forged by definition and must be dropped (prescriptions, consents, doctor orders).
+INTERNAL_SCHEMAS = frozenset({"prescription", "family-event", "doctor-order"})
 
 # Subscribe pattern covering every contract topic.
 SUBSCRIBE_ALL = "borj/#"
@@ -130,6 +136,7 @@ def topic(kind: str, ward: str, bed: str | None = None, staff_id: str | None = N
         "binding": "binding",
         "prescription": "prescription",
         "family-event": "family",
+        "doctor-order": "order",
     }[kind]
     if not bed or bed in RESERVED_BED_IDS:
         raise ContractError(f"invalid bed for {kind}: {bed!r}")

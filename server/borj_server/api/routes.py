@@ -418,52 +418,55 @@ def update_staff_presence(ward: str, staffId: str, body: StaffPresenceIn, reques
     return {"eventId": payload["eventId"]}
 
 
+def _order_view(order, twin) -> dict:
+    doctor = twin.staff.get(order.doctor_id)
+    return {"orderId": order.order_id, "bed": order.bed, "orderText": order.text, "doctorId": order.doctor_id,
+            "doctorName": doctor.name if doctor else order.doctor_id, "createdAt": format_ts(order.ts)}
+
+
 @router.get("/api/v1/wards/{ward}/doctor/orders")
 def list_doctor_orders(ward: str, request: Request, who: Staff) -> list:
     _check_ward(request, ward)
     ingestor = request.app.state.ingestor
     ingestor.store.audit(who.staff_id, "doctor.orders_read", ward)  # a read of patient data (invariant 11)
     with ingestor.lock:
-        orders = getattr(ingestor.twin, "doctor_orders", [])
-        return list(orders)
+        newest_first = sorted(ingestor.twin.doctor_orders.values(), key=lambda o: o.ts, reverse=True)
+        return [_order_view(o, ingestor.twin) for o in newest_first]
 
 
 @router.post("/api/v1/wards/{ward}/doctor/orders", status_code=201)
 def create_doctor_order(ward: str, body: DoctorOrderIn, request: Request, who: Staff) -> dict:
+    """The remote doctor's order: a durable, encrypted `order` event. A message to the nurses only; it never
+    changes a prescription, an assignment or a score (safety invariant 1)."""
     _check_ward(request, ward)
     require_role(who, "doctor")
     ingestor = request.app.state.ingestor
     with ingestor.lock:
         known = ingestor.twin.beds.get(body.bed)
-        if known is None:
-            raise HTTPException(404, {"error": "not_found", "detail": f"no bed {body.bed}"})
-        if not hasattr(ingestor.twin, "doctor_orders"):
-            ingestor.twin.doctor_orders = []
-        doc_member = ingestor.twin.staff.get(who.staff_id)
-        doc_name = doc_member.name if doc_member else who.staff_id
-        new_order = {
-            "orderId": f"ORD-{new_ulid()[:12]}",
-            "bed": body.bed,
-            "orderText": body.orderText,
-            "doctorId": who.staff_id,
-            "doctorName": doc_name,
-            "createdAt": format_ts(ingestor.event_now()),
-        }
-        ingestor.twin.doctor_orders.insert(0, new_order)
+        admission = known.admission if known else None
+    if known is None:
+        raise HTTPException(404, {"error": "not_found", "detail": f"no bed {body.bed}"})
+    if admission is None:
+        raise HTTPException(409, {"error": "conflict", "detail": f"no patient admitted in {body.bed}"})
+    payload = {
+        "schemaVersion": 1, "eventId": new_ulid(), "ts": format_ts(ingestor.event_now()), "ward": ward,
+        "bed": body.bed, "source": "staff-app", "sourceType": "staff_app", "admissionId": admission.admission_id,
+        "orderId": f"ORD-{new_ulid()}", "doctorId": who.staff_id, "orderText": body.orderText,
+    }
+    result = ingestor.handle(bc.topic("doctor-order", ward, bed=body.bed), payload)
+    if result.status != "accepted":
+        raise HTTPException(422, {"error": "rejected", "detail": result.detail})
+    ingestor.store.audit(who.staff_id, "doctor.order_created", payload["orderId"], {"bed": body.bed})
 
-    # If there is an active alert for this bed, also attach instruction to the alert
+    # If the bed has an active alert, the nurses also see the order on it (as the doctor's instruction).
     _, alerts = build_beds(request.app, None)
-    bed_alerts = [a for a in alerts if a.get("bed") == body.bed]
-    for a in bed_alerts:
+    for a in (a for a in alerts if a.get("bed") == body.bed):
         try:
             _staff_ack(request, who, "alert", a["alertId"], "instruct", note=body.orderText[:280])
         except HTTPException as exc:
             log.warning("order not attached to alert %s: %s", a["alertId"], exc.detail)
-
-    ingestor.store.audit(who.staff_id, "doctor.order_created", body.bed, {"orderText": body.orderText})
-    if hasattr(request.app.state, "hub") and request.app.state.hub:
-        request.app.state.hub.on_ingest("doctor_order", new_order)
-    return new_order
+    with ingestor.lock:
+        return _order_view(ingestor.twin.doctor_orders[payload["orderId"]], ingestor.twin)
 
 
 @router.post("/api/v1/demo/trigger-peak")

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://borj.local/schemas/doctor-order.schema.json",
+  "title": "Doctor order (internal event)",
+  "description": "Topic borj/{ward}/{bed}/order. INTERNAL: stored in the encrypted event log only and NEVER published on MQTT, because it is free clinical text about a patient. Written by a doctor through the REST API (the remote on-call doctor's instruction to the ward, ADR 0008). It is a message to the nurses: it never changes a prescription, an assignment or a score (safety invariant 1), and it never reaches the family components (invariant 2).",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "required": ["bed", "admissionId", "orderId", "doctorId", "orderText"],
+  "properties": {
+    "bed": { "$ref": "common.schema.json#/$defs/id" },
+    "sourceType": { "const": "staff_app" },
+    "admissionId": { "$ref": "common.schema.json#/$defs/id" },
+    "orderId": { "$ref": "common.schema.json#/$defs/id" },
+    "doctorId": { "$ref": "common.schema.json#/$defs/id" },
+    "orderText": { "type": "string", "minLength": 1, "maxLength": 500 }
+  },
+  "unevaluatedProperties": false
+}

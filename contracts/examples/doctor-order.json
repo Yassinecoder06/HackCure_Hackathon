@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "eventId": "01K7ZQ8V3E4M5N6P7Q8R9S0T2C",
+  "ts": "2026-10-10T23:50:00Z",
+  "ward": "W1",
+  "bed": "B04",
+  "source": "staff-app",
+  "sourceType": "staff_app",
+  "admissionId": "ADM-0004",
+  "orderId": "ORD-01K7ZQ8V3E4M5N6P7Q8R9S0T2C",
+  "doctorId": "DR1",
+  "orderText": "Recheck observations in 30 minutes and call me back with the new set."
+}

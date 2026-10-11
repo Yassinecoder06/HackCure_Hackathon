@@ -20,6 +20,7 @@ from .state import (
     Call,
     Consent,
     Device,
+    DoctorOrder,
     FamilyUpdate,
     Invite,
     Prescription,
@@ -207,6 +208,15 @@ def apply_prescription(twin: WardTwin, payload: dict[str, Any]) -> str:
     return "applied"
 
 
+def apply_doctor_order(twin: WardTwin, payload: dict[str, Any]) -> str:
+    if _bed(twin, payload) is None:
+        return "ignored:unknown_bed"
+    twin.doctor_orders[payload["orderId"]] = DoctorOrder(
+        payload["orderId"], payload["admissionId"], payload["bed"], payload["doctorId"], payload["orderText"],
+        parse_ts(payload["ts"]))
+    return "applied"
+
+
 def apply_med(twin: WardTwin, payload: dict[str, Any]) -> str:
     """Only a nurse's record closes a dose; a patient's report is kept apart (whitepaper 4.3)."""
     ts = parse_ts(payload["ts"])
@@ -282,6 +292,7 @@ HANDLERS: dict[str, Callable[[WardTwin, dict[str, Any]], str]] = {
     "assignment": apply_assignment,
     "prescription": apply_prescription,
     "family-event": apply_family,
+    "doctor-order": apply_doctor_order,
     "med": apply_med,
 }
 

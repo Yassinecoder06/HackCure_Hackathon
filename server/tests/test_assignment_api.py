@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import time
-
 from .conftest import login, make_client, openapi_validator
 
 
@@ -70,23 +68,29 @@ def test_reject_and_stale_and_superseded(tmp_path, make_event):
         assert (rejected["status"], rejected["decisionReason"]) == ("rejected", "N2 is on break soon")
 
 
+def drain(service) -> None:
+    """Automatic suggestions run on one worker thread: a no-op queued behind them returns when they are done."""
+    service._executor.submit(lambda: None).result(timeout=15)
+
+
 def test_nurse_called_away_triggers_a_suggestion_automatically(tmp_path, make_event):
     with make_client(tmp_path, with_inference=True) as c:
         ingestor = c.app.state.ingestor
+        service = c.app.state.assignment
         setup_ward(ingestor, make_event, nurses=("N1", "N2", "N3"))
         login(c, "CN1")
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline and not c.app.state.assignment.list("pending"):
-            time.sleep(0.1)
-        first = c.app.state.assignment.list("pending")[0]
+        drain(service)  # the burst of admissions gives one (debounced) suggestion, possibly a second behind it
+        drain(service)
+        first = service.list("pending")[0]
         c.post(f"/api/v1/wards/W1/assignments/suggestions/{first['suggestionId']}/decision",
                json={"decision": "approve"})
+        for leftover in service.list("pending"):  # settle what the admissions left, so only the new one remains
+            c.post(f"/api/v1/wards/W1/assignments/suggestions/{leftover['suggestionId']}/decision",
+                   json={"decision": "reject", "reason": "superseded in test"})
 
         ingestor.handle(*make_event("staff-presence", staffId="N3", onWard=False, reason="called_away",
                                     ts="2026-10-10T23:00:00Z"))
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline and not c.app.state.assignment.list("pending"):
-            time.sleep(0.1)
-        pending = c.app.state.assignment.list("pending")
+        drain(service)
+        pending = service.list("pending")
     assert pending and pending[0]["trigger"] == "N3: called away"
     assert all(ch["toStaffId"] in {"N1", "N2"} for ch in pending[0]["changes"])

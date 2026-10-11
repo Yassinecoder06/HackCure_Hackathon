@@ -104,6 +104,13 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   `binding`, `call`) are refused too. Each rejection is logged and written to the audit chain (actor `mqtt`,
   action `integrity.rejected`), so it never reaches the event log or the twin. Compose runs `verify` until
   role A's signers load their keys, then switches to `require`.
+- **Doctor orders** (`POST/GET .../doctor/orders`, doctors write, every read audited): the remote doctor's free-text
+  message to the nurses about an admitted bed. An encrypted `doctor-order` event (internal topic `.../order`),
+  so it survives a restart and replays on rebuild. It never changes a prescription, an assignment or a score,
+  and it is also attached to the bed's active alert as the doctor's instruction.
+- **Internal topics are refused over MQTT** (`prescription`, `family`, `order`; `bc.INTERNAL_SCHEMAS`): only the
+  server writes them, after an authenticated REST action. A forged one on the broker is dropped and audited in
+  every integrity mode. (Broker ACLs, role A, should also stop devices publishing outside their own bed's topics.)
 - Still to come: SMS fallback (stub logs only).
 
 ## Run
