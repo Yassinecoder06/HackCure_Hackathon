@@ -25,6 +25,8 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
   const [doctorOrders, setDoctorOrders] = useState<any[]>([]);
   const [submittingOrder, setSubmittingOrder] = useState<boolean>(false);
   const [orderSuccessMsg, setOrderSuccessMsg] = useState<string | null>(null);
+  const session = wardApi.getSession();
+  const isDoctor = session?.staff?.role === 'doctor';
 
   const loadDoctorOrders = async () => {
     try {
@@ -91,6 +93,31 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
           <span>Hard UI Invariant: Orders and validations take ≤ 3 taps. Decisions are logged with doctor identity.</span>
         </div>
       </div>
+
+      {/* Role Check & Switch Banner */}
+      {!isDoctor && (
+        <div style={{ background: 'rgba(234, 88, 12, 0.12)', border: '1px solid #ea580c', padding: '0.85rem 1.25rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 800, color: '#f97316', fontSize: '0.9rem' }}>
+              Logged in as {session?.staff?.name || 'Staff'} ({session?.staff?.role || 'charge_nurse'})
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              Safety Invariant 1: Doctor orders require a verified attending physician login (DR1, PIN 783818).
+            </div>
+          </div>
+          <button
+            className="btn-primary"
+            onClick={async () => {
+              await wardApi.login('DR1', '783818');
+              onRefresh?.();
+              loadDoctorOrders();
+            }}
+            style={{ background: '#7c3aed', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+          >
+            Switch to Dr. F Session (1-Tap)
+          </button>
+        </div>
+      )}
 
       {/* Urgent Clinical Escalations List */}
       <div>
@@ -323,6 +350,11 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
               <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 700 }}>✓ Logged in Audit Log</span>
             </div>
           ))}
+          {doctorOrders.length === 0 && (
+            <div style={{ background: 'var(--bg-surface)', border: '1px dashed var(--border-subtle)', padding: '1.5rem', borderRadius: 6, textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              No attending orders dispatched yet this shift. Use the form above to dispatch instructions or orders.
+            </div>
+          )}
         </div>
       </div>
     </div>

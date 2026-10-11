@@ -17,6 +17,7 @@ import {
 
 interface StaffViewProps {
   beds: any[];
+  staff?: any[];
   calls: any[];
   alerts: any[];
   onRefresh?: () => void;
@@ -26,6 +27,7 @@ interface StaffViewProps {
 
 export const StaffView: React.FC<StaffViewProps> = ({
   beds,
+  staff = [],
   calls,
   alerts,
   onRefresh,
@@ -48,6 +50,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
   // Suggestions state
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [decidingSug, setDecidingSug] = useState<boolean>(false);
+  const [requestingSug, setRequestingSug] = useState<boolean>(false);
 
   // What-If state
   const [whatIfDisruptions, setWhatIfDisruptions] = useState<string[]>(['staff_leaves']);
@@ -156,6 +159,29 @@ export const StaffView: React.FC<StaffViewProps> = ({
       console.error(e);
     } finally {
       setDecidingSug(false);
+    }
+  };
+
+  const handleRequestSuggestion = async () => {
+    setRequestingSug(true);
+    try {
+      await wardApi.requestSuggestion();
+      await loadSuggestions();
+      onRefresh?.();
+    } catch (e: any) {
+      alert(e.message || 'Failed to request suggestion from solver');
+    } finally {
+      setRequestingSug(false);
+    }
+  };
+
+  const handleToggleStaffPresence = async (staffId: string, onWard: boolean, reason: string) => {
+    try {
+      await wardApi.setStaffPresence(staffId, onWard, reason);
+      onRefresh?.();
+      await loadSuggestions();
+    } catch (e: any) {
+      alert(e.message || 'Failed to update staff presence');
     }
   };
 
@@ -561,12 +587,115 @@ export const StaffView: React.FC<StaffViewProps> = ({
       {/* 3. OR-TOOLS ASSIGNMENT REBALANCING TAB */}
       {activeTab === 'assignments' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.assignments.title}</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Mathematical workload balancing respecting continuity of care, proximity, and skill mix.
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>{STRINGS.assignments.title}</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Mathematical workload balancing respecting continuity of care, proximity, and skill mix.
+              </p>
+            </div>
+            <button
+              className="btn-primary"
+              onClick={handleRequestSuggestion}
+              disabled={requestingSug}
+              id="btn-request-rebalance"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.65rem 1.25rem' }}
+            >
+              <Sparkles size={16} />
+              {requestingSug ? 'Calculating OR-Tools Optimization...' : 'Calculate Optimal Rebalance (OR-Tools)'}
+            </button>
           </div>
+
+          {/* Ward Shift & Staff Availability Roster */}
+          <div className="room-box" style={{ padding: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                Ward Shift & Staff Availability Roster
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {staff.filter((s: any) => s.onWard).length} of {staff.length} on ward
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
+              {staff.map((st: any) => (
+                <div
+                  key={st.staffId}
+                  style={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid ' + (st.onWard ? 'rgba(16,185,129,0.4)' : 'var(--border-subtle)'),
+                    borderRadius: 6,
+                    padding: '0.75rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.9rem' }}>{st.displayName} ({st.staffId})</span>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                        {st.role.replace('_', ' ')} {st.skills?.length > 0 ? `· [${st.skills.join(', ')}]` : ''}
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: st.onWard ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.15)',
+                        color: st.onWard ? '#10b981' : '#94a3b8'
+                      }}
+                    >
+                      {st.onWard ? 'ON WARD' : 'OFF WARD'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                    {!st.onWard ? (
+                      <button
+                        className="btn-success"
+                        onClick={() => handleToggleStaffPresence(st.staffId, true, 'shift_start')}
+                        style={{ flex: 1, padding: '4px 8px', fontSize: '0.75rem' }}
+                      >
+                        Check In (On Ward)
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          className="btn-outline"
+                          onClick={() => handleToggleStaffPresence(st.staffId, false, 'break_start')}
+                          style={{ flex: 1, padding: '4px 8px', fontSize: '0.75rem' }}
+                        >
+                          Break
+                        </button>
+                        <button
+                          className="btn-outline"
+                          onClick={() => handleToggleStaffPresence(st.staffId, false, 'called_away')}
+                          style={{ flex: 1, padding: '4px 8px', fontSize: '0.75rem', borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }}
+                        >
+                          Called Away
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {suggestions.length === 0 && (
+            <div className="room-box" style={{ padding: '2.5rem 1.5rem', textAlign: 'center', border: '1px dashed rgba(59,130,246,0.3)' }}>
+              <Sparkles size={36} color="#0284c7" style={{ margin: '0 auto 12px' }} />
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>No Rebalancing Calculations Pending</h4>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: 500, margin: '8px auto 16px' }}>
+                Click "Calculate Optimal Rebalance" to trigger Google OR-Tools MIP solver. It distributes bed assignments across available nurses according to live NEWS2 acuity, continuity of care, and room walking distance.
+              </p>
+              <button className="btn-primary" onClick={handleRequestSuggestion} disabled={requestingSug}>
+                {requestingSug ? 'Calculating OR-Tools Optimization...' : 'Run OR-Tools Solver Now'}
+              </button>
+            </div>
+          )}
 
           {suggestions.map(sug => (
             <div key={sug.suggestionId} className="room-box" style={{ padding: '1.5rem', border: '1px solid rgba(59,130,246,0.3)' }}>
@@ -723,14 +852,16 @@ export const StaffView: React.FC<StaffViewProps> = ({
                 <div className="metric-card">
                   <h4>{STRINGS.whatIf.metrics.utilization}</h4>
                   <div className="metric-values">
-                    <span className="median-val" style={{ color: whatIfResult.scenario.nurse_utilization.median > 85 ? '#ea580c' : 'var(--text-main)' }}>
-                      {whatIfResult.scenario.nurse_utilization.median}%
+                    <span className="median-val" style={{ color: (whatIfResult.scenario.nurse_utilization.median <= 1 ? whatIfResult.scenario.nurse_utilization.median * 100 : whatIfResult.scenario.nurse_utilization.median) > 85 ? '#ea580c' : 'var(--text-main)' }}>
+                      {whatIfResult.scenario.nurse_utilization.median <= 1 ? (whatIfResult.scenario.nurse_utilization.median * 100).toFixed(0) : whatIfResult.scenario.nurse_utilization.median}%
                     </span>
                     <span className="percentiles-band">
-                      [{whatIfResult.scenario.nurse_utilization.p5}% – {whatIfResult.scenario.nurse_utilization.p95}%]
+                      [{whatIfResult.scenario.nurse_utilization.p5 <= 1 ? (whatIfResult.scenario.nurse_utilization.p5 * 100).toFixed(0) : whatIfResult.scenario.nurse_utilization.p5}% – {whatIfResult.scenario.nurse_utilization.p95 <= 1 ? (whatIfResult.scenario.nurse_utilization.p95 * 100).toFixed(0) : whatIfResult.scenario.nurse_utilization.p95}%]
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Baseline: {whatIfResult.baseline.nurse_utilization.median}%</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Baseline: {whatIfResult.baseline.nurse_utilization.median <= 1 ? (whatIfResult.baseline.nurse_utilization.median * 100).toFixed(0) : whatIfResult.baseline.nurse_utilization.median}%
+                  </span>
                 </div>
 
                 <div className="metric-card">

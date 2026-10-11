@@ -297,6 +297,35 @@ class WardApiService {
     return res.json();
   }
 
+  public async requestSuggestion(ward = 'W1') {
+    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/assignments/suggestions`, {
+      method: 'POST',
+      headers: this.getHeaders()
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to request suggestion from solver');
+    }
+    return res.json();
+  }
+
+  public async setStaffPresence(staffId: string, onWard: boolean, reason: string, expectedBackMin?: number, ward = 'W1') {
+    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/staff/${staffId}/presence`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        onWard,
+        reason,
+        ...(expectedBackMin !== undefined ? { expectedBackMin } : {})
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to update staff presence');
+    }
+    return res.json();
+  }
+
   public async decideSuggestion(suggestionId: string, decision: 'approve' | 'reject', reason?: string, ward = 'W1') {
     const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/assignments/suggestions/${suggestionId}/decision`, {
       method: 'POST',

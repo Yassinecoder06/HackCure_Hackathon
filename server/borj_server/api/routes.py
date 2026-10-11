@@ -176,6 +176,17 @@ class DecisionIn(BaseModel):
     reason: str | None = Field(default=None, max_length=200)
 
 
+class StaffPresenceIn(BaseModel):
+    onWard: bool
+    reason: str = Field(pattern="^(shift_start|shift_end|called_away|returned|break_start|break_end)$")
+    expectedBackMin: int | None = Field(default=None, ge=0, le=720)
+
+
+class DoctorOrderIn(BaseModel):
+    bed: str = Field(pattern=r"^[A-Za-z0-9_-]{1,16}$")
+    orderText: str = Field(min_length=1, max_length=500)
+
+
 def _suggestion_call(fn, *args):
     from ..assignment import SuggestionError
 
@@ -372,6 +383,114 @@ def instruct_alert(ward: str, alertId: str, body: InstructionIn, request: Reques
     _staff_ack(request, who, "alert", alertId, "instruct", note=body.text)
     _, alerts = build_beds(request.app, None, explainer(request))
     return next(a for a in alerts if a["alertId"] == alertId)
+
+
+@router.post("/api/v1/wards/{ward}/staff/{staffId}/presence", status_code=201)
+def update_staff_presence(ward: str, staffId: str, body: StaffPresenceIn, request: Request, who: Staff) -> dict:  # noqa: N803
+    """Availability only, not location tracking (contracts/openapi.yaml). Publishes staff-presence."""
+    _check_ward(request, ward)
+    ingestor = request.app.state.ingestor
+    with ingestor.lock:
+        if staffId not in ingestor.twin.staff:
+            raise HTTPException(404, {"error": "not_found", "detail": f"unknown staff member {staffId}"})
+    payload = {
+        "schemaVersion": 1,
+        "eventId": new_ulid(),
+        "ts": format_ts(ingestor.event_now()),
+        "ward": ward,
+        "source": "staff-app",
+        "sourceType": "staff_app",
+        "staffId": staffId,
+        "onWard": body.onWard,
+        "reason": body.reason,
+        **({"expectedBackMin": body.expectedBackMin} if body.expectedBackMin is not None else {}),
+    }
+    result = ingestor.handle(bc.topic("staff-presence", ward, staff_id=staffId), payload)
+    if result.status != "accepted":
+        raise HTTPException(422, {"error": "rejected", "detail": result.detail})
+    ingestor.store.audit(who.staff_id, "staff.presence_updated", staffId, {"onWard": body.onWard, "reason": body.reason})
+    return {"eventId": payload["eventId"]}
+
+
+@router.get("/api/v1/wards/{ward}/doctor/orders")
+def list_doctor_orders(ward: str, request: Request, who: Staff) -> list:
+    _check_ward(request, ward)
+    ingestor = request.app.state.ingestor
+    with ingestor.lock:
+        orders = getattr(ingestor.twin, "doctor_orders", [])
+        return list(orders)
+
+
+@router.post("/api/v1/wards/{ward}/doctor/orders", status_code=201)
+def create_doctor_order(ward: str, body: DoctorOrderIn, request: Request, who: Staff) -> dict:
+    _check_ward(request, ward)
+    require_role(who, "doctor")
+    ingestor = request.app.state.ingestor
+    with ingestor.lock:
+        known = ingestor.twin.beds.get(body.bed)
+        if known is None:
+            raise HTTPException(404, {"error": "not_found", "detail": f"no bed {body.bed}"})
+        if not hasattr(ingestor.twin, "doctor_orders"):
+            ingestor.twin.doctor_orders = []
+        doc_member = ingestor.twin.staff.get(who.staff_id)
+        doc_name = doc_member.name if doc_member else who.staff_id
+        new_order = {
+            "orderId": f"ORD-{new_ulid()[:12]}",
+            "bed": body.bed,
+            "orderText": body.orderText,
+            "doctorId": who.staff_id,
+            "doctorName": doc_name,
+            "createdAt": format_ts(ingestor.event_now()),
+        }
+        ingestor.twin.doctor_orders.insert(0, new_order)
+
+    # If there is an active alert for this bed, also attach instruction to the alert
+    _, alerts = build_beds(request.app, None)
+    bed_alerts = [a for a in alerts if a.get("bed") == body.bed]
+    for a in bed_alerts:
+        try:
+            _staff_ack(request, who, "alert", a["alertId"], "instruct", note=body.orderText)
+        except Exception:
+            pass
+
+    ingestor.store.audit(who.staff_id, "doctor.order_created", body.bed, {"orderText": body.orderText})
+    if hasattr(request.app.state, "hub") and request.app.state.hub:
+        request.app.state.hub.on_ingest("doctor_order", new_order)
+    return new_order
+
+
+@router.post("/api/v1/demo/trigger-peak")
+def trigger_demo_peak(request: Request, who: Staff) -> dict:
+    """Helper for jury demo: deteriorate B06 and escalate assist call."""
+    ingestor = request.app.state.ingestor
+    ward = ingestor.layout.ward
+    bed = "B06"
+    acute_vitals = {
+        "temp_c": 39.2,
+        "resp_rate": 26,
+        "pulse": 118,
+        "spo2": 91,
+        "consciousness": "V",
+        "on_oxygen": True,
+    }
+    cfg = request.app.state.observations_config
+    payload = manual_vitals(new_ulid(), format_ts(ingestor.event_now()), ward, bed, who.staff_id, acute_vitals, cfg)
+    ingestor.handle(bc.topic("vitals", ward, bed=bed), payload)
+
+    call_payload = {
+        "schemaVersion": 1,
+        "eventId": new_ulid(),
+        "ts": format_ts(ingestor.event_now()),
+        "ward": ward,
+        "bed": bed,
+        "source": "bedside-node",
+        "sourceType": "bedside",
+        "callId": f"C-{bed}-{new_ulid()[:6]}",
+        "kind": "assist",
+        "pressCount": 2,
+    }
+    ingestor.handle(bc.topic("call", ward, bed=bed), call_payload)
+    return {"status": "ok", "message": "Deterioration and assist escalation simulated on Bed B06"}
 
 
 @router.websocket("/api/v1/wards/{ward}/stream")
