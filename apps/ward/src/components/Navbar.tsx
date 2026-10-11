@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
-import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon } from 'lucide-react';
+import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon, Volume2, VolumeX } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: 'board' | 'staff' | 'doctor';
@@ -11,6 +11,10 @@ interface NavbarProps {
   onOpenLogin: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
+  isAlarmSounding?: boolean;
+  onSilenceAlarm?: () => void;
+  isMuted?: boolean;
+  onToggleMute?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,7 +24,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onPeakTriggered,
   onOpenLogin,
   theme,
-  onToggleTheme
+  onToggleTheme,
+  isAlarmSounding,
+  onSilenceAlarm,
+  isMuted,
+  onToggleMute
 }) => {
   const [triggering, setTriggering] = useState<boolean>(false);
   const session = wardApi.getSession();
@@ -87,6 +95,33 @@ export const Navbar: React.FC<NavbarProps> = ({
           {triggering ? 'Triggering...' : STRINGS.nav.triggerPeakDemo}
         </button>
 
+        {/* Silence Alarm Button (Appears prominently when critical alarm is active) */}
+        {isAlarmSounding && (
+          <button
+            className="silence-alarm-navbar-btn"
+            onClick={onSilenceAlarm}
+            title="Stop Alarm Beeping immediately"
+            id="btn-navbar-silence-alarm"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#ef4444',
+              color: '#ffffff',
+              border: '1px solid #fecaca',
+              borderRadius: 8,
+              padding: '0.4rem 0.8rem',
+              fontWeight: 800,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              boxShadow: '0 0 16px rgba(239, 68, 68, 0.8)'
+            }}
+          >
+            <VolumeX size={16} />
+            Silence Alarm
+          </button>
+        )}
+
         {/* Staff Identity & Session Badge */}
         <button
           className="staff-auth-badge"
@@ -122,6 +157,30 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="status-dot" style={{ backgroundColor: isConnected ? '#10b981' : '#f59e0b' }}></div>
           <span>{isConnected ? 'LIVE' : 'SYNCING'}</span>
         </div>
+
+        {/* Audio Mute / Unmute Toggle Button */}
+        <button
+          className="audio-toggle-btn"
+          onClick={onToggleMute}
+          title={isMuted ? 'Unmute Ward Audio Alerts' : 'Mute Ward Audio Alerts'}
+          id="btn-toggle-audio"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: theme === 'dark' ? 'rgba(30, 41, 59, 0.8)' : '#f8fafc',
+            border: '1px solid ' + (theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : '#cbd5e1'),
+            borderRadius: 8,
+            width: 34,
+            height: 34,
+            color: isMuted ? '#f87171' : (theme === 'dark' ? '#94a3b8' : '#64748b'),
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
+          }}
+        >
+          {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+        </button>
 
         {/* Dark / Light Mode Toggle Button */}
         <button

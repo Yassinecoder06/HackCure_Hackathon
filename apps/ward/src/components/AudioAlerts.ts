@@ -1,10 +1,61 @@
 // Audio alerts synthesizer using Web Audio API
 // Provides pleasant chimes for normal call notifications and persistent pulsing alarms for critical events.
 
+type SoundStateListener = (sounding: boolean, muted: boolean) => void;
+
 class AudioAlertManager {
   private ctx: AudioContext | null = null;
   private isAlarmPlaying = false;
   private alarmInterval: number | null = null;
+  private autoTimeoutTimer: number | null = null;
+  private isMuted = false;
+  private listeners = new Set<SoundStateListener>();
+
+  constructor() {
+    try {
+      this.isMuted = localStorage.getItem('borj_audio_muted') === 'true';
+    } catch {
+      this.isMuted = false;
+    }
+  }
+
+  public subscribe(listener: SoundStateListener): () => void {
+    this.listeners.add(listener);
+    listener(this.isAlarmPlaying, this.isMuted);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notify() {
+    for (const listener of this.listeners) {
+      listener(this.isAlarmPlaying, this.isMuted);
+    }
+  }
+
+  public getMuted(): boolean {
+    return this.isMuted;
+  }
+
+  public setMuted(muted: boolean) {
+    this.isMuted = muted;
+    try {
+      localStorage.setItem('borj_audio_muted', muted ? 'true' : 'false');
+    } catch {}
+    if (muted && this.isAlarmPlaying) {
+      this.stopCriticalAlarm();
+    }
+    this.notify();
+  }
+
+  public toggleMute(): boolean {
+    this.setMuted(!this.isMuted);
+    return this.isMuted;
+  }
+
+  public isSounding(): boolean {
+    return this.isAlarmPlaying;
+  }
 
   private getContext(): AudioContext {
     if (!this.ctx) {
@@ -19,6 +70,7 @@ class AudioAlertManager {
 
   // Soft double-chime for call notifications or medium alerts
   public playChime() {
+    if (this.isMuted) return;
     try {
       const ctx = this.getContext();
       const now = ctx.currentTime;
@@ -51,12 +103,14 @@ class AudioAlertManager {
     }
   }
 
-  // Pulsing critical alarm for persistent alarms until acknowledged
+  // Pulsing critical alarm for persistent alarms until acknowledged or silenced
   public startCriticalAlarm() {
-    if (this.isAlarmPlaying) return;
+    if (this.isMuted || this.isAlarmPlaying) return;
     this.isAlarmPlaying = true;
+    this.notify();
 
     const pulse = () => {
+      if (this.isMuted || !this.isAlarmPlaying) return;
       try {
         const ctx = this.getContext();
         const now = ctx.currentTime;
@@ -79,6 +133,14 @@ class AudioAlertManager {
 
     pulse();
     this.alarmInterval = window.setInterval(pulse, 1200);
+
+    // Safeguard: auto-silence after 20 seconds so demo presentations never get locked in endless beeping
+    if (this.autoTimeoutTimer !== null) {
+      clearTimeout(this.autoTimeoutTimer);
+    }
+    this.autoTimeoutTimer = window.setTimeout(() => {
+      this.stopCriticalAlarm();
+    }, 20000);
   }
 
   public stopCriticalAlarm() {
@@ -87,6 +149,15 @@ class AudioAlertManager {
       clearInterval(this.alarmInterval);
       this.alarmInterval = null;
     }
+    if (this.autoTimeoutTimer !== null) {
+      clearTimeout(this.autoTimeoutTimer);
+      this.autoTimeoutTimer = null;
+    }
+    this.notify();
+  }
+
+  public silenceAlarm() {
+    this.stopCriticalAlarm();
   }
 }
 

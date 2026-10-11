@@ -1416,3 +1416,25 @@ body.light-mode .score-badge,
 body.light-mode .brand-icon {
   color: #ffffff !important;
 }
+
+/* Emergency Alert & Silence Banner Animations */
+@keyframes pulseGlow {
+  0% { transform: scale(1); box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+  50% { transform: scale(1.03); box-shadow: 0 0 16px rgba(239, 68, 68, 0.9); }
+  100% { transform: scale(1); box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+}
+
+.silence-alarm-navbar-btn {
+  animation: pulseGlow 1.2s infinite ease-in-out;
+}
+
+body.light-mode .global-emergency-banner button#btn-banner-silence {
+  background: #ffffff !important;
+  color: #b91c1c !important;
+}
+
+body.light-mode .global-emergency-banner button#btn-banner-ack {
+  background: #15803d !important;
+  color: #ffffff !important;
+}
+

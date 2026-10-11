@@ -321,6 +321,18 @@ class WardApiService {
     return res.json();
   }
 
+  public silenceAlarm() {
+    audioAlerts.stopCriticalAlarm();
+  }
+
+  public toggleAudioMute(): boolean {
+    return audioAlerts.toggleMute();
+  }
+
+  public isAudioMuted(): boolean {
+    return audioAlerts.getMuted();
+  }
+
   public async getSuggestions(ward = 'W1') {
     try {
       await this.ensureSession();
