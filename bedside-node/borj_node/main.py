@@ -1,16 +1,19 @@
 """CLI entrypoint for running the Borj Bedside Node.
 
 Usage:
-    python -m borj_node --ward W1 --bed B06 --broker 10.42.0.1:1883
+    python -m borj_node --ward W1 --bed B06 --broker 10.42.0.1:8883
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
+import os
 import signal
 import sys
 import time
+
+from borj_contracts import mqtt as bc_mqtt
 
 from .node import BedsideNode
 
@@ -21,7 +24,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Borj Bedside Call Node (Raspberry Pi 3)")
     parser.add_argument("--ward", default="W1", help="Ward ID (default: W1)")
     parser.add_argument("--bed", default="B06", help="Bed ID (default: B06)")
-    parser.add_argument("--broker", default="10.42.0.1:1883", help="MQTT broker host:port (default: 10.42.0.1:1883)")
+    parser.add_argument(
+        "--broker",
+        default=f"{os.environ.get('MQTT_HOST', '10.42.0.1')}:{os.environ.get('MQTT_PORT', '8883')}",
+        help="MQTT broker host:port (default: $MQTT_HOST:$MQTT_PORT, else 10.42.0.1:8883). TLS 1.3 and the node's "
+             "account come from MQTT_CA_CERT, MQTT_USERNAME, MQTT_PASSWORD.",
+    )
     parser.add_argument("--pin-assist", type=int, default=27, help="GPIO pin for Assist / Red button (default: 27)")
     parser.add_argument("--pin-comfort", type=int, default=17, help="GPIO pin for Comfort / Green button (default: 17)")
     parser.add_argument("--pin-led-green", type=int, default=25, help="GPIO pin for Green LED (default: 25)")
@@ -77,11 +85,14 @@ def main() -> None:
     print(f"  Outbox: {args.db}")
     print("=" * 65)
 
+    key, key_id = bc_mqtt.signing_key(f"node-{args.bed}")  # per-bed key (invariant 13)
     node = BedsideNode(
         ward=args.ward,
         bed=args.bed,
         broker_host=host,
         broker_port=port,
+        key=key,
+        key_id=key_id,
         pin_assist=args.pin_assist,
         pin_comfort=args.pin_comfort,
         pin_led_green=args.pin_led_green,

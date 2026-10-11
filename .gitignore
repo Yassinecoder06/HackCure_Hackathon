@@ -41,3 +41,4 @@ Thumbs.db
 # Recordings (keep large demo videos out of git)
 *.mp4
 *.mov
+infra/certs/

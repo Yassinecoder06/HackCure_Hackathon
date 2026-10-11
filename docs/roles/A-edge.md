@@ -27,7 +27,7 @@ Read first:
 - [ ] Seeded and reproducible, including deterministic ULIDs.
 - [ ] `--speed N`, `--dry-run` (JSON lines to stdout), `--broker host:port`.
 - [ ] Scripted events: `deteriorate`, `set_manual`, `call` (`no_ack`), `call_rate`, `admit`, `staff_leaves`, `device_offline`, `node_outage_call`.
-- [ ] A `simulator` service in `infra/docker-compose.yml`. The server service already exists (PR #2).
+- [ ] A `simulator` service in `docker-compose.yml`. The server service already exists (PR #2).
 - [ ] Tests: every scenario only produces valid messages, with unique ids and no null/zero placeholders.
 
 ## P1: gateway + secure transport
@@ -73,7 +73,7 @@ Implement [`contracts/family-gateway.openapi.yaml`](../../contracts/family-gatew
 
 - **Give B:** valid, signed events (P0–P1), quality flags (P1), the ward layout and seed prescriptions (P3), family-gateway ingest (P4).
 - **Give C:** a running stack over HTTPS, a scenario timed to the demo script, the hosted URL.
-- **Need from B:** `call/state` (P2), outbound family pushes (P4), the HMAC key format: **done**. `infra/.env` holds
+- **Need from B:** `call/state` (P2), outbound family pushes (P4), the HMAC key format: **done**. `.env` holds
   `BORJ_DEVICE_KEYS` (`keyId:<base64>,...`, parse with `borj_contracts.parse_keys`). Key ids: `sim-k1`, `gw-k1`,
   `node-{bed}` (a node's key is only accepted for its own bed). Once your signers load their entry, set
   `BORJ_INTEGRITY_MODE=require` in compose.

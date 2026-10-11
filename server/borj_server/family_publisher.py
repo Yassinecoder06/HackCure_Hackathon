@@ -1,6 +1,6 @@
 """Family publisher: forwards approved, allow-listed payloads OUTBOUND to family-gateway.
 
-Run as its own process/container on both the ward and DMZ networks (infra/docker-compose.yml):
+Run as its own process/container on both the ward and DMZ networks (docker-compose.yml):
     python -m borj_server.family_publisher
 
 - It opens no listening socket: nothing on the DMZ can connect into the ward (safety invariant 3).

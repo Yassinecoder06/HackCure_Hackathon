@@ -5,17 +5,20 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-if [ -f "infra/.env" ]; then
+if [ -f ".env" ]; then
     set -a
     # shellcheck disable=SC1091
-    source infra/.env
+    source .env
     set +a
 fi
 
 export BORJ_WARD="${BORJ_WARD:-W1}"
 export BORJ_CLOCK_MODE="${BORJ_CLOCK_MODE:-wall}"
 export MQTT_HOST="${MQTT_HOST:-localhost}"
-export MQTT_PORT="${MQTT_PORT:-1883}"
+export MQTT_PORT="${MQTT_PORT:-8883}"
+export MQTT_CA_CERT="${MQTT_CA_CERT:-infra/certs/ca.crt}"
+export MQTT_USERNAME="${MQTT_USERNAME:-server}"
+export MQTT_PASSWORD="${MQTT_PASSWORD:-${MQTT_PW_SERVER:-}}"
 export INFERENCE_URL="${INFERENCE_URL:-http://localhost:8001}"
 export BORJ_DB_URL="${BORJ_DB_URL:-sqlite:///$(pwd)/data/borj.sqlite}"
 mkdir -p data

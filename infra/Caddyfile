@@ -1,0 +1,30 @@
+# Hosted demo front door (replaces nginx): a real certificate from Let's Encrypt, TLS 1.3 only.
+# docker compose -f docker-compose.yml -f docker-compose.hosted.yml up -d     with BORJ_DOMAIN=demo.example.org
+# The domain's DNS A record must point at the VM, and ports 80 and 443 must be open (80 is for the certificate challenge).
+{$BORJ_DOMAIN} {
+	tls {
+		protocols tls1.3
+	}
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+	}
+	handle /api/* {
+		reverse_proxy server:8000
+	}
+	handle /docs* {
+		reverse_proxy server:8000
+	}
+	handle /openapi.json {
+		reverse_proxy server:8000
+	}
+	handle /health {
+		reverse_proxy server:8000
+	}
+	handle {
+		reverse_proxy ward-app:80
+	}
+}

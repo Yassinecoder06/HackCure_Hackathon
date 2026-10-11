@@ -10,12 +10,12 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
   code path (`store.py`). Every payload and audit detail is **encrypted with AES-256-GCM** before it reaches the
   database (`crypto.py`): a per-row random nonce, the row id bound in as associated data, and a key id per row for
   rotation. Only routing metadata stays in clear (event id, schema, topic, ward, timestamp). The key comes from
-  `BORJ_DATA_KEY` (`python infra/gen_secrets.py` writes it to `infra/.env`).
+  `BORJ_DATA_KEY` (`python infra/gen_secrets.py` writes it to `.env`).
 - P1 (in progress): the snapshot carries **NEWS2 per admitted bed** from the [inference layer](../inference/README.md)
   (`news2Status`: `ok` / `unavailable` / `not_admitted`). The server decides each reading's freshness against the ward
   clock and sends it to inference (`scoring.py`, `inference_client.py`, 0.5 s timeout). If inference is down, NEWS2
   shows as `unavailable`, never as a guess.
-- P1: **login** (`POST /api/v1/auth/login`): demo PINs for the synthetic staff (`BORJ_STAFF_PINS` in `infra/.env`) are
+- P1: **login** (`POST /api/v1/auth/login`): demo PINs for the synthetic staff (`BORJ_STAFF_PINS` in `.env`) are
   hashed with argon2id at startup, and a successful login returns a short-lived HS256 token (4 h). Five failures
   lock the staff id for 5 minutes. **Every access to patient data needs a token and is audited with the actor's
   name.** The audit log is **hash-chained** (`store.verify_audit_chain`, `GET /api/v1/wards/{ward}/audit/verify`,
@@ -117,12 +117,12 @@ FastAPI ward server. Spec and task list: [`docs/roles/B-brain.md`](../docs/roles
 
 ```bash
 # with the broker (from repo root)
-docker compose -f infra/docker-compose.yml up --build
+docker compose up --build
 curl localhost:8000/api/v1/wards/W1/snapshot
 
 # without docker, API only (e.g. for UI work)
-python infra/gen_secrets.py   # once; then load infra/.env into your shell (BORJ_DATA_KEY)
-PYTHONPATH="contracts;server" BORJ_MQTT_ENABLED=0 BORJ_DATA_KEY=<from infra/.env> .venv/Scripts/python -m uvicorn borj_server.main:app --reload
+python infra/gen_secrets.py   # once; then load .env into your shell (BORJ_DATA_KEY)
+PYTHONPATH="contracts;server" BORJ_MQTT_ENABLED=0 BORJ_DATA_KEY=<from .env> .venv/Scripts/python -m uvicorn borj_server.main:app --reload
 
 # tests (from repo root)
 .venv/Scripts/pip install -r requirements-dev.txt -r server/requirements.txt -r inference/requirements.txt

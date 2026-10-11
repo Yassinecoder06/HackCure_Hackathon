@@ -73,12 +73,12 @@ python -m venv .venv
 .venv/Scripts/pip install -r requirements-dev.txt     # .venv/bin/pip on Linux/macOS
 .venv/Scripts/python -m pytest
 
-# Local secrets (PostgreSQL password, AES-256 data key) into infra/.env, never committed
+# Local secrets (PostgreSQL password, AES-256 data key) into .env, never committed
 python infra/gen_secrets.py
 
 # The demo stack: Mosquitto, PostgreSQL, inference, server (more services are added phase by phase)
-docker compose -f infra/docker-compose.yml up --build
-# Log in with a demo PIN printed by gen_secrets.py (also in infra/.env), then use the token:
+docker compose up --build
+# Log in with a demo PIN printed by gen_secrets.py (also in .env), then use the token:
 #   curl -X POST localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"staffId":"CN1","secret":"<PIN>"}'
 #   curl -H "Authorization: Bearer <token>" localhost:8000/api/v1/wards/W1/snapshot
 ```

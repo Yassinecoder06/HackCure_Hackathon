@@ -55,5 +55,5 @@ Sources of truth:
 python -m venv .venv && .venv/Scripts/pip install -r requirements-dev.txt   # Windows; use .venv/bin on Linux/macOS
 .venv/Scripts/python -m pytest          # contract + invariant tests
 .venv/Scripts/ruff check .
-docker compose -f infra/docker-compose.yml up
+docker compose up
 ```

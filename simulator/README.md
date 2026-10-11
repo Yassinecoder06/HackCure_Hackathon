@@ -40,9 +40,9 @@ python -m borj_sim --scenario simulator/scenarios/night-shift-peak.yaml --broker
 ```
 
 ### Run in Docker Compose
-The simulator is configured as a service in `infra/docker-compose.yml`:
+The simulator is configured as a service in `docker-compose.yml`:
 ```bash
-docker compose -f infra/docker-compose.yml up simulator
+docker compose up simulator
 ```
 
 ### Running Tests

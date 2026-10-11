@@ -1,7 +1,7 @@
 """Staff login and bearer tokens (ADR 0010: non-repudiation of access, invariant 11).
 
 - Demo PINs for the synthetic staff come from BORJ_STAFF_PINS (generated into the git-ignored
-  infra/.env). They are hashed with argon2id at startup and the plain values are not kept.
+  .env). They are hashed with argon2id at startup and the plain values are not kept.
 - A successful login returns a short-lived HS256 token naming the staff member and role.
   Every request for patient data must carry one, so every access has a named actor in the audit log.
 - Repeated failures lock the staff id out for a while (brute-force protection on short PINs).
