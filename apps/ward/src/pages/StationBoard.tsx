@@ -315,6 +315,11 @@ export const StationBoard: React.FC<StationBoardProps> = ({
                       ⚠ Partial: {bed.news2?.missing?.join(', ')}
                     </span>
                   )}
+                  {bed.priority?.reasons && bed.priority.reasons.length > 0 && (
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      #{bed.priority.rank}: {bed.priority.reasons[0]}
+                    </div>
+                  )}
                 </div>
 
                 <div className={`score-badge ${band}`}>
@@ -524,6 +529,40 @@ export const StationBoard: React.FC<StationBoardProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Ward Priority Ranking & Clinical Rationale (Bilingual explainability from main) */}
+              {selectedBed.priority && (
+                <div style={{ padding: '0.75rem 1rem', borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                        Clinical Priority Ranking
+                      </span>
+                      <span style={{ fontSize: '0.72rem', background: '#2563eb', color: '#ffffff', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+                        Rank #{selectedBed.priority.rank} of {selectedBed.priority.of}
+                      </span>
+                    </div>
+                    {selectedBed.news2Trend && selectedBed.news2Trend.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        <span>Trend:</span>
+                        {selectedBed.news2Trend.map((t: any) => (
+                          <span key={t.minutesAgo} style={{ background: 'var(--bg-body)', padding: '1px 5px', borderRadius: 3, fontWeight: 600 }}>
+                            -{t.minutesAgo}m: {t.total}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {selectedBed.priority.reasons?.map((reason: string, idx: number) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                        <span style={{ color: '#2563eb' }}>•</span>
+                        <span>{reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Components Breakdown Table */}
               <div>
