@@ -1,0 +1,6 @@
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+PyYAML==6.0.3
+jsonschema==4.26.0
+referencing==0.37.0
+cryptography==50.0.2

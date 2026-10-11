@@ -28,3 +28,26 @@
 		reverse_proxy ward-app:80
 	}
 }
+
+# The relatives' address. family-gateway itself stays on the dmz network only; this proxy is the one hop between the
+# internet and it. The ward-only /ingest listener of family-proxy is never exposed.
+{$BORJ_FAMILY_DOMAIN} {
+	tls {
+		protocols tls1.3
+	}
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+	}
+	handle /ingest/* {
+		respond 404
+	}
+	handle {
+		reverse_proxy family-gateway:8100 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}

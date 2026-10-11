@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DICTIONARY, Language } from '../i18n/strings';
 import { familyApi, FamilyFeedResponse } from '../services/familyApi';
-import { RecoveryMilestones } from '../components/RecoveryMilestones';
-import { WardRhythmSchedule } from '../components/WardRhythmSchedule';
-import { BedsidePostcardModal } from '../components/BedsidePostcardModal';
-import { CareTeamGratitude } from '../components/CareTeamGratitude';
 import {
   PhoneCall,
   Clock,
@@ -85,16 +81,8 @@ export const FamilyFeedView: React.FC<FamilyFeedViewProps> = ({ lang, onLogout }
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0 1.25rem' }}>
-        {/* 2. Recovery Milestones (Discharge Readiness Stepper) */}
-        <RecoveryMilestones lang={lang} />
-
-        {/* 3. Today's Ward Rhythm (Real-Time Live Schedule) */}
-        <WardRhythmSchedule lang={lang} />
-
-        {/* 4. Bedside Postcard (Send Encouragement Message to Bed B06) */}
-        <BedsidePostcardModal lang={lang} />
-
-        {/* 5. Main Timeline Feed */}
+        {/* Only what a nurse approved and the patient consented to share (safety invariants 2 and 4). Nothing on this
+            page is invented here: no care-pathway stage, no comfort messages, no bed or room, no counters. */}
         <div className="feed-box-container">
           <div className="feed-title-bar">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -141,9 +129,7 @@ export const FamilyFeedView: React.FC<FamilyFeedViewProps> = ({ lang, onLogout }
                       {new Date(item.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  <div className="update-body-text">
-                    {item.text || (lang === 'fr' ? 'Nouvelle de routine enregistrée par l\'équipe soignante.' : 'Status update logged by the ward staff.')}
-                  </div>
+                  {item.text && <div className="update-body-text">{item.text}</div>}
                 </div>
               ))}
             </div>
@@ -156,12 +142,9 @@ export const FamilyFeedView: React.FC<FamilyFeedViewProps> = ({ lang, onLogout }
             )
           )}
         </div>
-
-        {/* 6. Care Team Gratitude (Nurse Appreciation Jar) */}
-        <CareTeamGratitude lang={lang} />
       </div>
 
-      {/* 7. Data Protection Footer (Tunisian Law 2004-63) */}
+      {/* Data protection footer */}
       <footer className="footer-privacy">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4, fontWeight: 700 }}>
           <ShieldCheck size={16} color="#0d9488" />
