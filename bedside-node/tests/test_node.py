@@ -41,6 +41,23 @@ def test_button_press_generates_valid_contract_message():
     assert repeat_msg["callId"] == call_msg["callId"]
     assert repeat_msg["pressCount"] == 2
 
+    # 3rd press triggers emergency (pressCount >= 3)
+    node.buttons.trigger_assist()
+    assert len(published) == 3
+    emerg_msg = published[2]
+    bc.validate_message("borj/W1/B06/call", emerg_msg)
+    assert emerg_msg["callId"] == call_msg["callId"]
+    assert emerg_msg["pressCount"] == 3
+    assert node.leds._current_pattern == "emergency"
+
+    # Nurse arrival at bedside: pressing comfort/presence button acknowledges active call
+    ack_published = []
+    node.mqtt.publish_ack = lambda cid, staff_id="N1": ack_published.append((cid, staff_id)) or True
+    node.buttons.trigger_comfort()
+    assert len(ack_published) == 1
+    assert ack_published[0] == (call_msg["callId"], "N1")
+    assert node.leds._current_pattern == "acknowledged"
+
     node.stop()
 
 

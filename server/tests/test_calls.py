@@ -90,7 +90,14 @@ def test_repeat_press_escalates_one_level_each_time(ingestor, make_event, engine
     press(ingestor, make_event, pressCount=2, ts="2026-10-10T22:13:10Z")
     assert (call(ingestor).escalation_level, call(ingestor).escalation_reason) == (1, "repeat_press")
     press(ingestor, make_event, pressCount=3, ts="2026-10-10T22:13:30Z")
-    assert call(ingestor).escalation_level == 2
+    assert (call(ingestor).escalation_level, call(ingestor).escalation_reason) == (2, "triple_tap_emergency")
+
+
+def test_triple_tap_immediate_emergency(ingestor, make_event, engine):
+    # Patient taps 3 times immediately (pressCount >= 3 on initial delivery)
+    press(ingestor, make_event, pressCount=3)
+    c = call(ingestor)
+    assert (c.escalation_level, c.escalation_reason, c.routed_to_role) == (2, "triple_tap_emergency", "charge_nurse")
 
 
 def test_press_from_high_news2_patient_escalates_at_once_even_if_comfort(ingestor, make_event, engine):

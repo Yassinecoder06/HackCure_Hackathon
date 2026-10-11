@@ -77,6 +77,8 @@ MESSAGES: dict[str, tuple[str, str]] = {
     "reason.unacknowledged_timeout": ("not acknowledged in time", "non pris en charge à temps"),
     "reason.repeat_press": ("the patient pressed again", "le patient a rappelé"),
     "reason.high_news2": ("the patient's NEWS2 is high", "le NEWS2 du patient est élevé"),
+    "reason.triple_tap_emergency": ("patient tapped call button 3 times (urgent emergency)",
+                                    "le patient a appuyé 3 fois sur la sonnette (urgence immédiate)"),
     # Assignment suggestion reasons (codes come from the inference layer)
     "assign.uncovered": ("{count} bed(s) had no available nurse and are now covered: {beds}.",
                          "{count} lit(s) sans infirmier disponible, désormais couvert(s) : {beds}."),

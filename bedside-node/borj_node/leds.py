@@ -155,6 +155,25 @@ class LedController:
             self._anim_thread.start()
             log.warning("[LED] State: NOT_SENT (fast red blink)")
 
+    def show_emergency(self) -> None:
+        """Urgent emergency alert (e.g. 3 taps): rapid red strobe pattern (0.08s)."""
+        with self._lock:
+            self._stop_animation()
+            self._current_pattern = "emergency"
+
+            def _strobe_red() -> None:
+                while not self._stop_event.is_set():
+                    self._set_raw(False, True, False)
+                    self._stop_event.wait(0.08)
+                    if self._stop_event.is_set():
+                        break
+                    self._set_raw(False, False, False)
+                    self._stop_event.wait(0.08)
+
+            self._anim_thread = threading.Thread(target=_strobe_red, daemon=True, name="led-emergency")
+            self._anim_thread.start()
+            log.warning("[LED] State: EMERGENCY (rapid red strobe)")
+
     def close(self) -> None:
         self.show_off()
         if self._led_green:
