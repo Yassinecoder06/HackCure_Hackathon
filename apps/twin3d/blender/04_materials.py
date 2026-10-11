@@ -25,7 +25,6 @@ import importlib
 import os
 import sys
 
-import bmesh
 import bpy
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -122,26 +121,6 @@ def build_material(name, spec):
     return mat
 
 
-def world_box_uv(obj, tile):
-    """UVs in real metres / `tile`, projected along each face's dominant axis."""
-    mesh = obj.data
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    layer = bm.loops.layers.uv.get("tiled") or bm.loops.layers.uv.new("tiled")
-    mw, rot = obj.matrix_world, obj.matrix_world.to_3x3()
-    for f in bm.faces:
-        n = rot @ f.normal
-        axis = max(range(3), key=lambda i: abs(n[i]))
-        for loop in f.loops:
-            p = mw @ loop.vert.co
-            u, v = ((p.y, p.z), (p.x, p.z), (p.x, p.y))[axis]
-            loop[layer].uv = (u / tile, v / tile)
-    bm.to_mesh(mesh)
-    bm.free()
-    mesh.uv_layers["tiled"].active = True
-    mesh.uv_layers["tiled"].active_render = True
-
-
 # --------------------------------------------------------------- which part gets what
 def ancestors(obj):
     names, o = [], obj
@@ -226,7 +205,7 @@ for o in bpy.context.view_layer.objects:            # visible only: archive and 
     o.data.materials.append(mats[name])
     tile = MATERIALS[name].get("tile")
     if tile:
-        world_box_uv(o, tile)
+        common.world_box_uv(o, tile)
     done.add(o.data)
     counts[name] = counts.get(name, 0) + 1
 print("materials assigned (meshes per material):", counts)

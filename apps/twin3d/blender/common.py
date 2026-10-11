@@ -198,3 +198,23 @@ def purge_new(snap):
             for d in list(getattr(bpy.data, kind)):
                 if d not in snap[kind] and d.users == 0:
                     getattr(bpy.data, kind).remove(d)
+
+
+def world_box_uv(obj, tile):
+    """UVs in real metres / `tile`, projected along each face's dominant axis."""
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    layer = bm.loops.layers.uv.get("tiled") or bm.loops.layers.uv.new("tiled")
+    mw, rot = obj.matrix_world, obj.matrix_world.to_3x3()
+    for f in bm.faces:
+        n = rot @ f.normal
+        axis = max(range(3), key=lambda i: abs(n[i]))
+        for loop in f.loops:
+            p = mw @ loop.vert.co
+            u, v = ((p.y, p.z), (p.x, p.z), (p.x, p.y))[axis]
+            loop[layer].uv = (u / tile, v / tile)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.uv_layers["tiled"].active = True
+    mesh.uv_layers["tiled"].active_render = True

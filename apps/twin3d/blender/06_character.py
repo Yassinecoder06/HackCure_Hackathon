@@ -278,6 +278,39 @@ def neutral_texture(part):
     return dst
 
 
+def rgba_texture(part):
+    """<part>_diffuse with its separate opacity map stored as the alpha channel (glTF only reads alpha
+    from the colour texture); cached on disk. Returns the path."""
+    src = os.path.join(TEX, f"Nurse Woman1_{part}_diffuse.png")
+    opa = os.path.join(TEX, f"Nurse Woman1_{part}_opacity.png")
+    dst = os.path.join(NEUTRAL, f"Nurse Woman1_{part}_diffuse_rgba.png")
+    if os.path.exists(dst):
+        return dst
+    os.makedirs(NEUTRAL, exist_ok=True)
+    img = bpy.data.images.load(src)
+    alpha = bpy.data.images.load(opa)
+    for i in (img, alpha):
+        i.colorspace_settings.name = "Non-Color"           # raw 0..1, no colour transform
+    if tuple(alpha.size) != tuple(img.size):
+        alpha.scale(*img.size)
+    px = np.empty(len(img.pixels), dtype=np.float32)
+    img.pixels.foreach_get(px)
+    ap = np.empty(len(alpha.pixels), dtype=np.float32)
+    alpha.pixels.foreach_get(ap)
+    px = px.reshape(-1, 4)
+    px[:, 3] = ap.reshape(-1, 4)[:, 0]
+    out = bpy.data.images.new("rgba", *img.size, alpha=True, float_buffer=False)
+    out.colorspace_settings.name = "Non-Color"
+    out.alpha_mode = "STRAIGHT"
+    out.pixels.foreach_set(px.ravel())
+    out.file_format = "PNG"
+    out.filepath_raw = dst
+    out.save()
+    for i in (out, img, alpha):
+        bpy.data.images.remove(i)
+    return dst
+
+
 def tex_node(nodes, part, kind, colorspace, path=None):
     """An image-texture node for <part>_<kind> (or `path`); its colour output, or None if the file is missing."""
     path = path or os.path.join(TEX, f"Nurse Woman1_{part}_{kind}.png")
@@ -286,7 +319,8 @@ def tex_node(nodes, part, kind, colorspace, path=None):
     n = nodes.new("ShaderNodeTexImage")
     n.image = bpy.data.images.load(path, check_existing=True)
     n.image.colorspace_settings.name = colorspace
-    return n.outputs["Color"]
+    n.image.alpha_mode = "STRAIGHT"
+    return n.outputs["Color"], n.outputs["Alpha"]
 
 
 def build_materials():
@@ -304,7 +338,15 @@ def build_materials():
         bsdf.inputs["Specular IOR Level"].default_value = 0.3
 
         recolour = part in ("Top", "Bottom", "Hat")
-        colour = tex_node(nodes, part, "diffuse", "sRGB", neutral_texture(part) if recolour else None)
+        has_alpha = part in ("Hair", "Glove", "Body") and os.path.exists(
+            os.path.join(TEX, f"Nurse Woman1_{part}_opacity.png"))
+        if has_alpha:
+            colour, alpha = tex_node(nodes, part, "diffuse", "sRGB", rgba_texture(part))
+            links.new(alpha, bsdf.inputs["Alpha"])
+            mat.surface_render_method = "DITHERED"
+        else:
+            colour, alpha = tex_node(nodes, part, "diffuse", "sRGB", neutral_texture(part) if recolour else None) \
+                or (None, None)
         if colour is not None and recolour:
             mix = nodes.new("ShaderNodeMix")
             mix.data_type, mix.blend_type = "RGBA", "MULTIPLY"
@@ -316,20 +358,16 @@ def build_materials():
             mat["tint_node"] = mix.name
         if colour is not None:
             links.new(colour, bsdf.inputs["Base Color"])
-        gloss = tex_node(nodes, part, "gloss", "Non-Color")
+        gloss = (tex_node(nodes, part, "gloss", "Non-Color") or (None,))[0]
         if gloss is not None:
             inv = nodes.new("ShaderNodeInvert")
             links.new(gloss, inv.inputs["Color"])
             links.new(inv.outputs["Color"], bsdf.inputs["Roughness"])
-        normal = tex_node(nodes, part, "normal", "Non-Color")
+        normal = (tex_node(nodes, part, "normal", "Non-Color") or (None,))[0]
         if normal is not None:
             nmap = nodes.new("ShaderNodeNormalMap")
             links.new(normal, nmap.inputs["Color"])
             links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
-        opacity = tex_node(nodes, part, "opacity", "Non-Color")
-        if opacity is not None and part in ("Hair", "Glove", "Body"):
-            links.new(opacity, bsdf.inputs["Alpha"])
-            mat.surface_render_method = "DITHERED"
         mats[part] = mat
     return mats
 

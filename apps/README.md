@@ -6,7 +6,7 @@
 |---|---|---|
 | `ward/` | `/board`: big-screen station board with a 2D floor plan. `/staff`: phone view with alerts, 1-tap ack, fast entry, approvals, medication, what-if. `/doctor`: remote on-call doctor view | ward server ([`contracts/openapi.yaml`](../contracts/openapi.yaml)) |
 | `family/` | Relatives' app: redeem invite, feed of approved updates | family-gateway only ([`contracts/family-gateway.openapi.yaml`](../contracts/family-gateway.openapi.yaml)) |
-| `twin3d/` | 3D twin view (Blender-baked ward + React Three Fiber), display only, polish ([ADR 0012](../docs/decisions/0012-3d-twin.md)). Owner: B | ward server WebSocket |
+| `twin3d/` | 3D twin of the ward (Blender-built `.glb` + React Three Fiber), display only ([ADR 0012](../docs/decisions/0012-3d-twin.md), [0014](../docs/decisions/0014-twin3d-delivery.md)). **Implemented.** Owner: B | ward server WebSocket |
 
 Stack: TypeScript + React + Vite, installable web app, served over HTTPS. UI in English, with strings kept in one module per app.
 

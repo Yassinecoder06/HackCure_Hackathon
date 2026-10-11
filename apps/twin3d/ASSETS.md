@@ -71,11 +71,8 @@ part under the cap, so the cap stays.
 Limits of one model for everyone: all staff share one face, hair and shoes, and are all women. If you
 later want variety, a second rigged model with the same skeleton names would slot in.
 
-Still needed:
-
-| Priority | What | Search terms | Why |
-|---|---|---|---|
-| 2 | Patient lying in a bed, clothed and awake (the nurse can be re-used with a hospital-gown recolour if you prefer) | `patient low poly rigged`, `human base mesh male`, `human base mesh female` | so occupied and empty beds differ. Nothing with a shroud or sheet over the face |
+Patients: built from the same nurse model, laid on their backs in a hospital gown (`07_assemble_ward.py`), so no further
+download is needed. A dedicated patient model would look better but is optional.
 
 Optional later: a few waiting seats for the corridor entrance (the reception pack has some), a wall
 sink and sanitiser dispenser.

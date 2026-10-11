@@ -20,6 +20,8 @@ STEPS = [
     "04_materials.py",
     "05_station_and_props.py",
     "06_character.py",
+    "07_assemble_ward.py",
+    "08_export.py",
 ]
 
 for step in STEPS:

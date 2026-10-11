@@ -7,6 +7,7 @@
   "workspaces": [
     "apps/ward",
     "apps/family",
+    "apps/twin3d",
     "apps/mock-server"
   ],
   "scripts": {
@@ -14,10 +15,11 @@
     "dev:server": "npm run dev --workspace=apps/mock-server",
     "dev:ward": "npm run dev --workspace=apps/ward",
     "dev:family": "npm run dev --workspace=apps/family",
-    "build": "npm run build --workspace=apps/ward && npm run build --workspace=apps/family",
-    "lint": "npm run lint --workspace=apps/ward && npm run lint --workspace=apps/family && npm run test:isolation",
+    "build": "npm run build --workspace=apps/ward && npm run build --workspace=apps/family && npm run build --workspace=apps/twin3d",
+    "lint": "npm run lint --workspace=apps/ward && npm run lint --workspace=apps/family && npm run lint --workspace=apps/twin3d && npm run test:isolation",
     "test:isolation": "node tests/test_family_isolation.js",
-    "typegen": "npx openapi-typescript ./contracts/openapi.yaml -o ./apps/ward/src/contracts/ward-api.d.ts && npx openapi-typescript ./contracts/family-gateway.openapi.yaml -o ./apps/family/src/contracts/family-api.d.ts"
+    "typegen": "npx openapi-typescript ./contracts/openapi.yaml -o ./apps/ward/src/contracts/ward-api.d.ts && npx openapi-typescript ./contracts/family-gateway.openapi.yaml -o ./apps/family/src/contracts/family-api.d.ts",
+    "dev:twin": "npm run dev --workspace=apps/twin3d"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
