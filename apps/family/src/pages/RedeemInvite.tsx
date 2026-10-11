@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { STRINGS } from '../i18n/strings';
+import { DICTIONARY, Language } from '../i18n/strings';
 import { familyApi } from '../services/familyApi';
 import { KeyRound, QrCode } from 'lucide-react';
 
 interface RedeemInviteProps {
+  lang: Language;
   onSuccess: () => void;
 }
 
-export const RedeemInvite: React.FC<RedeemInviteProps> = ({ onSuccess }) => {
-  const [code, setCode] = useState<string>('CARE2026');
+export const RedeemInvite: React.FC<RedeemInviteProps> = ({ lang, onSuccess }) => {
+  const [code, setCode] = useState<string>('FAM-9921');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const t = DICTIONARY[lang].auth;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +23,7 @@ export const RedeemInvite: React.FC<RedeemInviteProps> = ({ onSuccess }) => {
       await familyApi.redeemInvite(code.trim().toUpperCase());
       onSuccess();
     } catch (err: any) {
-      setError(err.message || STRINGS.auth.invalidCode);
+      setError(err.message || t.invalidCode);
     } finally {
       setLoading(false);
     }
@@ -34,8 +37,8 @@ export const RedeemInvite: React.FC<RedeemInviteProps> = ({ onSuccess }) => {
         </div>
 
         <div>
-          <h2>{STRINGS.auth.redeemTitle}</h2>
-          <p style={{ marginTop: 6 }}>{STRINGS.auth.redeemDesc}</p>
+          <h2>{t.redeemTitle}</h2>
+          <p style={{ marginTop: 6 }}>{t.redeemDesc}</p>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -44,7 +47,7 @@ export const RedeemInvite: React.FC<RedeemInviteProps> = ({ onSuccess }) => {
             className="pin-input"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder={STRINGS.auth.pinPlaceholder}
+            placeholder={t.pinPlaceholder}
             maxLength={10}
             required
             id="input-family-code"
@@ -57,13 +60,17 @@ export const RedeemInvite: React.FC<RedeemInviteProps> = ({ onSuccess }) => {
           )}
 
           <button type="submit" className="btn-redeem" disabled={loading} id="btn-redeem-submit">
-            {loading ? 'Verifying Code...' : STRINGS.auth.redeemBtn}
+            {loading ? (lang === 'fr' ? 'Vérification du code...' : 'Verifying Code...') : t.redeemBtn}
           </button>
         </form>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 8 }}>
           <QrCode size={16} />
-          <span>Bedside QR codes automatically pre-fill this access key.</span>
+          <span>
+            {lang === 'fr' 
+              ? 'Les QR codes au chevet du patient pré-remplissent automatiquement cette clé.' 
+              : 'Bedside QR codes automatically pre-fill this access key.'}
+          </span>
         </div>
       </div>
     </div>
