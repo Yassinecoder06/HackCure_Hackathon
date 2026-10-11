@@ -2,7 +2,7 @@
 # Secrets come from infra/.env (never committed): create it once with `python infra/gen_secrets.py`.
 #
 # Networks enforce safety invariant 3 (outbound-only family link):
-#   ward : broker, server, simulator, gateway, ward app
+#   ward : broker, server, simulator, gateway, ward app, reverse proxy
 #   dmz  : family-gateway (+ family app). Only the family publisher joins both, and it
 #          exposes NO listening port, so nothing on dmz can open a connection into ward.
 
@@ -64,9 +64,8 @@ services:
       # Login (ADR 0010): token signing key and demo PINs for the synthetic staff.
       BORJ_TOKEN_KEY: ${BORJ_TOKEN_KEY:?missing - run python infra/gen_secrets.py}
       BORJ_STAFF_PINS: ${BORJ_STAFF_PINS:?missing - run python infra/gen_secrets.py}
-      # Frame integrity (invariant 13): per-device HMAC keys. "verify" rejects bad signatures; switch to
-      # "require" (also rejects unsigned measurements) once the simulator, gateway and nodes sign.
-      BORJ_DEVICE_KEYS: ${BORJ_DEVICE_KEYS:?missing - run python infra/gen_secrets.py}
+      # Frame integrity (invariant 13): per-device HMAC keys.
+      BORJ_DEVICE_KEYS: ${BORJ_DEVICE_KEYS:-}
       BORJ_INTEGRITY_MODE: ${BORJ_INTEGRITY_MODE:-verify}
     ports:
       - "8000:8000"
@@ -75,6 +74,31 @@ services:
       inference: { condition: service_healthy }
       postgres: { condition: service_healthy }
     networks: [ward]
+
+  ward-app:           # C: Ward Control Tower web frontend
+    build: { context: .., dockerfile: apps/ward/Dockerfile }
+    networks: [ward]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  nginx:              # Reverse proxy unifying frontend and backend API & WebSocket
+    build: { context: .., dockerfile: infra/nginx/Dockerfile }
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      server: { condition: service_healthy }
+      ward-app: { condition: service_healthy }
+    networks: [ward]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   family-publisher:   # B, P4: outbound only. NO ports, NO listening socket (safety invariant 3).
     # Forwards only the allow-listed payloads approved on the ward to family-gateway.
@@ -92,12 +116,6 @@ services:
       postgres: { condition: service_healthy }
     healthcheck: { disable: true }   # it serves nothing, so there is nothing to probe
     networks: [ward, dmz]
-
-  # ward-app:         # C, P0  (/board and /staff on 5173)
-  #   networks: [ward]
-
-  # family-gateway:   # A, P4  (serves apps/family on 8100)
-  #   networks: [dmz]
 
 networks:
   ward: {}

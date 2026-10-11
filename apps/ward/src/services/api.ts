@@ -24,6 +24,22 @@ export interface AuthSession {
   };
 }
 
+function getApiBase(): string {
+  if (typeof window !== 'undefined' && window.location.port === '5173') {
+    return `http://${window.location.hostname}:8000`;
+  }
+  return '';
+}
+
+function getWsUrl(ward = 'W1'): string {
+  if (typeof window === 'undefined') return '';
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  if (window.location.port === '5173') {
+    return `${protocol}//${window.location.hostname}:8000/api/v1/wards/${ward}/stream`;
+  }
+  return `${protocol}//${window.location.host}/api/v1/wards/${ward}/stream`;
+}
+
 class WardApiService {
   private ws: WebSocket | null = null;
   private listeners: Set<StreamListener> = new Set();
@@ -67,7 +83,7 @@ class WardApiService {
   }
 
   public async login(staffId: string, secret: string): Promise<AuthSession> {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/auth/login`, {
+    const res = await fetch(`${getApiBase()}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ staffId, secret })
@@ -166,8 +182,7 @@ class WardApiService {
       return;
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:8000/api/v1/wards/W1/stream`;
+    const wsUrl = getWsUrl('W1');
     const token = this.session?.token;
     if (!token) {
       this.emit('auth_expired', true);
@@ -245,7 +260,7 @@ class WardApiService {
     try {
       await this.ensureSession();
     } catch {}
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/snapshot`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/snapshot`, {
       headers: this.getHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch ward snapshot');
@@ -253,7 +268,7 @@ class WardApiService {
   }
 
   public async submitObservations(bed: string, observations: any, ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/beds/${bed}/observations`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/beds/${bed}/observations`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(observations)
@@ -263,7 +278,7 @@ class WardApiService {
   }
 
   public async acknowledgeCall(callId: string, ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/calls/${callId}/ack`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/calls/${callId}/ack`, {
       method: 'POST',
       headers: this.getHeaders()
     });
@@ -272,7 +287,7 @@ class WardApiService {
   }
 
   public async resolveCall(callId: string, ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/calls/${callId}/resolve`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/calls/${callId}/resolve`, {
       method: 'POST',
       headers: this.getHeaders()
     });
@@ -282,7 +297,7 @@ class WardApiService {
 
   public async acknowledgeAlert(alertId: string, ward = 'W1') {
     audioAlerts.stopCriticalAlarm();
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/alerts/${alertId}/ack`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/alerts/${alertId}/ack`, {
       method: 'POST',
       headers: this.getHeaders()
     });
@@ -291,14 +306,14 @@ class WardApiService {
   }
 
   public async getSuggestions(ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/assignments/suggestions`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/assignments/suggestions`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   public async requestSuggestion(ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/assignments/suggestions`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/assignments/suggestions`, {
       method: 'POST',
       headers: this.getHeaders()
     });
@@ -310,7 +325,7 @@ class WardApiService {
   }
 
   public async setStaffPresence(staffId: string, onWard: boolean, reason: string, expectedBackMin?: number, ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/staff/${staffId}/presence`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/staff/${staffId}/presence`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({
@@ -327,7 +342,7 @@ class WardApiService {
   }
 
   public async decideSuggestion(suggestionId: string, decision: 'approve' | 'reject', reason?: string, ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/assignments/suggestions/${suggestionId}/decision`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/assignments/suggestions/${suggestionId}/decision`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ decision, reason: reason || 'Charge nurse decision' })
@@ -336,7 +351,7 @@ class WardApiService {
   }
 
   public async runWhatIf(disruptions: any[], ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/whatif/runs`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/whatif/runs`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ disruptions, seeds: 200, horizonMin: 240 })
@@ -345,14 +360,14 @@ class WardApiService {
   }
 
   public async getMedsTimeline(ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/meds/timeline`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/meds/timeline`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   public async recordAdministration(doseId: string, action: 'given' | 'not_given', ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/doses/${doseId}/administration`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/doses/${doseId}/administration`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ action, presence: 'wristband_scan' })
@@ -361,14 +376,14 @@ class WardApiService {
   }
 
   public async getFamilyUpdates(ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/family/updates`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/family/updates`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   public async createFamilyConsent(admissionId: string, relativeLabel: string, ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/admissions/${admissionId}/family/consents`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/admissions/${admissionId}/family/consents`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({
@@ -381,7 +396,7 @@ class WardApiService {
   }
 
   public async createFamilyInvite(admissionId: string, ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/admissions/${admissionId}/family/invites`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/admissions/${admissionId}/family/invites`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({})
@@ -390,7 +405,7 @@ class WardApiService {
   }
 
   public async draftFamilyUpdate(admissionId: string, kind: string, text: string, ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/admissions/${admissionId}/family/updates`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/admissions/${admissionId}/family/updates`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ kind, text })
@@ -399,7 +414,7 @@ class WardApiService {
   }
 
   public async decideFamilyUpdate(updateId: string, decision: 'approve' | 'reject', ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/family/updates/${updateId}/decision`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/family/updates/${updateId}/decision`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ decision })
@@ -408,14 +423,14 @@ class WardApiService {
   }
 
   public async getDoctorOrders(ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/doctor/orders`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/doctor/orders`, {
       headers: this.getHeaders()
     });
     return res.json();
   }
 
   public async createDoctorOrder(bed: string, orderText: string, ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/doctor/orders`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/doctor/orders`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ bed, orderText })
@@ -424,7 +439,7 @@ class WardApiService {
   }
 
   public async triggerPeakDemo() {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/demo/trigger-peak`, {
+    const res = await fetch(`${getApiBase()}/api/v1/demo/trigger-peak`, {
       method: 'POST',
       headers: this.getHeaders()
     });
@@ -432,7 +447,7 @@ class WardApiService {
   }
 
   public async getAuditLog(ward = 'W1', limit = 100) {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/audit?limit=${limit}`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/audit?limit=${limit}`, {
       headers: this.getHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch audit entries');
@@ -440,7 +455,7 @@ class WardApiService {
   }
 
   public async verifyAuditChain(ward = 'W1') {
-    const res = await fetch(`http://${window.location.hostname}:8000/api/v1/wards/${ward}/audit/verify`, {
+    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/audit/verify`, {
       headers: this.getHeaders()
     });
     if (!res.ok) throw new Error('Failed to verify audit chain');

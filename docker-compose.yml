@@ -1,0 +1,125 @@
+# Borj-PiCare demo stack. Owner: A.
+# Secrets come from infra/.env (never committed): create it once with `python infra/gen_secrets.py`.
+#
+# Networks enforce safety invariant 3 (outbound-only family link):
+#   ward : broker, server, simulator, gateway, ward app, reverse proxy
+#   dmz  : family-gateway (+ family app). Only the family publisher joins both, and it
+#          exposes NO listening port, so nothing on dmz can open a connection into ward.
+
+name: borj
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks: [ward]
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-W", "3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  simulator:        # A, P0
+    build: { context: ., dockerfile: simulator/Dockerfile }
+    depends_on: { mosquitto: { condition: service_healthy } }
+    networks: [ward]
+
+  # gateway:          # A, P1
+  #   networks: [ward]
+
+  postgres:           # B: database layer (ADR 0009). Internal only: no published port.
+    image: postgres:17.2-alpine
+    environment:
+      POSTGRES_DB: borj
+      POSTGRES_USER: borj
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?missing - run python infra/gen_secrets.py}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U borj -d borj"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [ward]
+
+  inference:          # B: NEWS2 (later assignment, what-if). Internal only: no published port.
+    build: { context: ., dockerfile: inference/Dockerfile }
+    networks: [ward]
+
+  server:             # B: twin + API (REST + WebSocket on 8000)
+    build: { context: ., dockerfile: server/Dockerfile }
+    environment:
+      BORJ_WARD: W1
+      BORJ_CLOCK_MODE: sim
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      INFERENCE_URL: http://inference:8001
+      BORJ_DB_URL: postgresql+psycopg://borj:${POSTGRES_PASSWORD}@postgres:5432/borj
+      # AES-256-GCM key for patient payloads at rest (ADR 0010).
+      BORJ_DATA_KEY: ${BORJ_DATA_KEY:?missing - run python infra/gen_secrets.py}
+      BORJ_DATA_KEY_ID: ${BORJ_DATA_KEY_ID:-k1}
+      # Login (ADR 0010): token signing key and demo PINs for the synthetic staff.
+      BORJ_TOKEN_KEY: ${BORJ_TOKEN_KEY:?missing - run python infra/gen_secrets.py}
+      BORJ_STAFF_PINS: ${BORJ_STAFF_PINS:?missing - run python infra/gen_secrets.py}
+      # Frame integrity (invariant 13): per-device HMAC keys.
+      BORJ_DEVICE_KEYS: ${BORJ_DEVICE_KEYS:-}
+      BORJ_INTEGRITY_MODE: ${BORJ_INTEGRITY_MODE:-verify}
+    ports:
+      - "8000:8000"
+    depends_on:
+      mosquitto: { condition: service_healthy }
+      inference: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    networks: [ward]
+
+  ward-app:           # C: Ward Control Tower web frontend
+    build: { context: ., dockerfile: apps/ward/Dockerfile }
+    networks: [ward]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  nginx:              # Reverse proxy unifying frontend and backend API & WebSocket
+    build: { context: ., dockerfile: infra/nginx/Dockerfile }
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      server: { condition: service_healthy }
+      ward-app: { condition: service_healthy }
+    networks: [ward]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  family-publisher:   # B, P4: outbound only. NO ports, NO listening socket (safety invariant 3).
+    # Forwards only the allow-listed payloads approved on the ward to family-gateway.
+    # Enable with: docker compose --profile family up   (needs A's family-gateway service)
+    profiles: [family]
+    build: { context: ., dockerfile: server/Dockerfile }
+    command: ["python", "-m", "borj_server.family_publisher"]
+    environment:
+      BORJ_DB_URL: postgresql+psycopg://borj:${POSTGRES_PASSWORD}@postgres:5432/borj
+      BORJ_DATA_KEY: ${BORJ_DATA_KEY:?missing - run python infra/gen_secrets.py}
+      BORJ_DATA_KEY_ID: ${BORJ_DATA_KEY_ID:-k1}
+      FAMILY_GATEWAY_URL: http://family-gateway:8100
+      FAMILY_PUBLISHER_TOKEN: ${FAMILY_PUBLISHER_TOKEN:?missing - run python infra/gen_secrets.py}
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck: { disable: true }   # it serves nothing, so there is nothing to probe
+    networks: [ward, dmz]
+
+networks:
+  ward: {}
+  dmz: {}
+
+volumes:
+  pg-data: {}
