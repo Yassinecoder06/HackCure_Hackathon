@@ -15,7 +15,8 @@ source, author and licence.** An asset that is not listed here must not be in th
 | `emergency-cart` (USDZ) | crash cart | **to confirm** (its parts are named like a Sketchfab export) | **to confirm** | CC0 or self-made (owner's statement) | in use. Author and URL still to fill |
 | `ceiling-lowpoly-fluorescent-lamps-with-diffuser` | ceiling light panel | **to confirm** | **to confirm** | CC0 or self-made (owner's statement) | in use. Author and URL still to fill |
 | `keyboard.glb` | workstation keyboards | **to confirm** (Sketchfab export) | **to confirm** | CC0 or self-made (owner's statement) | in use. Author and URL still to fill |
-| Mixamo characters and animations | nurses, doctor | https://www.mixamo.com | Adobe | Adobe Mixamo terms (not CC) | not downloaded yet |
+| `nurse-surgical-rigged` (Nurse Woman, FBX + textures) | all ward staff (one model, recoloured) | **to confirm** | **to confirm** | CC0 or self-made (owner's statement, 2026-10-11) | in use. Author and URL still to fill |
+| Mixamo animations (Idle, Walking, Typing, Talking, Sitting Idle, Sit To Stand, Stand To Sit, Sit To Type, Type To Sit) | staff movement | https://www.mixamo.com | Adobe | Adobe Mixamo terms (not CC) | in use. Keep the `.fbx` out of git |
 
 Removed from the scene on purpose, not shipped: the `dead_body1` stretcher figure and the
 `lab_tools` set (kept only in the hidden `Unused_original` collection of the working `.blend`).

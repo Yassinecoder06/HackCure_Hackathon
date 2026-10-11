@@ -229,6 +229,7 @@ def build_station(kept, coll):
 # ------------------------------------------------------------------------ run
 remove_previous_run()
 bpy.context.view_layer.update()
+start = common.snapshot()
 station_coll = common.get_collection(STATION)
 props_coll = common.get_collection(PROPS)
 
@@ -333,6 +334,7 @@ lamp_root.scale = (LAMP_SCALE,) * 3
 lamp_root.location = PARK + Vector((8, 8, 2.4))
 
 station.location = PARK
+common.purge_new(start)
 bpy.context.view_layer.update()
 for name in ROOTS:
     print(f"{name}: {tris(common.subtree(bpy.data.objects[name]))} polygons")

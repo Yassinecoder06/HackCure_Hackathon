@@ -178,3 +178,23 @@ def screen_quad(src, name, collection, inset=0.10, to_frame=None, toward=None):
     obj = bpy.data.objects.new(name, mesh)
     collection.objects.link(obj)
     return obj
+
+
+# ------------------------------------------------------------------- tidy-up
+_KINDS = ("meshes", "armatures", "materials", "images", "actions")
+
+
+def snapshot():
+    """Remember which datablocks exist now, so a step can later delete only what IT created."""
+    return {k: set(getattr(bpy.data, k)) for k in _KINDS}
+
+
+def purge_new(snap):
+    """Delete datablocks created since `snap` that nothing uses any more (the importers leave many:
+    placeholder meshes, duplicate materials, packed copies of embedded textures). Datablocks that
+    existed before are never touched. Materials go before images, since they hold the images."""
+    for _ in range(3):
+        for kind in _KINDS:
+            for d in list(getattr(bpy.data, kind)):
+                if d not in snap[kind] and d.users == 0:
+                    getattr(bpy.data, kind).remove(d)

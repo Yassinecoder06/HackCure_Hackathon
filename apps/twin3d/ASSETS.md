@@ -62,13 +62,20 @@ Unzipped into `models\` (the zips stay in `Imports\`). All four are used by `05_
 Note: the keyboard has a generic Windows-style symbol on one key, baked into its texture. It is not
 legible at the web view's distance. If you want it gone, say so and I paint that key out.
 
-Still needed (you said these are the only ones):
+Characters received and used (`06_character.py`): the surgical nurse (rigged, 10 mesh parts, 8 PBR
+sets) and nine Mixamo clips (Idle, Walking, Typing, Talking, Sitting Idle, Sit To Stand, Stand To Sit,
+Sit To Type, Type To Sit). One model serves all six staff: the web app recolours the shirt, trousers
+and scrub cap per role. The surgical mask is hidden (kept in the file). The model's hair is only the
+part under the cap, so the cap stays.
+
+Limits of one model for everyone: all staff share one face, hair and shoes, and are all women. If you
+later want variety, a second rigged model with the same skeleton names would slot in.
+
+Still needed:
 
 | Priority | What | Search terms | Why |
 |---|---|---|---|
-| 1 | Nurse, charge nurse, care assistant, doctor (rigged, scrubs or white coat) | `nurse rigged low poly`, `doctor scrubs rigged`, `scrubs character` | seed staff CN1, N1, N2, N3, CA1, DR1 |
-| 1 | Animations for them (Mixamo) | `Idle`, `Walking`, `Typing`, `Talking` | nurses walk to the call |
-| 2 | Patient lying in a bed, clothed and awake | `patient low poly rigged`, `human base mesh male`, `human base mesh female` | so occupied and empty beds differ. Nothing with a shroud or sheet over the face |
+| 2 | Patient lying in a bed, clothed and awake (the nurse can be re-used with a hospital-gown recolour if you prefer) | `patient low poly rigged`, `human base mesh male`, `human base mesh female` | so occupied and empty beds differ. Nothing with a shroud or sheet over the face |
 
 Optional later: a few waiting seats for the corridor entrance (the reception pack has some), a wall
 sink and sanitiser dispenser.
