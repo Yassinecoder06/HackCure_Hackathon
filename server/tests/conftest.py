@@ -38,8 +38,9 @@ TEST_TOKEN_KEY_B64 = "dGVzdC1vbmx5LXRva2VuLWtleS1ub3QtYS1zZWNyZXQtISE="  # 32+ b
 TEST_PINS = {"CN1": "111111", "N1": "222222", "DR1": "333333"}
 
 
-def make_client(tmp_path, with_inference: bool = False, **overrides):
-    """Ward server TestClient. with_inference=True plugs in the real inference app in-process."""
+def make_client(tmp_path, with_inference: bool = False, assistant_llm=False, **overrides):
+    """Ward server TestClient. with_inference=True plugs in the real inference app in-process. The local language
+    model is off unless a test passes assistant_llm (a fake with chat(question, facts, lang))."""
     from borj_inference.main import create_app as create_inference_app
     from borj_server.config import Settings
     from borj_server.main import create_app
@@ -52,7 +53,8 @@ def make_client(tmp_path, with_inference: bool = False, **overrides):
         **overrides,
     )
     inference_http = TestClient(create_inference_app()) if with_inference else None
-    return TestClient(create_app(settings, inference_http=inference_http, cipher=make_test_cipher()))
+    return TestClient(create_app(settings, inference_http=inference_http, cipher=make_test_cipher(),
+                                 assistant_llm=assistant_llm))
 
 
 def login(client, staff_id: str = "CN1") -> dict:

@@ -41,6 +41,7 @@ class Settings:
     calls_config_path: Path = REPO_ROOT / "server" / "config" / "calls.yaml"
     meds_config_path: Path = REPO_ROOT / "server" / "config" / "meds.yaml"
     family_config_path: Path = REPO_ROOT / "server" / "config" / "family.yaml"
+    assistant_config_path: Path = REPO_ROOT / "server" / "config" / "assistant.yaml"
     observations_config_path: Path = REPO_ROOT / "server" / "config" / "observations.yaml"
     escalation_tick_s: float = 1.0
     # Frame integrity (invariant 13). Key ring "keyId:<base64>,..." from .env, and the mode:
