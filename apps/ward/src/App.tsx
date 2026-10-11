@@ -112,6 +112,16 @@ export const App: React.FC = () => {
           if (data.acknowledgedBy || data.active === false) return filtered;
           return [data, ...filtered];
         });
+      } else if (type === 'staff') {
+        setStaff(prev => {
+          const exists = prev.some(s => s.staffId === data.staffId);
+          if (exists) {
+            return prev.map(s => s.staffId === data.staffId ? data : s);
+          }
+          return [...prev, data];
+        });
+      } else if (type === 'assignment_suggestion') {
+        loadInitialSnapshot();
       }
     });
 

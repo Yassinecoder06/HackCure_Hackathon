@@ -268,51 +268,75 @@ class WardApiService {
   }
 
   public async submitObservations(bed: string, observations: any, ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/beds/${bed}/observations`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(observations)
     });
-    if (!res.ok) throw new Error('Failed to record observation');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to record observation');
+    }
     return res.json();
   }
 
   public async acknowledgeCall(callId: string, ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/calls/${callId}/ack`, {
       method: 'POST',
       headers: this.getHeaders()
     });
-    if (!res.ok) throw new Error('Failed to acknowledge call');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to acknowledge call');
+    }
     return res.json();
   }
 
   public async resolveCall(callId: string, ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/calls/${callId}/resolve`, {
       method: 'POST',
       headers: this.getHeaders()
     });
-    if (!res.ok) throw new Error('Failed to resolve call');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to resolve call');
+    }
     return res.json();
   }
 
   public async acknowledgeAlert(alertId: string, ward = 'W1') {
     audioAlerts.stopCriticalAlarm();
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/alerts/${alertId}/ack`, {
       method: 'POST',
       headers: this.getHeaders()
     });
-    if (!res.ok) throw new Error('Failed to acknowledge alert');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to acknowledge alert');
+    }
     return res.json();
   }
 
   public async getSuggestions(ward = 'W1') {
-    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/assignments/suggestions`, {
-      headers: this.getHeaders()
-    });
-    return res.json();
+    try {
+      await this.ensureSession();
+      const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/assignments/suggestions`, {
+        headers: this.getHeaders()
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   }
 
   public async requestSuggestion(ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/assignments/suggestions`, {
       method: 'POST',
       headers: this.getHeaders()
@@ -325,6 +349,7 @@ class WardApiService {
   }
 
   public async setStaffPresence(staffId: string, onWard: boolean, reason: string, expectedBackMin?: number, ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/staff/${staffId}/presence`, {
       method: 'POST',
       headers: this.getHeaders(),
@@ -342,47 +367,76 @@ class WardApiService {
   }
 
   public async decideSuggestion(suggestionId: string, decision: 'approve' | 'reject', reason?: string, ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/assignments/suggestions/${suggestionId}/decision`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ decision, reason: reason || 'Charge nurse decision' })
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to record decision on suggestion');
+    }
     return res.json();
   }
 
   public async runWhatIf(disruptions: any[], ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/whatif/runs`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ disruptions, seeds: 200, horizonMin: 240 })
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to run what-if simulation');
+    }
     return res.json();
   }
 
   public async getMedsTimeline(ward = 'W1') {
-    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/meds/timeline`, {
-      headers: this.getHeaders()
-    });
-    return res.json();
+    try {
+      await this.ensureSession();
+      const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/meds/timeline`, {
+        headers: this.getHeaders()
+      });
+      if (!res.ok) return null;
+      return res.json();
+    } catch {
+      return null;
+    }
   }
 
   public async recordAdministration(doseId: string, action: 'given' | 'not_given', ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/doses/${doseId}/administration`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ action, presence: 'wristband_scan' })
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to record administration');
+    }
     return res.json();
   }
 
   public async getFamilyUpdates(ward = 'W1') {
-    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/family/updates`, {
-      headers: this.getHeaders()
-    });
-    return res.json();
+    try {
+      await this.ensureSession();
+      const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/family/updates`, {
+        headers: this.getHeaders()
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   }
 
   public async createFamilyConsent(admissionId: string, relativeLabel: string, ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/admissions/${admissionId}/family/consents`, {
       method: 'POST',
       headers: this.getHeaders(),
@@ -392,57 +446,93 @@ class WardApiService {
         givenBy: 'patient'
       })
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to create family consent');
+    }
     return res.json();
   }
 
   public async createFamilyInvite(admissionId: string, ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/admissions/${admissionId}/family/invites`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({})
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to create family invite');
+    }
     return res.json();
   }
 
   public async draftFamilyUpdate(admissionId: string, kind: string, text: string, ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/admissions/${admissionId}/family/updates`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ kind, text })
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to draft family update');
+    }
     return res.json();
   }
 
   public async decideFamilyUpdate(updateId: string, decision: 'approve' | 'reject', ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/family/updates/${updateId}/decision`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ decision })
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to decide family update');
+    }
     return res.json();
   }
 
   public async getDoctorOrders(ward = 'W1') {
-    const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/doctor/orders`, {
-      headers: this.getHeaders()
-    });
-    return res.json();
+    try {
+      await this.ensureSession();
+      const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/doctor/orders`, {
+        headers: this.getHeaders()
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   }
 
   public async createDoctorOrder(bed: string, orderText: string, ward = 'W1') {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/doctor/orders`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ bed, orderText })
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to create doctor order');
+    }
     return res.json();
   }
 
   public async triggerPeakDemo() {
+    await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/demo/trigger-peak`, {
       method: 'POST',
       headers: this.getHeaders()
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to trigger demo peak');
+    }
     return res.json();
   }
 

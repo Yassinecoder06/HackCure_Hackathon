@@ -51,6 +51,11 @@ export const StaffView: React.FC<StaffViewProps> = ({
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [decidingSug, setDecidingSug] = useState<boolean>(false);
   const [requestingSug, setRequestingSug] = useState<boolean>(false);
+  const [decisionFeedback, setDecisionFeedback] = useState<string | null>(null);
+
+  const session = wardApi.getSession();
+  const isChargeNurse = session?.staff?.role === 'charge_nurse';
+  const onWardNurses = staff.filter((s: any) => s.onWard && (s.role === 'nurse' || s.role === 'charge_nurse'));
 
   // What-If state
   const [whatIfDisruptions, setWhatIfDisruptions] = useState<string[]>(['staff_leaves']);
@@ -78,14 +83,22 @@ export const StaffView: React.FC<StaffViewProps> = ({
     loadSuggestions();
     loadMeds();
     loadFamilyUpdates();
+
+    const unsub = wardApi.subscribe((type) => {
+      if (type === 'assignment_suggestion' || type === 'staff' || type === 'auth_changed') {
+        loadSuggestions();
+      }
+    });
+    return () => unsub();
   }, []);
 
   const loadSuggestions = async () => {
     try {
       const data = await wardApi.getSuggestions();
-      setSuggestions(data || []);
+      setSuggestions(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
+      setSuggestions([]);
     }
   };
 
@@ -151,12 +164,14 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
   const handleDecideSuggestion = async (id: string, decision: 'approve' | 'reject') => {
     setDecidingSug(true);
+    setDecisionFeedback(null);
     try {
       await wardApi.decideSuggestion(id, decision, 'Charge Nurse approved in staff controls');
+      setDecisionFeedback(decision === 'approve' ? '✓ Rebalance proposal approved! Bed assignments updated across the ward.' : 'Rebalance proposal rejected.');
       await loadSuggestions();
       onRefresh?.();
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      alert(e.message || 'Failed to record assignment decision');
     } finally {
       setDecidingSug(false);
     }
@@ -164,6 +179,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
   const handleRequestSuggestion = async () => {
     setRequestingSug(true);
+    setDecisionFeedback(null);
     try {
       await wardApi.requestSuggestion();
       await loadSuggestions();
@@ -182,6 +198,20 @@ export const StaffView: React.FC<StaffViewProps> = ({
       await loadSuggestions();
     } catch (e: any) {
       alert(e.message || 'Failed to update staff presence');
+    }
+  };
+
+  const handleCheckInAllShiftStaff = async () => {
+    try {
+      for (const st of staff.filter((s: any) => s.role === 'nurse' || s.role === 'charge_nurse')) {
+        if (!st.onWard) {
+          await wardApi.setStaffPresence(st.staffId, true, 'shift_start');
+        }
+      }
+      onRefresh?.();
+      await loadSuggestions();
+    } catch (e: any) {
+      alert(e.message || 'Failed to check in staff team');
     }
   };
 
@@ -606,15 +636,79 @@ export const StaffView: React.FC<StaffViewProps> = ({
             </button>
           </div>
 
+          {/* Role Check & Switch Banner */}
+          {!isChargeNurse && (
+            <div style={{ background: 'rgba(234, 88, 12, 0.12)', border: '1px solid #ea580c', padding: '0.85rem 1.25rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <div style={{ fontWeight: 800, color: '#f97316', fontSize: '0.9rem' }}>
+                  Logged in as {session?.staff?.name || 'Staff'} ({session?.staff?.role || 'nurse'})
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Safety Invariant 1: Reviewing and approving assignment suggestions requires Charge Nurse authority (CN1, PIN 687463).
+                </div>
+              </div>
+              <button
+                className="btn-primary"
+                onClick={async () => {
+                  await wardApi.login('CN1', '687463');
+                  onRefresh?.();
+                  await loadSuggestions();
+                }}
+                style={{ background: '#0284c7', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                id="btn-switch-charge-nurse"
+              >
+                Switch to Charge Nurse A Session (1-Tap)
+              </button>
+            </div>
+          )}
+
+          {/* 0 Nurses On Ward Alert */}
+          {onWardNurses.length === 0 && (
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', padding: '0.85rem 1.25rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <div style={{ fontWeight: 800, color: '#ef4444', fontSize: '0.9rem' }}>
+                  ⚠️ No Nurses Currently Checked In On Ward
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  The Google OR-Tools solver requires at least one nurse on duty to calculate workload assignments.
+                </div>
+              </div>
+              <button
+                className="btn-success"
+                onClick={handleCheckInAllShiftStaff}
+                style={{ padding: '0.5rem 1.1rem', fontSize: '0.85rem' }}
+                id="btn-checkin-shift-nurses"
+              >
+                Check In Shift Nurses (1-Tap)
+              </button>
+            </div>
+          )}
+
+          {/* Decision Feedback Banner */}
+          {decisionFeedback && (
+            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#10b981', padding: '0.75rem 1.25rem', borderRadius: 6, fontSize: '0.85rem', fontWeight: 600 }}>
+              {decisionFeedback}
+            </div>
+          )}
+
           {/* Ward Shift & Staff Availability Roster */}
           <div className="room-box" style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-                Ward Shift & Staff Availability Roster
-              </h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {staff.filter((s: any) => s.onWard).length} of {staff.length} on ward
-              </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                  Ward Shift & Staff Availability Roster
+                </h4>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {staff.filter((s: any) => s.onWard).length} of {staff.length} on ward
+                </span>
+              </div>
+              <button
+                className="btn-outline"
+                style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                onClick={handleCheckInAllShiftStaff}
+              >
+                Check In All Shift Staff
+              </button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
               {staff.map((st: any) => (
