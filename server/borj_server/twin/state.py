@@ -159,6 +159,19 @@ class AlertAck:
     ts: datetime
 
 
+@dataclass(frozen=True)
+class DoctorOrder:
+    """A remote doctor's free-text message to the nurses about one bed. Never changes a prescription,
+    an assignment or a score (safety invariant 1)."""
+
+    order_id: str
+    admission_id: str
+    bed: str
+    doctor_id: str
+    text: str
+    ts: datetime
+
+
 class WardTwin:
     def __init__(self, layout: WardLayout) -> None:
         self.ward = layout.ward
@@ -175,6 +188,7 @@ class WardTwin:
         self.alert_instructions: dict[str, list[tuple[str, str, datetime]]] = {}
         self.prescriptions: dict[str, Prescription] = {}
         self.administrations: dict[str, Administration] = {}  # doseId -> nurse record
+        self.doctor_orders: dict[str, DoctorOrder] = {}        # orderId -> order (internal `order` events)
         self.patient_reported: dict[str, datetime] = {}        # doseId -> "I took my pills" (never closes a dose)
         # Family Care Link: everything here comes from internal `family` events (never MQTT).
         self.family_links: dict[str, str] = {}                  # admissionId -> opaque linkId

@@ -53,6 +53,7 @@ def test_openapi_is_valid(spec):
         ("borj/W1/assignment", "assignment"),
         ("borj/W1/B04/prescription", "prescription"),
         ("borj/W1/B04/family", "family-event"),
+        ("borj/W1/B04/order", "doctor-order"),
     ],
 )
 def test_topic_routing(topic, schema):

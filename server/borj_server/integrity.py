@@ -4,6 +4,10 @@ Every message from the ward network may carry an `integrity` field: HMAC-SHA256 
 JSON, with the per-device key named by `keyId` (contracts/schemas/common.schema.json). The check
 runs here, before ingest, so a forged or altered message never reaches the event log or the twin.
 
+Internal topics (bc.INTERNAL_SCHEMAS: prescription, family, order) are refused over MQTT in every mode:
+only the server writes them, after an authenticated REST action. Without this, anyone who can publish to
+the broker could forge a prescription, a family consent or a doctor order.
+
 Modes (BORJ_INTEGRITY_MODE):
 - off: no check (unit tests, local tinkering).
 - verify: a signature that is present must be valid; unsigned messages are accepted and counted.
@@ -43,12 +47,14 @@ class IntegrityGate:
 
     def check(self, topic: str, payload: dict[str, Any]) -> str | None:
         """None if the message may be ingested, otherwise the reason it is rejected."""
-        if self.mode == "off":
-            return None
         try:
             schema = bc.route(topic).schema
         except bc.ContractError:
             return None  # not a contract topic: ingest rejects it with the contract error
+        if schema in bc.INTERNAL_SCHEMAS:
+            return "internal_topic"  # in every mode: even a correctly signed one, nobody on the broker may write these
+        if self.mode == "off":
+            return None
         integrity = payload.get("integrity")
         if integrity is None:
             self.stats["unsigned"] += 1
