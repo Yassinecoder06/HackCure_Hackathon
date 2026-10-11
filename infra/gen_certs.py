@@ -29,7 +29,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 CERTS = Path(__file__).resolve().parent / "certs"
-DEFAULT_NAMES = ["localhost", "mosquitto", "nginx", "borj.local"]
+DEFAULT_NAMES = ["localhost", "mosquitto", "nginx", "borj.local", "family-proxy", "family-gateway"]
 DEFAULT_IPS = ["127.0.0.1", "::1", "10.42.0.1"]  # 10.42.0.1: NetworkManager hotspot default (the Pi guide uses it)
 
 

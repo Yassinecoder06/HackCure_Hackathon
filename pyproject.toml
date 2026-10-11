@@ -5,8 +5,8 @@ description = "Ward Control Tower (hackathon). Tooling config only; components h
 requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
-pythonpath = ["contracts", "server", "inference", "bedside-node", "simulator", "gateway"]
-testpaths = ["tests", "server/tests", "inference/tests", "bedside-node/tests", "simulator/tests", "gateway/tests"]
+pythonpath = ["contracts", "server", "inference", "bedside-node", "simulator", "gateway", "family-gateway"]
+testpaths = ["tests", "server/tests", "inference/tests", "bedside-node/tests", "simulator/tests", "gateway/tests", "family-gateway/tests"]
 
 [tool.ruff]
 line-length = 120

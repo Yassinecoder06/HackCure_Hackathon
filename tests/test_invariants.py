@@ -123,9 +123,36 @@ def test_2_family_never_sees_forbidden_fields():
         assert not any(x in item.payload["linkId"] for x in ("ADM", "B04", "0004"))
 
 
-@pytest.mark.skip(reason="P4, A: family-gateway on dmz network cannot resolve or reach mosquitto/server")
 def test_3_outbound_only():
-    pass
+    """family-gateway lives on the dmz network alone; only the ward's publisher bridges, and it listens on nothing."""
+    import re
+
+    import yaml
+
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    services = compose["services"]
+    on_dmz = {name for name, svc in services.items() if "dmz" in (svc.get("networks") or [])}
+    assert on_dmz == {"family-gateway", "family-proxy", "family-publisher"}
+    assert services["family-gateway"]["networks"] == ["dmz"] and services["family-proxy"]["networks"] == ["dmz"]
+    for ward_only in ("mosquitto", "server", "postgres", "inference", "ward-app", "nginx", "simulator"):
+        assert "dmz" not in services[ward_only]["networks"], ward_only
+    assert "ports" not in services["family-gateway"] and "ports" not in services["family-publisher"]
+    assert services["family-proxy"]["ports"] == ["8443:443"], "the ward-only ingest listener (4443) is never published"
+    assert compose["networks"]["dmz"] in ({}, None) and "internal" not in (compose["networks"]["dmz"] or {})
+
+    proxy = (ROOT / "infra" / "nginx" / "family-proxy.conf").read_text(encoding="utf-8")
+    public, ward_face = proxy.split("listen 4443 ssl;")
+    assert re.search(r"location /ingest/ \{\s*return 404;", public), "the public face never serves /ingest"
+    assert "proxy_pass" not in ward_face.split("location / {")[1], "the ward face serves /ingest and nothing else"
+
+    # The gateway is a leaf: it imports nothing that could reach the ward (broker, database, server code).
+    for source in (ROOT / "family-gateway" / "borj_family_gateway").glob("*.py"):
+        text = source.read_text(encoding="utf-8")
+        for forbidden in ("borj_server", "paho", "sqlalchemy", "psycopg", "httpx", "requests", "socket"):
+            assert not re.search(rf"^\s*(import|from) {forbidden}", text, re.M), (source.name, forbidden)
+    # ... and its image never receives the ward's secrets or the MQTT credentials.
+    env = " ".join(services["family-gateway"]["environment"])
+    assert not any(word in env for word in ("MQTT", "POSTGRES", "BORJ_DATA_KEY", "BORJ_TOKEN_KEY", "BORJ_DEVICE_KEYS"))
 
 
 def test_4_consent_first():

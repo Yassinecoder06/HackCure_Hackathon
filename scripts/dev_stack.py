@@ -45,6 +45,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--no-simulator", action="store_true")
     parser.add_argument("--api-port", default="8000", help="server port (default 8000)")
+    parser.add_argument("--no-family", action="store_true", help="skip family-gateway and the family publisher")
+    parser.add_argument("--family-port", default="8100", help="family-gateway port (default 8100, plain HTTP)")
     parser.add_argument("--scenario", default="night-shift-peak")
     parser.add_argument("--speed", default="10")
     parser.add_argument("--require-signatures", action="store_true", help="reject unsigned measurements (demo mode)")
@@ -67,6 +69,19 @@ def main() -> None:
     }
     sim_env = {**base, **mqtt, "MQTT_USERNAME": "sim", "MQTT_PASSWORD": secrets["MQTT_PW_SIM"],
                "BORJ_DEVICE_KEYS": secrets["BORJ_DEVICE_KEYS"]}
+    family_url = f"http://localhost:{args.family_port}"
+    server_env["BORJ_FAMILY_PUBLIC_URL"] = family_url   # printed in the QR codes
+    gateway_env = {
+        **base,
+        "FAMILY_PUBLISHER_TOKEN": secrets["FAMILY_PUBLISHER_TOKEN"],
+        "FAMILY_DATA_KEY": secrets["FAMILY_DATA_KEY"],
+        "FAMILY_DB_PATH": str(ROOT / "data" / "family-gateway.sqlite"),
+        "FAMILY_STATIC_DIR": str(ROOT / "apps" / "family" / "dist"),
+        "PYTHONPATH": os.pathsep.join(str(ROOT / d) for d in ("contracts", "family-gateway")),
+    }
+    publisher_env = {
+        **server_env, "FAMILY_GATEWAY_URL": family_url, "FAMILY_PUBLISHER_TOKEN": secrets["FAMILY_PUBLISHER_TOKEN"],
+    }
     Path(args.db).parent.mkdir(parents=True, exist_ok=True)
 
     procs: list[subprocess.Popen] = []
@@ -93,10 +108,19 @@ def main() -> None:
     wait_http("http://localhost:8001/health", "inference")
     start("server", [py, "-m", "uvicorn", "borj_server.main:app", "--port", args.api_port], server_env)
     wait_http(f"http://localhost:{args.api_port}/health", "server")
+    if not args.no_family:
+        # Plain HTTP on this machine only: the compose stack puts TLS 1.3 (nginx) in front. Build the app first:
+        # npm ci && npm run build --workspace=apps/family
+        start("family-gateway", [py, "-m", "uvicorn", "borj_family_gateway.app:app_factory", "--factory",
+                                 "--port", args.family_port], gateway_env)
+        wait_http(f"{family_url}/health", "family-gateway")
+        start("family publisher", [py, "-m", "borj_server.family_publisher"], publisher_env)
     if not args.no_simulator:
         start("simulator", [py, "-m", "borj_sim", "--scenario", f"simulator/scenarios/{args.scenario}.yaml",
                             "--speed", args.speed], sim_env)
     print(f"stack is up: API http://localhost:{args.api_port} (docs at /docs). Ctrl-C to stop.")
+    if not args.no_family:
+        print(f"family link: {family_url} (the relatives' app)")
     while True:
         for proc in procs:
             if proc.poll() is not None:

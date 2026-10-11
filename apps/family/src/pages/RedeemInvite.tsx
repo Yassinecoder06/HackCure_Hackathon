@@ -9,7 +9,7 @@ interface RedeemInviteProps {
 }
 
 export const RedeemInvite: React.FC<RedeemInviteProps> = ({ lang, onSuccess }) => {
-  const [code, setCode] = useState<string>('FAM-9921');
+  const [code, setCode] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +20,7 @@ export const RedeemInvite: React.FC<RedeemInviteProps> = ({ lang, onSuccess }) =
     setError(null);
     setLoading(true);
     try {
-      await familyApi.redeemInvite(code.trim().toUpperCase());
+      await familyApi.redeemInvite(code.trim());
       onSuccess();
     } catch (err: any) {
       setError(err.message || t.invalidCode);
@@ -46,9 +46,11 @@ export const RedeemInvite: React.FC<RedeemInviteProps> = ({ lang, onSuccess }) =
             type="text"
             className="pin-input"
             value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))}
             placeholder={t.pinPlaceholder}
-            maxLength={10}
+            maxLength={12}
+            inputMode="numeric"
+            autoComplete="one-time-code"
             required
             id="input-family-code"
           />
@@ -66,11 +68,7 @@ export const RedeemInvite: React.FC<RedeemInviteProps> = ({ lang, onSuccess }) =
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 8 }}>
           <QrCode size={16} />
-          <span>
-            {lang === 'fr' 
-              ? 'Les QR codes au chevet du patient pré-remplissent automatiquement cette clé.' 
-              : 'Bedside QR codes automatically pre-fill this access key.'}
-          </span>
+          <span>{t.qrHint}</span>
         </div>
       </div>
     </div>

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import os
 import re
 import secrets
 import threading
@@ -58,7 +59,7 @@ class FamilyConfig:
         d = yaml.safe_load(path.read_text(encoding="utf-8"))
         return cls(
             valid_days=int(d["invites"]["valid_days"]),
-            public_url=d["invites"]["public_url"].rstrip("/"),
+            public_url=os.environ.get("BORJ_FAMILY_PUBLIC_URL", d["invites"]["public_url"]).rstrip("/"),
             code_digits=int(d["invites"]["code_digits"]),
             blocked_terms=tuple(t.lower() for t in d["privacy_filter"]["blocked_terms"]),
             blocked_patterns=tuple(re.compile(p) for p in d["privacy_filter"]["blocked_patterns"]),

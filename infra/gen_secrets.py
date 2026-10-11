@@ -9,6 +9,7 @@ Holds (ADR 0010):
 - BORJ_TOKEN_KEY           signing key for login tokens
 - BORJ_STAFF_PINS          a random 6-digit demo PIN per synthetic staff member in seed/ward-W1.yaml
 - FAMILY_PUBLISHER_TOKEN   bearer token the family publisher presents to family-gateway ingest
+- FAMILY_DATA_KEY          AES-256-GCM key for what family-gateway stores (nurse-approved update text)
 - BORJ_MQTT_USERS          broker accounts "user:password,...": server, sim, gw, node-B01...; the broker entrypoint
                            builds its password file from it (rules per account: infra/mosquitto/acl.conf)
 - MQTT_PW_SERVER/_SIM/_GW  the same passwords for the compose services (a Raspberry Pi node uses its own entry)
@@ -67,6 +68,7 @@ def fresh_values() -> dict[str, str]:
         "BORJ_TOKEN_KEY": base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
         "BORJ_STAFF_PINS": pins,
         "FAMILY_PUBLISHER_TOKEN": secrets.token_urlsafe(32),
+        "FAMILY_DATA_KEY": base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
         "BORJ_DEVICE_KEYS": device_keys(),
     }
 

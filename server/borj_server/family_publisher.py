@@ -93,7 +93,9 @@ def main() -> None:  # pragma: no cover - process entry point, exercised in comp
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     store = EventStore(os.environ["BORJ_DB_URL"], DataCipher.from_env())
-    http = httpx.Client(base_url=os.environ["FAMILY_GATEWAY_URL"], timeout=10)
+    # TLS 1.3 to family-gateway, verified against our own CA (FAMILY_CA_CERT); the system roots otherwise.
+    http = httpx.Client(base_url=os.environ["FAMILY_GATEWAY_URL"], timeout=10,
+                        verify=os.environ.get("FAMILY_CA_CERT", True))
     publisher = FamilyPublisher(store, http, os.environ["FAMILY_PUBLISHER_TOKEN"])
     interval = float(os.environ.get("FAMILY_PUBLISH_INTERVAL_S", "2"))
     log.info("family publisher started (outbound only, no listening port)")

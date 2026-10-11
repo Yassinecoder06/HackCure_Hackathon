@@ -35,7 +35,7 @@ jobs:
       - run: python3 infra/gen_secrets.py
       - run: python3 infra/gen_certs.py
       - run: docker compose config --quiet
-      - run: docker compose build mosquitto postgres inference server simulator ward-app nginx
+      - run: docker compose build mosquitto postgres inference server simulator ward-app nginx family-gateway family-publisher
       # mqtt_smoke.py pins the demo clock and binds B04 itself. The simulator (own clock, own patients) is
       # started after it, by a later step.
       - run: docker compose up -d --wait mosquitto postgres inference server
@@ -51,6 +51,10 @@ jobs:
         run: |
           docker compose up -d --wait nginx
           python tests/integration/https_smoke.py
+      - name: Family Care Link end to end, and family-gateway isolation
+        run: |
+          docker compose up -d --wait family-proxy family-publisher
+          python tests/integration/family_smoke.py
       - if: failure()
         run: docker compose logs
       - if: always()

@@ -94,6 +94,9 @@ services:
       BORJ_DEMO_ENDPOINTS: ${BORJ_DEMO_ENDPOINTS:-1}
       # Extra browser origins for the API, e.g. the hosted demo URL. localhost and LAN addresses are always allowed.
       BORJ_CORS_ORIGINS: ${BORJ_CORS_ORIGINS:-}
+      # Address printed in the family QR codes (the relative's phone must be able to reach it): this laptop's
+      # address for a local demo, e.g. https://192.168.1.20:8443, or the hosted family domain.
+      BORJ_FAMILY_PUBLIC_URL: ${BORJ_FAMILY_PUBLIC_URL:-https://localhost:8443}
     volumes:
       - ./infra/certs/ca.crt:/certs/ca.crt:ro
     ports:
@@ -133,21 +136,53 @@ services:
       retries: 3
 
   family-publisher:   # B, P4: outbound only. NO ports, NO listening socket (safety invariant 3).
-    # Forwards only the allow-listed payloads approved on the ward to family-gateway.
-    # Enable with: docker compose --profile family up   (needs A's family-gateway service)
-    profiles: [family]
+    # Forwards only the allow-listed payloads approved on the ward to family-gateway, over TLS 1.3.
     build: { context: ., dockerfile: server/Dockerfile }
     command: ["python", "-m", "borj_server.family_publisher"]
     environment:
       BORJ_DB_URL: postgresql+psycopg://borj:${POSTGRES_PASSWORD}@postgres:5432/borj
       BORJ_DATA_KEY: ${BORJ_DATA_KEY:?missing - run python infra/gen_secrets.py}
       BORJ_DATA_KEY_ID: ${BORJ_DATA_KEY_ID:-k1}
-      FAMILY_GATEWAY_URL: http://family-gateway:8100
+      FAMILY_GATEWAY_URL: https://family-proxy:4443
+      FAMILY_CA_CERT: /certs/ca.crt
       FAMILY_PUBLISHER_TOKEN: ${FAMILY_PUBLISHER_TOKEN:?missing - run python infra/gen_secrets.py}
+    volumes:
+      - ./infra/certs/ca.crt:/certs/ca.crt:ro
     depends_on:
       postgres: { condition: service_healthy }
+      family-proxy: { condition: service_healthy }
     healthcheck: { disable: true }   # it serves nothing, so there is nothing to probe
     networks: [ward, dmz]
+
+  family-gateway:     # A, P4: the DMZ half of the Family Care Link. On the dmz network ONLY (invariant 3):
+    # it cannot resolve or reach mosquitto, server or postgres. Holds no vitals, scores, drugs or staff data.
+    build: { context: ., dockerfile: family-gateway/Dockerfile }
+    environment:
+      FAMILY_PUBLISHER_TOKEN: ${FAMILY_PUBLISHER_TOKEN:?missing - run python infra/gen_secrets.py}
+      FAMILY_DATA_KEY: ${FAMILY_DATA_KEY:?missing - run python infra/gen_secrets.py}
+      FAMILY_TRUST_PROXY: "1"
+      FAMILY_WARD_CONTACT: ${FAMILY_WARD_CONTACT:-+216 70 000 000}
+    volumes:
+      - family-data:/data
+    networks: [dmz]
+
+  family-proxy:       # A, P4: TLS 1.3 in front of family-gateway. 443 (published as 8443) is the relatives' face;
+    # 4443 is only for the ward's publisher and is not published.
+    image: nginx:1.27-alpine
+    ports:
+      - "8443:443"
+    volumes:
+      - ./infra/nginx/family-proxy.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/certs/server.crt:/etc/nginx/certs/server.crt:ro
+      - ./infra/certs/server.key:/etc/nginx/certs/server.key:ro
+    depends_on:
+      family-gateway: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--no-check-certificate", "https://127.0.0.1:443/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [dmz]
 
 networks:
   ward: {}
@@ -155,3 +190,4 @@ networks:
 
 volumes:
   pg-data: {}
+  family-data: {}

@@ -34,6 +34,21 @@ function checkFiles(dir) {
       if (/http:\/\/localhost:8000/.test(content) || /api\/v1\/wards/.test(content)) {
         violations.push(`${fullPath}: references ward server port 8000 or /api/v1/wards endpoints`);
       }
+      // Safety invariant 2: the page shows only what the ward approved. It must not invent content or name
+      // a bed, a room, a vital sign, a score or a drug (generated .d.ts contract files are not UI text).
+      if (!/\.d\.ts$/.test(entry.name)) {
+        const invented = [
+          [/\bB[0-9]{2}\b/, 'a bed id'],
+          [/\b(lit|bed|chambre|room)\s+[A-Z]?[0-9]/i, 'a bed or room'],
+          [/\b(spo2|news2|pulse|pouls|saturation|heart rate|blood pressure|tension art)/i, 'a vital sign or score'],
+          [/rassurant|reassuring|reassurance/i, 'reassurance text'],
+          [/FAM-[0-9]+|CARE20[0-9]{2}/, 'a hard-coded demo access code'],
+          [/hearts sent|cœurs envoyés/i, 'an invented counter'],
+        ];
+        for (const [pattern, what] of invented) {
+          if (pattern.test(content)) violations.push(`${fullPath}: contains ${what}`);
+        }
+      }
     }
   }
   return violations;
