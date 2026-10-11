@@ -483,12 +483,12 @@ class WardApiService {
     return res.json();
   }
 
-  public async createFamilyInvite(admissionId: string, ward = 'W1') {
+  public async createFamilyInvite(admissionId: string, consentId?: string, ward = 'W1') {
     await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/admissions/${admissionId}/family/invites`, {
       method: 'POST',
       headers: this.getHeaders(),
-      body: JSON.stringify({})
+      body: JSON.stringify({ consentId: consentId || 'c1' })
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

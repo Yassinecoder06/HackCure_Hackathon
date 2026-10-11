@@ -31,11 +31,23 @@ class FamilyGatewayService {
   }
 
   public async redeemInvite(code: string): Promise<boolean> {
-    const res = await fetch(`http://${window.location.hostname}:8100/family/v1/redeem`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
-    });
+    let res: Response;
+    try {
+      res = await fetch('/family/v1/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      if (!res.ok && res.status !== 401) {
+        throw new Error('Proxy fallback');
+      }
+    } catch {
+      res = await fetch(`http://${window.location.hostname}:8100/family/v1/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+    }
 
     if (!res.ok) {
       throw new Error('Invalid or expired code. Please check with ward staff.');
@@ -48,11 +60,23 @@ class FamilyGatewayService {
   }
 
   public async getFeed(): Promise<FamilyFeedResponse> {
-    const res = await fetch(`http://${window.location.hostname}:8100/family/v1/feed`, {
-      headers: {
-        'Authorization': `Bearer ${this.sessionToken || ''}`
+    let res: Response;
+    try {
+      res = await fetch('/family/v1/feed', {
+        headers: {
+          'Authorization': `Bearer ${this.sessionToken || ''}`
+        }
+      });
+      if (!res.ok && res.status !== 401) {
+        throw new Error('Proxy fallback');
       }
-    });
+    } catch {
+      res = await fetch(`http://${window.location.hostname}:8100/family/v1/feed`, {
+        headers: {
+          'Authorization': `Bearer ${this.sessionToken || ''}`
+        }
+      });
+    }
 
     if (!res.ok) {
       if (res.status === 401) {

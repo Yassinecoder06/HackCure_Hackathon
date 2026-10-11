@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
-import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon, Volume2, VolumeX, Box, Activity } from 'lucide-react';
+import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon, Volume2, VolumeX, Box, Activity, HeartHandshake } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: 'board' | 'staff' | 'doctor' | 'twin' | 'fft';
@@ -99,6 +99,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           <Activity size={16} />
           Assistance FFT
         </button>
+        <a
+          href="http://localhost:5174?code=FAM-9921"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="nav-btn"
+          id="nav-link-family"
+          title="Open Family Care Link portal for relatives"
+          style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <HeartHandshake size={16} />
+          Family Link ↗
+        </a>
       </nav>
 
       <div className="nav-controls">

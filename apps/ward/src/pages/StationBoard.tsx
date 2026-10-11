@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
-import { AlertCircle, Info, ShieldCheck, X, Bell, User, Brain, Sparkles, Send, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle, Info, ShieldCheck, X, Bell, User, Brain, Sparkles, Send, RefreshCw, ChevronDown, ChevronUp, HeartHandshake, Copy } from 'lucide-react';
 
 interface StationBoardProps {
   beds: any[];
@@ -410,6 +410,80 @@ export const StationBoard: React.FC<StationBoardProps> = ({
                   </div>
                 );
               })()}
+
+              {/* Family Care Link (Espace Proches) Banner */}
+              {selectedBed.admission && (
+                <div
+                  style={{
+                    padding: '0.85rem 1rem',
+                    borderRadius: 8,
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 10
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ background: '#10b981', color: '#ffffff', padding: 6, borderRadius: 6, display: 'flex' }}>
+                      <HeartHandshake size={18} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>
+                        Family Care Link (Espace Proches)
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        Bedside PIN Key: <strong style={{ color: '#10b981', letterSpacing: 1 }}>FAM-9921</strong> • Relatives portal
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('http://localhost:5174?code=FAM-9921');
+                        alert('Copied Family Care Link to clipboard: http://localhost:5174?code=FAM-9921');
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                        color: '#10b981',
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <Copy size={12} /> Copy Link
+                    </button>
+                    <a
+                      href="http://localhost:5174?code=FAM-9921"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        background: '#10b981',
+                        color: '#ffffff',
+                        padding: '5px 12px',
+                        borderRadius: 6,
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      Open Portal ↗
+                    </a>
+                  </div>
+                </div>
+              )}
 
               {/* NEWS2 Summary Banner */}
               <div
