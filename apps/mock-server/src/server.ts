@@ -1255,6 +1255,21 @@ setInterval(() => {
   }
 }, 5000);
 
+wardServer.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log('ℹ️ Port 8000 is already in use by real server. Mock Ward server skipped; Family Gateway is active.');
+  } else {
+    console.error('Ward Server error:', err);
+  }
+});
+wssWard.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    // Handled by wardServer
+  } else {
+    console.error('wssWard error:', err);
+  }
+});
+
 wardServer.listen(8000, '0.0.0.0', () => {
   console.log('🏥 Ward Server & WebSocket listening on http://0.0.0.0:8000');
 });
@@ -1274,8 +1289,8 @@ familyApp.get('/health', (_req: Request, res: Response) => {
 familyApp.post('/family/v1/redeem', (req: Request, res: Response) => {
   const { code } = req.body;
   // Match code
-  const found = invites.find(i => i.code === code || code === 'CARE2026');
-  if (found || code === 'CARE2026') {
+  const found = invites.find(i => i.code === code || code === 'CARE2026' || code === 'FAM-9921');
+  if (found || code === 'CARE2026' || code === 'FAM-9921') {
     return res.json({
       sessionToken: `fam_sess_${Date.now()}`,
       expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString()
