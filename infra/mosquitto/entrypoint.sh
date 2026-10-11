@@ -14,6 +14,7 @@ done
 IFS=$OLD_IFS
 cp /mosquitto/certs/ca.crt /mosquitto/certs/server.crt /mosquitto/certs/server.key "$RUN/"
 cp /mosquitto/config/acl.conf "$RUN/acl.conf"
-chown mosquitto:mosquitto "$RUN"/*
+chown mosquitto:mosquitto "$RUN" "$RUN"/*
+chmod 700 "$RUN"
 chmod 600 "$RUN"/*
 exec mosquitto -c /mosquitto/config/mosquitto.conf
