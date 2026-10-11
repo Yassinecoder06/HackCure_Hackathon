@@ -408,7 +408,9 @@ def update_staff_presence(ward: str, staffId: str, body: StaffPresenceIn, reques
     result = ingestor.handle(bc.topic("staff-presence", ward, staff_id=staffId), payload)
     if result.status != "accepted":
         raise HTTPException(422, {"error": "rejected", "detail": result.detail})
-    ingestor.store.audit(who.staff_id, "staff.presence_updated", staffId, {"onWard": body.onWard, "reason": body.reason})
+    ingestor.store.audit(
+        who.staff_id, "staff.presence_updated", staffId, {"onWard": body.onWard, "reason": body.reason}
+    )
     return {"eventId": payload["eventId"]}
 
 

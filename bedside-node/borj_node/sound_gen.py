@@ -250,13 +250,15 @@ def ensure_default_sounds() -> dict[str, Path]:
         # Emergency Alert (Urgence médicale immédiate)
         "emergency_trigger_fr": (
             "emergency_trigger_fr.wav",
-            "Urgence médicale déclenchée au chevet. L'équipe soignante et le médecin de garde ont été alertés immédiatement. Restez au lit, nous arrivons.",
+            "Urgence médicale déclenchée au chevet. L'équipe soignante et le médecin de garde ont été "
+            "alertés immédiatement. Restez au lit, nous arrivons.",
             "fr",
             "emergency",
         ),
         "emergency_trigger_en": (
             "emergency_trigger_en.wav",
-            "Medical emergency triggered at bedside. Care team and on-call physician alerted immediately. Please remain in bed, help is on the way.",
+            "Medical emergency triggered at bedside. Care team and on-call physician alerted immediately. "
+            "Please remain in bed, help is on the way.",
             "en",
             "emergency",
         ),
