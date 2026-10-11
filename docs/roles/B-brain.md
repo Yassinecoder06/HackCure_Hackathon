@@ -94,14 +94,14 @@ Read first:
 - [x] The publisher has **no listening port** (invariant 3).
 - [x] Invariant test: a twin full of vitals, scores and drugs leaks nothing outside the allow-list (invariant 2).
 
-## P5: 3D twin (polish, [ADR 0012](../decisions/0012-3d-twin.md)) and delivery
+## P5: 3D twin (polish, [ADR 0012](../decisions/0012-3d-twin.md), [0014](../decisions/0014-twin3d-delivery.md)) and delivery
 
-- [ ] Blender (`bpy` scripts): generate the ward from `seed/ward-W1.yaml`, place CC0/CC-BY assets, PBR materials, **bake the lighting with Cycles/OptiX on the RTX 4060**, export a compressed `.glb`.
-- [ ] `apps/twin3d` (React Three Fiber + drei + postprocessing):
-  - HDRI lighting, N8AO, bloom, AgX tone mapping.
-  - Live NEWS2 glow on the monitors, a "no signal" look for stale data, call lights, Mixamo nurses.
-  - Adaptive quality, and a path-traced photo mode.
-  - `CREDITS.md` listing the asset licences.
+- [x] Blender (`bpy` scripts, `apps/twin3d/blender/`): the ward is generated from `seed/ward-W1.yaml` (rooms, corridor, station, props, patients, skinned staff with nine clips) and exported as compressed `.glb`. Not done: **baking the lighting** (real-time IBL instead), KTX2 (WebP instead). See ADR 0014.
+- [x] `apps/twin3d` (React Three Fiber + drei + postprocessing):
+  - HDRI, N8AO, bloom, AgX tone mapping.
+  - Live NEWS2 glow on the monitors, "NO SIGNAL" for stale data, call lights, nurses walking to the call they answered.
+  - Adaptive quality, and a photo mode (maximum quality, save PNG; not path traced).
+  - `CREDITS.md` with the asset licences (author and URL of the source packs still to fill in).
 - [ ] A seed/reset script for demos, and performance checks.
 
 ## You give / you need

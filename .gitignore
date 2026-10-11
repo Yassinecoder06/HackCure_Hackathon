@@ -18,6 +18,7 @@ dist/
 # Node
 node_modules/
 apps/*/dist/
+apps/twin3d/public/draco/
 .vite/
 
 # Runtime data

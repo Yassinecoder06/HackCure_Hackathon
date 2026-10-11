@@ -1,0 +1,35 @@
+{
+  "name": "borj-twin3d-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "3D digital twin of the ward. Display only: it reads the ward server stream and never changes anything.",
+  "scripts": {
+    "predev": "node scripts/copy-draco.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/copy-draco.mjs",
+    "build": "tsc --noEmit && vite build",
+    "lint": "tsc --noEmit && vitest run",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-three/drei": "10.7.9",
+    "@react-three/fiber": "9.8.1",
+    "@react-three/postprocessing": "3.2.0",
+    "n8ao": "1.10.1",
+    "postprocessing": "6.39.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.186.0",
+    "@vitejs/plugin-react": "4.3.4",
+    "typescript": "5.7.3",
+    "vite": "6.2.0",
+    "vitest": "3.2.4"
+  }
+}
