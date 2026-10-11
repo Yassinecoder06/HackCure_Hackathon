@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
-import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon, Volume2, VolumeX, Box } from 'lucide-react';
+import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon, Volume2, VolumeX, Box, Activity } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'board' | 'staff' | 'doctor' | 'twin';
-  onSelectTab: (tab: 'board' | 'staff' | 'doctor' | 'twin') => void;
+  currentTab: 'board' | 'staff' | 'doctor' | 'twin' | 'fft';
+  onSelectTab: (tab: 'board' | 'staff' | 'doctor' | 'twin' | 'fft') => void;
   isConnected: boolean;
   onPeakTriggered?: () => void;
   onOpenLogin: () => void;
@@ -89,6 +89,15 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <Box size={16} />
           {STRINGS.nav.digitalTwin}
+        </button>
+        <button
+          className={`nav-btn ${currentTab === 'fft' ? 'active' : ''}`}
+          onClick={() => onSelectTab('fft')}
+          id="nav-tab-fft"
+          title="Assistance Demand Spectral Analysis & FFT"
+        >
+          <Activity size={16} />
+          Assistance FFT
         </button>
       </nav>
 

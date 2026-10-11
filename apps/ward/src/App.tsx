@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { StationBoard } from './pages/StationBoard';
 import { StaffView } from './pages/StaffView';
 import { DoctorView } from './pages/DoctorView';
+import { AssistanceDemandFFT } from './pages/AssistanceDemandFFT';
 import { LoginModal } from './components/LoginModal';
 import { wardApi } from './services/api';
 import { audioAlerts } from './components/AudioAlerts';
@@ -10,7 +11,8 @@ import { AlertTriangle, VolumeX, CheckCircle2 } from 'lucide-react';
 import './styles/index.css';
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<'board' | 'staff' | 'doctor' | 'twin'>(() => {
+  const [currentTab, setCurrentTab] = useState<'board' | 'staff' | 'doctor' | 'twin' | 'fft'>(() => {
+    if (window.location.pathname.includes('/fft')) return 'fft';
     if (window.location.pathname.includes('/twin')) return 'twin';
     if (window.location.pathname.includes('/doctor')) return 'doctor';
     if (window.location.pathname.includes('/staff')) return 'staff';
@@ -51,7 +53,9 @@ export const App: React.FC = () => {
   // Sync route on popstate or tab change
   useEffect(() => {
     const handlePopState = () => {
-      if (window.location.pathname.includes('/twin')) {
+      if (window.location.pathname.includes('/fft')) {
+        setCurrentTab('fft');
+      } else if (window.location.pathname.includes('/twin')) {
         setCurrentTab('twin');
       } else if (window.location.pathname.includes('/doctor')) {
         setCurrentTab('doctor');
@@ -65,7 +69,7 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleSelectTab = (tab: 'board' | 'staff' | 'doctor' | 'twin') => {
+  const handleSelectTab = (tab: 'board' | 'staff' | 'doctor' | 'twin' | 'fft') => {
     setCurrentTab(tab);
     window.history.pushState({}, '', `/${tab}`);
   };
@@ -319,6 +323,11 @@ export const App: React.FC = () => {
             beds={beds}
             alerts={alerts}
             onRefresh={loadInitialSnapshot}
+          />
+        ) : currentTab === 'fft' ? (
+          <AssistanceDemandFFT
+            beds={beds}
+            calls={calls}
           />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', background: '#0b1120' }}>

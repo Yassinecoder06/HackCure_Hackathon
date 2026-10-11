@@ -515,6 +515,61 @@ def trigger_demo_peak(request: Request, who: Staff) -> dict:
     return {"status": "ok", "message": "Deterioration and assist escalation simulated on Bed B06"}
 
 
+class LLMExplainIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    question: str | None = None
+    lang: str | None = None
+
+
+@router.get("/api/v1/wards/{ward}/beds/{bed}/explain/llm")
+def explain_bed_llm(ward: str, bed: str, request: Request, who: Staff, question: str | None = None,
+                    lang: str | None = None) -> dict:
+    """Grounded clinical explanation via local Gemma 4 QAT model (ADR 0013)."""
+    _check_ward(request, ward)
+    lang_code = lang or explainer(request).lang
+    beds, alerts = build_beds(request.app, {bed}, explainer(request))
+    if not beds:
+        raise HTTPException(404, {"error": "not_found", "detail": f"unknown bed {bed}"})
+    bed_data = beds[0]
+    ingestor = request.app.state.ingestor
+    with ingestor.lock:
+        twin_bed = ingestor.twin.beds.get(bed)
+        admission = None
+        if twin_bed and twin_bed.admission:
+            adm = twin_bed.admission
+            admission = {"admissionId": adm.admission_id, "patientName": adm.patient_ref, "acuity": adm.acuity}
+        nurse_id = ingestor.twin.assignments.get(bed)
+        nurse = ingestor.twin.staff.get(nurse_id) if nurse_id else None
+        nurse_name = nurse.name if nurse else None
+
+    bed_alerts = [a for a in alerts if a.get("bed") == bed]
+    explainer_service = getattr(request.app.state, "llm_explainer", None)
+    if not explainer_service:
+        from ..llm_explainer import GroundedExplainer
+        explainer_service = GroundedExplainer(
+            request.app.state.settings.ollama_url,
+            request.app.state.settings.llm_model,
+        )
+    result = explainer_service.explain_bed(
+        bed_id=bed,
+        bed=bed_data,
+        admission=admission,
+        alerts=bed_alerts,
+        nurse_id=nurse_id,
+        nurse_name=nurse_name,
+        question=question,
+        lang=lang_code,
+    )
+    ingestor.store.audit(who.staff_id, "bed.explain_llm", bed,
+                         {"question": question, "verified": result.get("verified")})
+    return result
+
+
+@router.post("/api/v1/wards/{ward}/beds/{bed}/explain/llm")
+def explain_bed_llm_post(ward: str, bed: str, body: LLMExplainIn, request: Request, who: Staff) -> dict:
+    return explain_bed_llm(ward, bed, request, who, question=body.question, lang=body.lang)
+
+
 @router.websocket("/api/v1/wards/{ward}/stream")
 async def live_stream(websocket: WebSocket, ward: str) -> None:
     """Token offered as subprotocols ["bearer", "<token>"] (see stream.py)."""

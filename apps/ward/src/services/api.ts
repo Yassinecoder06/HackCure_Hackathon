@@ -347,6 +347,24 @@ class WardApiService {
     }
   }
 
+  public async getBedLLMExplanation(bed: string, question?: string, lang?: string, ward = 'W1') {
+    await this.ensureSession();
+    let url = `${getApiBase()}/api/v1/wards/${ward}/beds/${bed}/explain/llm`;
+    const params = new URLSearchParams();
+    if (question) params.set('question', question);
+    if (lang) params.set('lang', lang);
+    const query = params.toString();
+    if (query) url += `?${query}`;
+    const res = await fetch(url, {
+      headers: this.getHeaders()
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to generate LLM explanation');
+    }
+    return res.json();
+  }
+
   public async requestSuggestion(ward = 'W1') {
     await this.ensureSession();
     const res = await fetch(`${getApiBase()}/api/v1/wards/${ward}/assignments/suggestions`, {
