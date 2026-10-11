@@ -1,0 +1,20 @@
+# Local language-model layer (ADR 0013). SAFETY INVARIANT 8: parameters, not code. Each block says who must validate it.
+#
+# The model only rephrases numbered facts the server selects; a verifier checks every number, bed id and time in its
+# answer against those facts, and any failure shows the deterministic text instead. It never writes alerts, scores or
+# suggestions, never advises, and is never shown to families (safety invariants 1, 2, 12).
+
+llm:
+  validated_by: "TO BE CONFIRMED BY THE CLINICAL LEAD (is a model-written summary acceptable on the ward at all?)"
+  enabled: true              # false = answers come from the fixed templates only; nothing else changes
+  # Ollama on this machine. In compose the server reaches the host's Ollama at host.docker.internal.
+  url: "http://localhost:11434"
+  model: "qwen3:8b"          # compared with the other local models by scripts/eval_assistant.py before choosing
+  timeout_s: 90              # CPU-only machines are slow; nothing urgent waits on this layer
+  seed: 7                    # temperature is fixed at 0; the seed makes runs repeatable
+  max_tokens: 400
+  max_concurrent: 1          # one request at a time: a second asker gets the template text instead of waiting
+
+questions:
+  validated_by: "TO BE CONFIRMED BY THE CLINICAL LEAD (what staff may ask)"
+  max_length: 300

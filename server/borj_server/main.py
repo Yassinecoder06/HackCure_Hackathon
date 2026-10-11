@@ -9,6 +9,7 @@ import asyncio
 import base64
 import logging
 from contextlib import asynccontextmanager
+from typing import Any
 
 import borj_contracts as bc
 import httpx
@@ -17,10 +18,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .alerts import FirstSeen
+from .api.assistant_routes import router as assistant_router
 from .api.family_routes import router as family_router
 from .api.fhir_routes import router as fhir_router
 from .api.routes import router
 from .assignment import AssignmentService
+from .assistant.service import AssistantConfig, AssistantService
 from .auth import Auth, AuthError, parse_pins
 from .calls import CallConfig, CallEngine
 from .clock import Clock
@@ -49,8 +52,10 @@ def create_app(
     settings: Settings | None = None,
     inference_http: httpx.Client | None = None,
     cipher: DataCipher | None = None,
+    assistant_llm: Any = None,
 ) -> FastAPI:
-    """inference_http and cipher let tests plug in an in-process inference app and a test key."""
+    """inference_http and cipher let tests plug in an in-process inference app and a test key. assistant_llm: None = the
+    configured Ollama, False = no model (templates only), or any object with chat(question, facts, lang)."""
     settings = settings or Settings.from_env()
 
     @asynccontextmanager
@@ -99,6 +104,9 @@ def create_app(
             on_suggestion=app.state.hub.on_suggestion,
         )
         app.state.family = FamilyService(ingestor, FamilyConfig.load(settings.family_config_path))
+        # The local language model is optional: with no Ollama the assistant answers from fixed templates.
+        app.state.assistant = AssistantService(app, AssistantConfig.load(settings.assistant_config_path),
+                                               llm=assistant_llm)
         ingestor.listeners.append(app.state.family.on_event)  # discharge/transfer revokes family links
         if settings.auto_suggest:
             ingestor.listeners.append(app.state.assignment.on_event)
@@ -149,6 +157,7 @@ def create_app(
     app.include_router(router)
     app.include_router(fhir_router)
     app.include_router(family_router)
+    app.include_router(assistant_router)
     return app
 
 
