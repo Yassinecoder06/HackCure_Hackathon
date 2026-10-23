@@ -1,13 +1,13 @@
 # Architecture
 
-Borj-PiCare is a **care-coordination platform for hospital wards** (HackCure **Track 2, Web & Mobile**; see [ADR 0008](decisions/0008-track-2.md)). Bedside signals become a live **digital twin** of the ward. Deterministic, explainable modules then give staff prioritised suggestions. It is **advisory only**: a clinician always validates or rejects.
+PiCare is a **care-coordination platform for hospital wards** (HackCure **Track 2, Web & Mobile**; see [ADR 0008](decisions/0008-track-2.md)). Bedside signals become a live **digital twin** of the ward. Deterministic, explainable modules then give staff prioritised suggestions. It is **advisory only**: a clinician always validates or rejects.
 
 It is built for public wards, **including regional and district hospitals** with unreliable networks. The ward keeps working with no internet. A **remote on-call doctor** receives escalations, and a premium **Family Care Link** gives relatives consented, nurse-approved updates **without vitals**.
 
 Sources of truth:
 - The idea: [`Borj_PiCare_Whitepaper_v2.pdf`](Borj_PiCare_Whitepaper_v2.pdf).
 - The competition requirements: [`HackCure_Cahier_des_Charges.pdf`](HackCure_Cahier_des_Charges.pdf).
-- The hard rules: [`../CLAUDE.md`](../CLAUDE.md).
+- The hard rules: [`../RULES.md`](../RULES.md).
 
 ## System diagram
 

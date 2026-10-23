@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run Borj-PiCare backend (Inference engine on 8001 + Twin Server on 8000)
+# Run PiCare backend (Inference engine on 8001 + Twin Server on 8000)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,7 +24,7 @@ export BORJ_DB_URL="${BORJ_DB_URL:-sqlite:///$(pwd)/data/borj.sqlite}"
 mkdir -p data
 
 echo "=========================================================="
-echo " Starting Borj-PiCare Core Services (Local Dev Mode)"
+echo " Starting PiCare Core Services (Local Dev Mode)"
 echo " Ward: ${BORJ_WARD} | Clock: ${BORJ_CLOCK_MODE}"
 echo " Database: ${BORJ_DB_URL}"
 echo " MQTT Broker: ${MQTT_HOST}:${MQTT_PORT}"

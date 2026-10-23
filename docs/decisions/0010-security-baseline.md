@@ -15,7 +15,7 @@ The HackCure specification makes these **mandatory**, so they apply to the demo,
 
 ## Consequences
 
-- New safety invariants 10 and 11 in `CLAUDE.md`.
+- New safety invariants 10 and 11 in `RULES.md`.
 - A: TLS broker, per-device credentials and HMAC signing in the simulator, gateway and node.
 - B: encryption at rest, login, access audit, hash chain, HMAC verification.
 - C: login screen, token handling, the app working over HTTPS.

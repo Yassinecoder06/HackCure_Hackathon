@@ -6,7 +6,7 @@ export type Language = 'fr' | 'en';
 export const DICTIONARY = {
   fr: {
     app: {
-      title: 'Borj Family Care Link',
+      title: 'PiCare Family Care Link',
       subtitle: 'Tranquillité & Suivi de Soins pour les Proches',
       welcome: 'Bienvenue sur le portail de suivi de votre proche',
       hospitalName: 'Hôpital Public Tunisien — Service W1',
@@ -105,7 +105,7 @@ export const DICTIONARY = {
   },
   en: {
     app: {
-      title: 'Borj Family Care Link',
+      title: 'PiCare Family Care Link',
       subtitle: 'Reassurance & Care Updates for Loved Ones',
       welcome: 'Welcome to your patient care window',
       hospitalName: 'Tunisian Public Hospital — Ward W1',

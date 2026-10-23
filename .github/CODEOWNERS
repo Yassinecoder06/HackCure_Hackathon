@@ -21,4 +21,4 @@
 
 # /contracts/        @ROLE_A @ROLE_B @ROLE_C
 # /tests/            @ROLE_A @ROLE_B @ROLE_C
-# /CLAUDE.md         @ROLE_A @ROLE_B @ROLE_C
+# /RULES.md          @ROLE_A @ROLE_B @ROLE_C

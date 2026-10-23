@@ -1,4 +1,4 @@
-"""One test per safety invariant (CLAUDE.md).
+"""One test per safety invariant (RULES.md).
 
 Tests that need components which do not exist yet are skipped with the phase and role
 that will turn them on. Remove the skip when the component lands; never skip a test that

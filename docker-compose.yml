@@ -1,4 +1,4 @@
-# Borj-PiCare demo stack: the one compose file (CI, the demo laptop and the hosted VM all use it).
+# PiCare demo stack: the one compose file (CI, the demo laptop and the hosted VM all use it).
 # One-time setup:  python infra/gen_secrets.py   (passwords, keys, broker accounts -> .env, never committed)
 #                  python infra/gen_certs.py     (local CA + TLS certificate -> infra/certs/, never committed)
 # Then:            docker compose up --build

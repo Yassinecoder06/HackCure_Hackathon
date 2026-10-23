@@ -217,7 +217,7 @@ class GroundedExplainer:
             else "Provide a concise 2-sentence clinical handover briefing for the nurse in charge."
         )
 
-        prompt = f"""You are the Borj-PiCare Clinical Assistant running locally on the hospital ward.
+        prompt = f"""You are the PiCare Clinical Assistant running locally on the hospital ward.
 Goal: {user_goal}
 {lang_instruction}
 

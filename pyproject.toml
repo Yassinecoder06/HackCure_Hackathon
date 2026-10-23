@@ -1,5 +1,5 @@
 [project]
-name = "borj-picare"
+name = "picare"
 version = "0.0.0"
 description = "Ward Control Tower (hackathon). Tooling config only; components have their own requirements."
 requires-python = ">=3.12"

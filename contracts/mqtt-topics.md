@@ -1,6 +1,6 @@
 # MQTT topics (contract v1)
 
-Shared contract. Changes need a PR acknowledged by all three owners and must update, in the same PR: the schema, this file, the simulator, and every affected consumer (see `CLAUDE.md`).
+Shared contract. Changes need a PR acknowledged by all three owners and must update, in the same PR: the schema, this file, the simulator, and every affected consumer (see `RULES.md`).
 
 Broker: Mosquitto. **The demo uses TLS 1.3 on 8883 with per-device credentials and topic ACLs** (a device may only publish to its own bed), as HackCure requires and per [ADR 0010](../docs/decisions/0010-security-baseline.md). Plain TCP on 1883 with anonymous access is allowed only for unit tests and local development.
 

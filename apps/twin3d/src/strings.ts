@@ -1,4 +1,4 @@
-// All user-visible text in one module (CLAUDE.md: UI language is English, French is an open option).
+// All user-visible text in one module (RULES.md: UI language is English, French is an open option).
 
 export const S = {
   title: 'Ward 3D twin',

@@ -1,4 +1,4 @@
-"""CLI entrypoint for running the Borj Bedside Node.
+"""CLI entrypoint for running the PiCare Bedside Node.
 
 Usage:
     python -m borj_node --ward W1 --bed B06 --broker 10.42.0.1:8883
@@ -21,7 +21,7 @@ log = logging.getLogger("borj_node")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Borj Bedside Call Node (Raspberry Pi 3)")
+    parser = argparse.ArgumentParser(description="PiCare Bedside Call Node (Raspberry Pi 3)")
     parser.add_argument("--ward", default="W1", help="Ward ID (default: W1)")
     parser.add_argument("--bed", default="B06", help="Bed ID (default: B06)")
     parser.add_argument(
@@ -77,7 +77,7 @@ def main() -> None:
         port = 1883
 
     print("=" * 65)
-    print(f"  Borj-PiCare Bedside Node: Ward {args.ward} / Bed {args.bed}")
+    print(f"  PiCare Bedside Node: Ward {args.ward} / Bed {args.bed}")
     print(f"  Broker: {host}:{port}")
     print(f"  Buttons: Assist=GPIO {args.pin_assist}, Comfort=GPIO {args.pin_comfort}")
     print(f"  LEDs: Green=GPIO {args.pin_led_green}, Red=GPIO {args.pin_led_red}")

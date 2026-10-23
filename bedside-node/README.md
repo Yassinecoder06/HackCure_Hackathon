@@ -74,7 +74,7 @@ python -m borj_node --ward W1 --bed B06 --broker 10.42.0.1:8883
 To run automatically on boot on the Raspberry Pi:
 ```ini
 [Unit]
-Description=Borj-PiCare Bedside Call Node
+Description=PiCare Bedside Call Node
 After=network.target
 
 [Service]

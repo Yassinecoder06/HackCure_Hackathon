@@ -334,7 +334,7 @@ export const App: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1.2rem', background: '#1e293b', borderBottom: '1px solid #334155' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>
-                  🏥 Borj 3D Ward Digital Twin
+                  🏥 PiCare 3D Ward Digital Twin
                 </span>
                 <span style={{ fontSize: '0.75rem', background: '#0284c7', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                   Three.js / React Three Fiber
@@ -386,7 +386,7 @@ export const App: React.FC = () => {
             </div>
             <iframe
               src="http://localhost:5175/"
-              title="Borj 3D Ward Digital Twin"
+              title="PiCare 3D Ward Digital Twin"
               style={{ width: '100%', flex: 1, border: 'none' }}
             />
           </div>

@@ -2,7 +2,7 @@
 """
 fake_mqtt_logs.py
 Standalone mock script that generates streaming MQTT telemetry and live event logs
-for Borj-PiCare ward devices, beds, parameters, values, and quality flags.
+for PiCare ward devices, beds, parameters, values, and quality flags.
 
 Zero dependencies: uses standard Python 3 libraries only.
 Usage:
@@ -67,7 +67,7 @@ def generate_sig():
 
 def print_header(ward: str = "W1"):
     print(f"{C_BOLD}{C_CYAN}======================================================================================================{C_RESET}")
-    print(f"{C_BOLD}{C_WHITE} 🏥 BORJ-PICARE MQTT BROKER & WARD TELEMETRY INGESTION STREAM (SIMULATED LIVE EVENT FEED){C_RESET}")
+    print(f"{C_BOLD}{C_WHITE} 🏥 PICARE MQTT BROKER & WARD TELEMETRY INGESTION STREAM (SIMULATED LIVE EVENT FEED){C_RESET}")
     print(f"{C_DIM} Protocol: MQTT 3.1.1 over TLS 1.3 | Ward: {ward} | Port: 8883 | Invariant 13 HMAC: ACTIVE{C_RESET}")
     print(f"{C_BOLD}{C_CYAN}======================================================================================================{C_RESET}")
     print(

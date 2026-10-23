@@ -3,7 +3,7 @@
 
 export const STRINGS = {
   app: {
-    title: 'Borj-PiCare',
+    title: 'PiCare',
     subtitle: 'Ward Control Tower',
     wardName: 'Ward W1 — Internal Medicine',
     principle: 'Advisory only. A human decides every clinical action.',
