@@ -13,4 +13,4 @@ labels: ""
 
 **Depends on**
 
-**Invariants touched** (CLAUDE.md): none / 1–9
+**Invariants touched** (RULES.md): none / 1–9

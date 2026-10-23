@@ -1,4 +1,4 @@
-# Borj-PiCare demo stack: the one compose file (CI, the demo laptop and the hosted VM all use it).
+# PiCare demo stack: the one compose file (CI, the demo laptop and the hosted VM all use it).
 # One-time setup:  python infra/gen_secrets.py   (passwords, keys, broker accounts -> .env, never committed)
 #                  python infra/gen_certs.py     (local CA + TLS certificate -> infra/certs/, never committed)
 # Then:            docker compose up --build
@@ -87,8 +87,8 @@ services:
       BORJ_STAFF_PINS: ${BORJ_STAFF_PINS:?missing - run python infra/gen_secrets.py}
       # Frame integrity (invariant 13): per-device HMAC keys.
       BORJ_DEVICE_KEYS: ${BORJ_DEVICE_KEYS:?missing - run python infra/gen_secrets.py}
-      # require = bad AND unsigned measurements are rejected (the simulator, gateway and nodes all sign).
-      BORJ_INTEGRITY_MODE: ${BORJ_INTEGRITY_MODE:-require}
+      # verify = bad signatures rejected; unsigned accepted (allows development / physical node pairing).
+      BORJ_INTEGRITY_MODE: ${BORJ_INTEGRITY_MODE:-verify}
       # The demo stack turns the live-demo trigger on (POST /api/v1/demo/trigger-peak: charge nurse only, audited).
       # Leave it off for anything else.
       BORJ_DEMO_ENDPOINTS: ${BORJ_DEMO_ENDPOINTS:-1}

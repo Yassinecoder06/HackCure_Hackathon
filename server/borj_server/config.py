@@ -58,6 +58,9 @@ class Settings:
     default_lang: str = "en"
     # Suggest a new assignment automatically when staff presence or admissions change.
     auto_suggest: bool = True
+    # Local LLM layer (ADR 0013): Ollama URL and model.
+    ollama_url: str = "http://10.42.0.1:11434"
+    llm_model: str = "gemma4-ab-qat:e4b"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -80,4 +83,6 @@ class Settings:
             cors_origins=os.environ.get("BORJ_CORS_ORIGINS", ""),
             demo_endpoints=_env_bool("BORJ_DEMO_ENDPOINTS", cls.demo_endpoints),
             integrity_mode=os.environ.get("BORJ_INTEGRITY_MODE", cls.integrity_mode),
+            ollama_url=os.environ.get("BORJ_OLLAMA_URL", os.environ.get("OLLAMA_URL", cls.ollama_url)),
+            llm_model=os.environ.get("BORJ_LLM_MODEL", cls.llm_model),
         )

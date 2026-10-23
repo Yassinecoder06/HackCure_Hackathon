@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch the Borj Bedside Node on Raspberry Pi (Ward W1, Chamber 3 / Bed B06)
+# Launch the PiCare Bedside Node on Raspberry Pi (Ward W1, Chamber 3 / Bed B06)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,7 +25,7 @@ if [ -z "${MQTT_PASSWORD:-}" ] && [ -n "${BORJ_MQTT_USERS:-}" ]; then
 fi
 
 echo "=========================================================="
-echo " Starting Borj-PiCare Bedside Node"
+echo " Starting PiCare Bedside Node"
 echo " Ward: W1 | Chamber: 3 (Room R3) | Bed: B06"
 echo " Broker: ${BROKER:-10.42.0.1:8883}"
 echo " Physical: Green LED=25, Red LED=22, Buttons=17/27, Rotary=23/24"

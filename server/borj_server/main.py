@@ -34,6 +34,7 @@ from .inference_client import InferenceClient
 from .ingest import Ingestor
 from .integrity import IntegrityGate
 from .live import news2_by_bed, news2_total
+from .llm_explainer import GroundedExplainer
 from .meds import MedsConfig
 from .mqtt import MqttListener
 from .observations import ObservationsConfig
@@ -110,6 +111,7 @@ def create_app(
         ingestor.listeners.append(app.state.family.on_event)  # discharge/transfer revokes family links
         if settings.auto_suggest:
             ingestor.listeners.append(app.state.assignment.on_event)
+        app.state.llm_explainer = GroundedExplainer(settings.ollama_url, settings.llm_model)
 
         async def escalation_timer() -> None:
             # Wall-clock mode needs a timer; in demo mode clock messages also trigger tick().

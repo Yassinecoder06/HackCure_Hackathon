@@ -76,7 +76,7 @@ def make(extra: list[str], new_ca: bool) -> None:
     else:
         ca_key = ec.generate_private_key(ec.SECP256R1())
         ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,
-                                                "Borj-PiCare demo CA (synthetic, not for production)")])
+                                                "PiCare demo CA (synthetic, not for production)")])
         ca = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name).public_key(ca_key.public_key())
               .serial_number(x509.random_serial_number()).not_valid_before(now)
               .not_valid_after(now + timedelta(days=825))

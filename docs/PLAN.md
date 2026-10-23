@@ -86,7 +86,7 @@ Until the real thing exists, everyone works against **contract examples and mock
 3. **Technical defence (step 3):** everyone can explain their component choices, scalability, fault resilience and data governance.
 4. **Deliverables:** public repo with an exhaustive README (L1), hosted URL working (L2), deployment dossier with the 3- and 6-month roadmap (L3).
 
-## Working rules (summary; full rules in [CLAUDE.md](../CLAUDE.md))
+## Working rules (summary; full rules in [RULES.md](../RULES.md))
 
 - `main` is always demo-able. Use short branches `a/...`, `b/...`, `c/...` and merge via a PR with one review.
 - A contract change updates the schema, docs, simulator and consumers together, and needs all three acknowledgements.

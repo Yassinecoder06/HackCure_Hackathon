@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { StationBoard } from './pages/StationBoard';
 import { StaffView } from './pages/StaffView';
 import { DoctorView } from './pages/DoctorView';
+import { AssistanceDemandFFT } from './pages/AssistanceDemandFFT';
 import { LoginModal } from './components/LoginModal';
 import { wardApi } from './services/api';
 import { audioAlerts } from './components/AudioAlerts';
@@ -10,7 +11,9 @@ import { AlertTriangle, VolumeX, CheckCircle2 } from 'lucide-react';
 import './styles/index.css';
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<'board' | 'staff' | 'doctor'>(() => {
+  const [currentTab, setCurrentTab] = useState<'board' | 'staff' | 'doctor' | 'twin' | 'fft'>(() => {
+    if (window.location.pathname.includes('/fft')) return 'fft';
+    if (window.location.pathname.includes('/twin')) return 'twin';
     if (window.location.pathname.includes('/doctor')) return 'doctor';
     if (window.location.pathname.includes('/staff')) return 'staff';
     return 'board';
@@ -50,7 +53,11 @@ export const App: React.FC = () => {
   // Sync route on popstate or tab change
   useEffect(() => {
     const handlePopState = () => {
-      if (window.location.pathname.includes('/doctor')) {
+      if (window.location.pathname.includes('/fft')) {
+        setCurrentTab('fft');
+      } else if (window.location.pathname.includes('/twin')) {
+        setCurrentTab('twin');
+      } else if (window.location.pathname.includes('/doctor')) {
         setCurrentTab('doctor');
       } else if (window.location.pathname.includes('/staff')) {
         setCurrentTab('staff');
@@ -62,7 +69,7 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleSelectTab = (tab: 'board' | 'staff' | 'doctor') => {
+  const handleSelectTab = (tab: 'board' | 'staff' | 'doctor' | 'twin' | 'fft') => {
     setCurrentTab(tab);
     window.history.pushState({}, '', `/${tab}`);
   };
@@ -299,6 +306,7 @@ export const App: React.FC = () => {
             onAcknowledgeAlert={handleAcknowledgeAlert}
             onSilenceAlarm={handleSilenceAlarm}
             isAlarmSounding={isAlarmSounding}
+            onSelectTab={handleSelectTab}
           />
         ) : currentTab === 'staff' ? (
           <StaffView
@@ -310,12 +318,78 @@ export const App: React.FC = () => {
             targetFastEntryBed={targetFastEntryBed}
             onClearFastEntryTarget={() => setTargetFastEntryBed(null)}
           />
-        ) : (
+        ) : currentTab === 'doctor' ? (
           <DoctorView
             beds={beds}
             alerts={alerts}
             onRefresh={loadInitialSnapshot}
           />
+        ) : currentTab === 'fft' ? (
+          <AssistanceDemandFFT
+            beds={beds}
+            calls={calls}
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)', background: '#0b1120' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1.2rem', background: '#1e293b', borderBottom: '1px solid #334155' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>
+                  🏥 PiCare 3D Ward Digital Twin
+                </span>
+                <span style={{ fontSize: '0.75rem', background: '#0284c7', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                  Three.js / React Three Fiber
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                  Live NEWS2 telemetry • Animated staff routes • Pulsing call lights
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a
+                  href="http://localhost:5175/?demo=1"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    background: '#334155',
+                    color: '#e2e8f0',
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  Demo Mode (?demo=1) ↗
+                </a>
+                <a
+                  href="http://localhost:5175/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  Open Full Screen ↗
+                </a>
+              </div>
+            </div>
+            <iframe
+              src="http://localhost:5175/"
+              title="PiCare 3D Ward Digital Twin"
+              style={{ width: '100%', flex: 1, border: 'none' }}
+            />
+          </div>
         )}
       </main>
 

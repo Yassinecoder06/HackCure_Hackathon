@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DICTIONARY, Language } from '../i18n/strings';
 import { familyApi } from '../services/familyApi';
 import { KeyRound, QrCode } from 'lucide-react';
@@ -9,11 +9,28 @@ interface RedeemInviteProps {
 }
 
 export const RedeemInvite: React.FC<RedeemInviteProps> = ({ lang, onSuccess }) => {
-  const [code, setCode] = useState<string>('');
+  const [code, setCode] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('code') || '';
+  });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const t = DICTIONARY[lang].auth;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryCode = params.get('code');
+    if (queryCode) {
+      const clean = queryCode.trim().toUpperCase();
+      setCode(clean);
+      setLoading(true);
+      familyApi.redeemInvite(clean)
+        .then(() => onSuccess())
+        .catch(err => setError(err.message || t.invalidCode))
+        .finally(() => setLoading(false));
+    }
+  }, [onSuccess, t.invalidCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

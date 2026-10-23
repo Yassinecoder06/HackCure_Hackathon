@@ -9,6 +9,7 @@ COPY package.json package-lock.json ./
 COPY apps/ward/package.json ./apps/ward/package.json
 COPY apps/family/package.json ./apps/family/package.json
 COPY apps/mock-server/package.json ./apps/mock-server/package.json
+COPY apps/twin3d/package.json ./apps/twin3d/package.json
 
 RUN npm ci
 

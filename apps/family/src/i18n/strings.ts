@@ -7,7 +7,7 @@ export type Language = 'fr' | 'en';
 export const DICTIONARY = {
   fr: {
     app: {
-      title: 'Borj Family Care Link',
+      title: 'PiCare Family Care Link',
       hospitalName: 'Hôpital Public Tunisien — Service W1'
     },
     emergency: {
@@ -42,7 +42,7 @@ export const DICTIONARY = {
   },
   en: {
     app: {
-      title: 'Borj Family Care Link',
+      title: 'PiCare Family Care Link',
       hospitalName: 'Tunisian Public Hospital — Ward W1'
     },
     emergency: {

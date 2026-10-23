@@ -38,11 +38,24 @@ class FamilyGatewayService {
   }
 
   public async redeemInvite(code: string, inviteId: string | null = this.inviteIdFromUrl()): Promise<boolean> {
-    const res = await fetch('/family/v1/redeem', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(inviteId ? { inviteId, code } : { code })
-    });
+    const payload = inviteId ? { inviteId, code } : { code };
+    let res: Response;
+    try {
+      res = await fetch('/family/v1/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok && res.status !== 401 && res.status !== 429) {
+        throw new Error('Proxy fallback');
+      }
+    } catch {
+      res = await fetch(`http://${window.location.hostname}:8100/family/v1/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
 
     if (res.status === 429) {
       throw new Error('Too many attempts. Please wait a few minutes and try again.');
@@ -59,11 +72,23 @@ class FamilyGatewayService {
   }
 
   public async getFeed(): Promise<FamilyFeedResponse> {
-    const res = await fetch('/family/v1/feed', {
-      headers: {
-        'Authorization': `Bearer ${this.sessionToken || ''}`
+    let res: Response;
+    try {
+      res = await fetch('/family/v1/feed', {
+        headers: {
+          'Authorization': `Bearer ${this.sessionToken || ''}`
+        }
+      });
+      if (!res.ok && res.status !== 401) {
+        throw new Error('Proxy fallback');
       }
-    });
+    } catch {
+      res = await fetch(`http://${window.location.hostname}:8100/family/v1/feed`, {
+        headers: {
+          'Authorization': `Bearer ${this.sessionToken || ''}`
+        }
+      });
+    }
 
     if (!res.ok) {
       if (res.status === 401) {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
-import { AlertCircle, Info, ShieldCheck, X, Bell, User } from 'lucide-react';
+import { AlertCircle, Info, ShieldCheck, X, Bell, User, Brain, Sparkles, Send, RefreshCw, ChevronDown, ChevronUp, HeartHandshake, Copy } from 'lucide-react';
 
 interface StationBoardProps {
   beds: any[];
@@ -19,6 +19,7 @@ interface StationBoardProps {
   onAcknowledgeAlert?: (alertId: string) => Promise<void>;
   onSilenceAlarm?: () => void;
   isAlarmSounding?: boolean;
+  onSelectTab?: (tab: 'board' | 'staff' | 'doctor' | 'twin' | 'fft') => void;
 }
 
 export const StationBoard: React.FC<StationBoardProps> = ({
@@ -29,9 +30,26 @@ export const StationBoard: React.FC<StationBoardProps> = ({
   onOpenFastEntry,
   onAcknowledgeAlert,
   onSilenceAlarm,
-  isAlarmSounding
+  isAlarmSounding,
+  onSelectTab
 }) => {
   const [selectedBed, setSelectedBed] = useState<any | null>(null);
+  const [llmExplanation, setLlmExplanation] = useState<any | null>(null);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmQuestion, setLlmQuestion] = useState('');
+  const [showFacts, setShowFacts] = useState(false);
+
+  const fetchLlmExplanation = async (bedId: string, q?: string) => {
+    setLlmLoading(true);
+    try {
+      const res = await wardApi.getBedLLMExplanation(bedId, q);
+      setLlmExplanation(res);
+    } catch (e: any) {
+      console.warn('Failed to load LLM explanation:', e);
+    } finally {
+      setLlmLoading(false);
+    }
+  };
 
   // Group beds by room
   const roomsNorth = [
@@ -70,7 +88,13 @@ export const StationBoard: React.FC<StationBoardProps> = ({
       <div
         key={bedId}
         className={`bed-card band-${band}`}
-        onClick={() => setSelectedBed(bed)}
+        onClick={() => {
+          setSelectedBed(bed);
+          setLlmExplanation(null);
+          setLlmQuestion('');
+          setShowFacts(false);
+          fetchLlmExplanation(bed.bed);
+        }}
         id={`bed-card-${bedId}`}
       >
         {call && (
@@ -183,6 +207,28 @@ export const StationBoard: React.FC<StationBoardProps> = ({
             <div style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', color: '#38bdf8', padding: '0.35rem 0.75rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>
               ⚡ Triage Latency: {triageMetrics?.triageLatencyMs ? `p50 ${triageMetrics.triageLatencyMs.p50}ms · p95 ${triageMetrics.triageLatencyMs.p95}ms (n=${triageMetrics.triageLatencyMs.n})` : '< 320ms budget'} · Zero-Cloud Ward Network
             </div>
+            {onSelectTab && (
+              <button
+                onClick={() => onSelectTab('twin')}
+                style={{
+                  background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+                  border: '1px solid #60a5fa',
+                  color: '#ffffff',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: 6,
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
+                id="btn-switch-twin3d"
+                title="Launch 3D Digital Twin View"
+              >
+                🏢 3D Digital Twin →
+              </button>
+            )}
           </div>
         </div>
 
@@ -268,6 +314,11 @@ export const StationBoard: React.FC<StationBoardProps> = ({
                     <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 700 }}>
                       ⚠ Partial: {bed.news2?.missing?.join(', ')}
                     </span>
+                  )}
+                  {bed.priority?.reasons && bed.priority.reasons.length > 0 && (
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      #{bed.priority.rank}: {bed.priority.reasons[0]}
+                    </div>
                   )}
                 </div>
 
@@ -365,6 +416,80 @@ export const StationBoard: React.FC<StationBoardProps> = ({
                 );
               })()}
 
+              {/* Family Care Link (Espace Proches) Banner */}
+              {selectedBed.admission && (
+                <div
+                  style={{
+                    padding: '0.85rem 1rem',
+                    borderRadius: 8,
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 10
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ background: '#10b981', color: '#ffffff', padding: 6, borderRadius: 6, display: 'flex' }}>
+                      <HeartHandshake size={18} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>
+                        Family Care Link (Espace Proches)
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        Bedside PIN Key: <strong style={{ color: '#10b981', letterSpacing: 1 }}>FAM-9921</strong> • Relatives portal
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('http://localhost:5174?code=FAM-9921');
+                        alert('Copied Family Care Link to clipboard: http://localhost:5174?code=FAM-9921');
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                        color: '#10b981',
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <Copy size={12} /> Copy Link
+                    </button>
+                    <a
+                      href="http://localhost:5174?code=FAM-9921"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        background: '#10b981',
+                        color: '#ffffff',
+                        padding: '5px 12px',
+                        borderRadius: 6,
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      Open Portal ↗
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {/* NEWS2 Summary Banner */}
               <div
                 style={{
@@ -404,6 +529,40 @@ export const StationBoard: React.FC<StationBoardProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Ward Priority Ranking & Clinical Rationale (Bilingual explainability from main) */}
+              {selectedBed.priority && (
+                <div style={{ padding: '0.75rem 1rem', borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                        Clinical Priority Ranking
+                      </span>
+                      <span style={{ fontSize: '0.72rem', background: '#2563eb', color: '#ffffff', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+                        Rank #{selectedBed.priority.rank} of {selectedBed.priority.of}
+                      </span>
+                    </div>
+                    {selectedBed.news2Trend && selectedBed.news2Trend.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        <span>Trend:</span>
+                        {selectedBed.news2Trend.map((t: any) => (
+                          <span key={t.minutesAgo} style={{ background: 'var(--bg-body)', padding: '1px 5px', borderRadius: 3, fontWeight: 600 }}>
+                            -{t.minutesAgo}m: {t.total}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {selectedBed.priority.reasons?.map((reason: string, idx: number) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                        <span style={{ color: '#2563eb' }}>•</span>
+                        <span>{reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Components Breakdown Table */}
               <div>
@@ -445,6 +604,209 @@ export const StationBoard: React.FC<StationBoardProps> = ({
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Local LLM Grounded Explainability (ADR 0013) */}
+              <div
+                style={{
+                  background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                  borderRadius: 10,
+                  border: '1px solid #3b82f6',
+                  padding: '1.1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.8rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Brain size={18} color="#60a5fa" />
+                    <span style={{ fontWeight: 800, fontSize: '0.92rem', color: '#f8fafc' }}>
+                      Grounded AI Clinical Handover
+                    </span>
+                    <span style={{ fontSize: '0.7rem', background: '#2563eb', color: '#ffffff', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+                      gemma4-ab-qat:e4b (Local QAT)
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '0.68rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                      ADR 0013 Verified
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => fetchLlmExplanation(selectedBed.bed, llmQuestion || undefined)}
+                      disabled={llmLoading}
+                      title="Re-run local Gemma explainability"
+                      style={{
+                        background: '#334155',
+                        border: 'none',
+                        color: '#94a3b8',
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                        fontSize: '0.72rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <RefreshCw size={12} className={llmLoading ? 'spin' : ''} />
+                      {llmLoading ? 'Thinking...' : 'Refresh'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Body / Result */}
+                {llmLoading ? (
+                  <div style={{ padding: '1rem', background: '#0b1120', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: '0.82rem' }}>
+                    <Sparkles size={16} color="#38bdf8" />
+                    <span>Querying local Gemma 4 QAT model on ward twin facts (temperature 0.0)...</span>
+                  </div>
+                ) : llmExplanation ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    <div style={{ padding: '0.85rem', background: '#0b1120', borderRadius: 8, border: '1px solid #1e293b', fontSize: '0.85rem', lineHeight: 1.5, color: '#e2e8f0' }}>
+                      {llmExplanation.summary}
+                    </div>
+
+                    {/* Citations & Disclaimer */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: '#94a3b8', flexWrap: 'wrap', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>Citations:</span>
+                        {llmExplanation.citations?.map((c: string) => (
+                          <span key={c} style={{ background: '#1e3a8a', color: '#93c5fd', padding: '1px 5px', borderRadius: 3, fontWeight: 700, fontFamily: 'monospace' }}>
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                      <span style={{ fontStyle: 'italic', color: '#64748b' }}>
+                        {llmExplanation.disclaimer}
+                      </span>
+                    </div>
+
+                    {/* Collapsible Facts */}
+                    {llmExplanation.facts?.length > 0 && (
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setShowFacts(!showFacts)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#38bdf8',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '2px 0',
+                            fontWeight: 600
+                          }}
+                        >
+                          {showFacts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          {showFacts ? 'Hide' : 'Inspect'} Grounded Twin Facts ({llmExplanation.facts.length})
+                        </button>
+                        {showFacts && (
+                          <div style={{ marginTop: 6, padding: '0.6rem', background: '#0b1120', borderRadius: 6, fontSize: '0.72rem', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 120, overflowY: 'auto' }}>
+                            {llmExplanation.facts.map((f: string, i: number) => (
+                              <div key={i} style={{ fontFamily: 'monospace' }}>{f}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fetchLlmExplanation(selectedBed.bed)}
+                    style={{
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      alignSelf: 'flex-start'
+                    }}
+                  >
+                    <Sparkles size={14} /> Generate Handover Briefing with Local Gemma
+                  </button>
+                )}
+
+                {/* Free-text Clinical Q&A Bar */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (llmQuestion.trim()) {
+                      fetchLlmExplanation(selectedBed.bed, llmQuestion.trim());
+                    }
+                  }}
+                  style={{ display: 'flex', gap: 6, marginTop: 4 }}
+                >
+                  <input
+                    type="text"
+                    value={llmQuestion}
+                    onChange={(e) => setLlmQuestion(e.target.value)}
+                    placeholder="Ask local Gemma 4 a clinical question about Bed..."
+                    style={{
+                      flex: 1,
+                      background: '#0b1120',
+                      border: '1px solid #334155',
+                      borderRadius: 6,
+                      padding: '6px 10px',
+                      color: '#f8fafc',
+                      fontSize: '0.78rem'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={llmLoading || !llmQuestion.trim()}
+                    style={{
+                      background: '#3b82f6',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '6px 12px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <Send size={12} /> Ask
+                  </button>
+                </form>
+
+                {/* Quick Prompts */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLlmQuestion('Résumé clinique en français pour la relève infirmière.');
+                      fetchLlmExplanation(selectedBed.bed, 'Résumé clinique en français pour la relève infirmière.');
+                    }}
+                    style={{ background: '#1e293b', border: '1px solid #334155', color: '#94a3b8', borderRadius: 4, padding: '2px 8px', fontSize: '0.68rem', cursor: 'pointer' }}
+                  >
+                    🇫🇷 Relève en français
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLlmQuestion('Why is this bed prioritized and what is the emergency protocol?');
+                      fetchLlmExplanation(selectedBed.bed, 'Why is this bed prioritized and what is the emergency protocol?');
+                    }}
+                    style={{ background: '#1e293b', border: '1px solid #334155', color: '#94a3b8', borderRadius: 4, padding: '2px 8px', fontSize: '0.68rem', cursor: 'pointer' }}
+                  >
+                    ⚡ Prioritization Rationale
+                  </button>
+                </div>
               </div>
 
               {/* Data Invariant Note */}

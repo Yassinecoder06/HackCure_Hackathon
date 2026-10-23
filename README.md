@@ -1,8 +1,8 @@
-# Borj-PiCare: Ward Control Tower
+# PiCare: Ward Control Tower
 
 **HackCure · Track 2 (Web & Mobile).** A care-coordination platform for hospital wards, including regional and district hospitals where the network is unreliable.
 
-Borj-PiCare turns bedside signals into a live **digital twin** of the ward: vitals from ward machines, patient calls and medication taps. On top of it, staff get **prioritised, explainable suggestions**:
+PiCare turns bedside signals into a live **digital twin** of the ward: vitals from ward machines, patient calls and medication taps. On top of it, staff get **prioritised, explainable suggestions**:
 - who to see first (NEWS2, with its reasons and a confidence index);
 - who is free, and how to rebalance the night (assignment suggestions);
 - what happens if a nurse leaves (what-if simulation).
@@ -23,7 +23,7 @@ Critical alerts reach the nurse's phone, then the charge nurse, then a **remote 
 | See the architecture | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | **Pick your role and first task** | [`docs/PLAN.md`](docs/PLAN.md) → [`docs/roles/`](docs/roles/) |
 | Know the shared interfaces | [`contracts/`](contracts/) (MQTT topics, JSON Schemas, OpenAPI, FHIR mapping) |
-| Know the hard rules | [`CLAUDE.md`](CLAUDE.md) (13 safety invariants + working rules) |
+| Know the hard rules | [`RULES.md`](RULES.md) (13 safety invariants + working rules) |
 | See what was decided and assumed | [`docs/decisions/`](docs/decisions/), [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) |
 
 ## How it meets the HackCure requirements

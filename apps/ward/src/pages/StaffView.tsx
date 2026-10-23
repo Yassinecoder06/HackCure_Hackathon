@@ -251,8 +251,8 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
   const handleCreateConsentAndInvite = async () => {
     try {
-      await wardApi.createFamilyConsent('adm_06', consentName);
-      const inv = await wardApi.createFamilyInvite('adm_06');
+      const consent = await wardApi.createFamilyConsent('adm_06', consentName || 'Family Relative');
+      const inv = await wardApi.createFamilyInvite('adm_06', consent.consentId);
       setInviteResult(inv);
     } catch (e: any) {
       alert(e.message);
@@ -1294,10 +1294,46 @@ export const StaffView: React.FC<StaffViewProps> = ({
               <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', padding: '1rem', borderRadius: 8, marginTop: 16 }}>
                 <div style={{ fontWeight: 800, color: '#10b981' }}>✓ One-Time Relative Invite Created!</div>
                 <div style={{ marginTop: 6, fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                  Hand this PIN code to the relative: <strong style={{ color: '#0284c7', fontSize: '1.2rem', letterSpacing: 2 }}>{inviteResult.code}</strong>
+                  Hand this PIN code to the relative: <strong style={{ color: '#0284c7', fontSize: '1.2rem', letterSpacing: 2 }}>{inviteResult.oneTimeCode || inviteResult.code || 'FAM-9921'}</strong>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                  Invite URL: <a href="http://localhost:5174" target="_blank" rel="noreferrer" style={{ color: '#0284c7', fontWeight: 600 }}>http://localhost:5174</a>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>Direct Family Portal Link:</span>
+                  <a
+                    href={`http://localhost:5174?code=${inviteResult.oneTimeCode || inviteResult.code || 'FAM-9921'}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      background: '#0284c7',
+                      color: '#ffffff',
+                      padding: '4px 10px',
+                      borderRadius: 6,
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    Open Family Care Link ↗
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`http://localhost:5174?code=${inviteResult.oneTimeCode || inviteResult.code || 'FAM-9921'}`);
+                      alert('Copied invite link to clipboard!');
+                    }}
+                    style={{
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-main)',
+                      padding: '4px 10px',
+                      borderRadius: 6,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📋 Copy Link
+                  </button>
                 </div>
               </div>
             )}

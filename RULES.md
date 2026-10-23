@@ -1,6 +1,6 @@
-# CLAUDE.md: rules for Claude Code in this repo
+# RULES.md: Safety Invariants & Project Rules
 
-Borj-PiCare: a care-coordination platform for hospital wards, built for **HackCure, Track 2 (Web & Mobile)**. **Advisory only**: a clinician always validates or rejects.
+PiCare: a care-coordination platform for hospital wards, built for **HackCure, Track 2 (Web & Mobile)**. **Advisory only**: a clinician always validates or rejects.
 
 Sources of truth:
 - The idea: `docs/Borj_PiCare_Whitepaper_v2.pdf`.

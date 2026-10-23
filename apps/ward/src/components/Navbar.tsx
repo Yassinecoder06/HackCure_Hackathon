@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { STRINGS } from '../i18n/strings';
 import { wardApi } from '../services/api';
-import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon, Volume2, VolumeX } from 'lucide-react';
+import { LayoutGrid, Smartphone, Zap, UserCheck, Sun, Moon, Volume2, VolumeX, Box, Activity, HeartHandshake } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'board' | 'staff' | 'doctor';
-  onSelectTab: (tab: 'board' | 'staff' | 'doctor') => void;
+  currentTab: 'board' | 'staff' | 'doctor' | 'twin' | 'fft';
+  onSelectTab: (tab: 'board' | 'staff' | 'doctor' | 'twin' | 'fft') => void;
   isConnected: boolean;
   onPeakTriggered?: () => void;
   onOpenLogin: () => void;
@@ -81,6 +81,36 @@ export const Navbar: React.FC<NavbarProps> = ({
           <UserCheck size={16} />
           Doctor Console
         </button>
+        <button
+          className={`nav-btn ${currentTab === 'twin' ? 'active' : ''}`}
+          onClick={() => onSelectTab('twin')}
+          id="nav-tab-twin"
+          title="Explore 3D Digital Twin View of Ward W1"
+        >
+          <Box size={16} />
+          {STRINGS.nav.digitalTwin}
+        </button>
+        <button
+          className={`nav-btn ${currentTab === 'fft' ? 'active' : ''}`}
+          onClick={() => onSelectTab('fft')}
+          id="nav-tab-fft"
+          title="Assistance Demand Spectral Analysis & FFT"
+        >
+          <Activity size={16} />
+          Assistance FFT
+        </button>
+        <a
+          href="http://localhost:5174?code=FAM-9921"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="nav-btn"
+          id="nav-link-family"
+          title="Open Family Care Link portal for relatives"
+          style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <HeartHandshake size={16} />
+          Family Link ↗
+        </a>
       </nav>
 
       <div className="nav-controls">

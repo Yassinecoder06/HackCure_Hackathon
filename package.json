@@ -1,9 +1,9 @@
 {
-  "name": "borj-picare-monorepo",
+  "name": "picare-monorepo",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Borj-PiCare Ward Control Tower & Family Care Link apps",
+  "description": "PiCare Ward Control Tower & Family Care Link apps",
   "workspaces": [
     "apps/ward",
     "apps/family",
